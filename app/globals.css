@@ -26,8 +26,8 @@ body {
     radial-gradient(circle at 90% 18%, rgba(111, 92, 231, .12) 0 110px, transparent 112px),
     var(--paper);
   color: var(--ink);
-  font-family: "Hiragino Maru Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
-  font-weight: 600;
+  font-family: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+  font-weight: 700;
 }
 
 button, input, textarea { font: inherit; }
@@ -199,9 +199,14 @@ footer b { color: var(--purple); }
 
 /* Brand mark: CSS-only so it never depends on emoji font support. */
 .mirror-mark { position: relative; overflow: hidden; }
-.mirror-glass { width: 24px; height: 30px; border: 3px solid var(--line); border-radius: 50%; background: linear-gradient(135deg, #fff 15%, #d7fff5 48%, #c9c0ff 49%, #fff 82%); transform: rotate(-8deg); }
-.mirror-glass::after { content: ""; position: absolute; width: 6px; height: 13px; margin: 3px 0 0 13px; border-radius: 99px; background: rgba(255,255,255,.78); transform: rotate(30deg); }
-.mirror-handle { position: absolute; width: 7px; height: 18px; left: 31px; top: 32px; border: 2px solid var(--line); border-radius: 4px; background: var(--pink); transform: rotate(-28deg); transform-origin: top; }
+.css-mirror { position: relative; display: block; width: 32px; height: 43px; transform: rotate(-7deg); }
+.css-mirror i { position: absolute; display: block; font-style: normal; }
+.css-mirror-glass { inset: 0 auto auto 1px; width: 27px; height: 32px; border: 3px solid var(--line); border-radius: 50%; background: linear-gradient(135deg, #fff 12%, #d7fff5 42%, #c9c0ff 44%, #fff 80%); box-shadow: inset 4px 3px 0 rgba(255,255,255,.72); }
+.css-mirror-glass::after { content: ""; position: absolute; top: 5px; right: 5px; width: 5px; height: 11px; border-radius: 99px; background: rgba(255,255,255,.9); transform: rotate(27deg); }
+.css-mirror-handle { left: 13px; top: 29px; width: 8px; height: 15px; border: 2px solid var(--line); border-radius: 0 0 5px 5px; background: var(--pink); }
+.css-mirror.small { width: 25px; height: 34px; }
+.css-mirror.small .css-mirror-glass { width: 22px; height: 26px; border-width: 2px; }
+.css-mirror.small .css-mirror-handle { left: 10px; top: 23px; width: 7px; height: 12px; }
 
 /* Start and resume flow */
 .start-shell { min-height: 100svh; display: grid; place-items: center; padding: 22px; }
@@ -222,6 +227,61 @@ footer b { color: var(--purple); }
 .start-button:active { transform: translateY(5px); box-shadow: none; }
 .secondary-start { min-height: 50px; margin-top: 12px; border: 2px solid var(--line); border-radius: 14px; background: white; box-shadow: 0 3px 0 var(--line); }
 .text-button { display: block; margin: 18px auto 0; border: 0; background: transparent; color: #746d80; font-size: 11px; text-decoration: underline; text-underline-offset: 4px; }
+.title-content { margin-top: 18px; }
+.title-content > p:not(.start-kicker) { margin-block: 12px 18px; }
+.title-actions { display: grid; gap: 10px; justify-items: center; }
+.guide-button { width: min(100%,330px); min-height: 50px; border: 2px solid var(--line); border-radius: 15px; background: white; box-shadow: 0 3px 0 var(--line); font-size: 13px; font-weight: 900; cursor: pointer; }
+.guide-button span { display: inline-grid; place-items: center; width: 23px; height: 23px; margin-right: 7px; border: 2px solid var(--line); border-radius: 50%; background: var(--mint-soft); }
+.guide-button:active { transform: translateY(3px); box-shadow: none; }
+
+/* Temporary CSS navigators. Swap these for Shu & Miu image assets later. */
+.navigator-stage { position: relative; display: flex; justify-content: center; min-height: 116px; margin: 0 auto 8px; }
+.welcome-bubble { position: absolute; z-index: 5; top: -10px; left: 50%; min-width: 240px; padding: 9px 15px; border: 2px solid var(--line); border-radius: 17px; background: white; box-shadow: 0 4px 0 rgba(47,41,70,.18); font-size: 10px; line-height: 1.28; transform: translateX(-50%) rotate(-1deg); }
+.welcome-bubble::after { content: ""; position: absolute; bottom: -8px; left: 50%; width: 14px; height: 14px; border-right: 2px solid var(--line); border-bottom: 2px solid var(--line); background: white; transform: translateX(-50%) rotate(45deg); }
+.welcome-bubble strong { color: var(--pink); font-size: 17px; font-weight: 900; }
+.navigator-pair { display: flex; align-items: flex-end; justify-content: center; gap: 0; margin-top: 35px; }
+.navigator-pair.compact { margin: 0; transform: scale(.72); transform-origin: right center; }
+.css-bear { --bear-color: #93e7d4; position: relative; display: block; width: 62px; height: 78px; filter: drop-shadow(0 3px 0 rgba(47,41,70,.18)); }
+.css-bear.bear-miu { --bear-color: #ff9fbd; margin-left: -7px; transform: rotate(5deg); }
+.css-bear.bear-shu { transform: rotate(-5deg); }
+.css-bear i, .css-bear b { position: absolute; display: block; font-style: normal; }
+.bear-ear { z-index: 1; top: 5px; width: 23px; height: 23px; border: 2px solid var(--line); border-radius: 50%; background: var(--bear-color); }
+.bear-ear::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: rgba(255,255,255,.55); }
+.bear-ear.left { left: 4px; }.bear-ear.right { right: 4px; }
+.bear-face { z-index: 3; top: 12px; left: 8px; width: 48px; height: 45px; border: 2px solid var(--line); border-radius: 48% 48% 46% 46%; background: var(--bear-color); }
+.bear-eye { top: 17px; width: 4px; height: 5px; border-radius: 50%; background: var(--line); }
+.bear-eye.left { left: 12px; }.bear-eye.right { right: 12px; }
+.bear-muzzle { left: 50%; bottom: 6px; width: 18px; height: 12px; border-radius: 50%; background: rgba(255,255,255,.7); transform: translateX(-50%); }
+.bear-muzzle::before { content: ""; position: absolute; top: 2px; left: 7px; width: 5px; height: 4px; border-radius: 50%; background: var(--line); }
+.bear-muzzle::after { content: "⌄"; position: absolute; top: 3px; left: 5px; color: var(--line); font: 700 9px/1 sans-serif; }
+.bear-body { z-index: 2; left: 12px; bottom: 0; width: 40px; height: 34px; border: 2px solid var(--line); border-radius: 48% 48% 38% 38%; background: var(--bear-color); }
+
+/* Full rule guide */
+.view-guide { max-height: min(840px, calc(100svh - 44px)); overflow-y: auto; overscroll-behavior: contain; }
+.guide-view { padding: 18px 0 2px; }
+.guide-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.guide-heading .step-label { margin: 0; }.guide-heading h2 { margin: 1px 0 0; font-size: 30px; line-height: 1; }
+.rule-lead { display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 14px; padding: 14px; border: 2px solid var(--line); border-radius: 18px; background: var(--yellow); box-shadow: 0 4px 0 rgba(47,41,70,.18); }
+.rule-lead strong { font-size: 17px; }.rule-lead p { margin: 4px 0 0; color: #5f5869; font-size: 10px; line-height: 1.55; }
+.mini-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 3px; width: 68px; padding: 5px; border: 2px solid var(--line); border-radius: 10px; background: white; transform: rotate(-3deg); }
+.mini-grid i { aspect-ratio: 1; border: 1px solid #b9b0c1; border-radius: 3px; background: #fffaf0; }.mini-grid i.pink { border-color: #c43c66; background: var(--pink); }
+.rule-steps { display: grid; gap: 8px; margin: 13px 0; padding: 0; list-style: none; }
+.rule-steps li { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; padding: 10px 12px; border: 2px solid rgba(47,41,70,.14); border-radius: 14px; background: white; }
+.rule-steps li > b { display: grid; place-items: center; width: 31px; height: 31px; border: 2px solid var(--line); border-radius: 10px; background: var(--mint-soft); font-size: 15px; }
+.rule-steps strong { display: block; font-size: 13px; }.rule-steps p { margin: 2px 0 0; color: #716a7c; font-size: 10px; line-height: 1.55; }
+.kojitsuke-guide, .partner-guide { margin-top: 12px; padding: 16px; border: 2px solid var(--line); border-radius: 18px; background: #fff2f6; box-shadow: 0 3px 0 rgba(47,41,70,.15); }
+.guide-tag { display: inline-block; padding: 4px 8px; border-radius: 99px; background: var(--pink); color: white; font-size: 8px; letter-spacing: .08em; }
+.kojitsuke-guide h3, .partner-guide h3 { margin: 7px 0 4px; font-size: 16px; }.kojitsuke-guide > p, .partner-guide p { margin: 0; color: #6c6475; font-size: 10px; line-height: 1.65; }
+.example-reading { display: flex; align-items: center; gap: 12px; margin: 12px 0; padding: 11px; border: 2px dashed #e06b8d; border-radius: 14px; background: white; }
+.example-art { display: grid; place-items: center; width: 52px; height: 52px; flex: 0 0 auto; border: 2px solid var(--line); border-radius: 13px; background: var(--mint-soft); font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; font-size: 30px; }
+.example-reading small { display: block; color: #81798b; font-size: 8px; }.example-reading strong { display: block; color: var(--purple); font-size: 18px; }.example-reading p { margin: 1px 0 0; color: #6e6678; font-size: 9px; }
+.rule-caution { padding-top: 10px; border-top: 1px dashed #d9a9b8; }
+.partner-guide { display: grid; grid-template-columns: 54px 1fr; gap: 12px; background: var(--purple-soft); }
+.partner-guide-icon { display: grid; place-items: center; width: 52px; height: 52px; border: 2px solid var(--line); border-radius: 14px; background: white; }
+.partner-guide h3 { margin-top: 0; }.partner-guide small { display: block; margin-top: 7px; color: #5e4f9e; font-size: 8px; font-weight: 900; }
+.quick-rules { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.quick-rules span { padding: 6px 8px; border: 1px solid #c9c0d0; border-radius: 99px; background: white; color: #675f72; font-size: 8px; }
+.guide-actions { display: grid; justify-items: center; margin-top: 18px; }
 .save-badge { display: inline-block; margin-bottom: 13px; padding: 6px 10px; border-radius: 99px; background: var(--mint-soft); color: #258674; font-size: 9px; font-weight: 1000; letter-spacing: .14em; }
 .resume-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 24px 0; }
 .resume-summary > div { padding: 12px 6px; border: 2px solid rgba(47,41,70,.15); border-radius: 14px; background: white; }
@@ -286,14 +346,15 @@ footer b { color: var(--purple); }
 @media (max-width: 800px) {
   .app-shell { padding-top: 10px; }
   .topbar { margin-bottom: 10px; }
-  .topbar .mirror-mark { width: 42px; height: 42px; border-radius: 13px; }.topbar .mirror-glass { width: 19px; height: 25px; border-width: 2px; }.topbar .mirror-handle { left: 25px; top: 26px; width: 6px; height: 14px; }.topbar .eyebrow { font-size: 7px; }.topbar h1 { font-size: 19px; }
+  .topbar .mirror-mark { width: 42px; height: 42px; border-radius: 13px; }.topbar .css-mirror { transform: scale(.82) rotate(-7deg); }.topbar .eyebrow { font-size: 7px; }.topbar h1 { font-size: 19px; }
   .summary-sheet { top: auto; bottom: 0; width: 100%; height: min(78svh, 650px); padding: 10px 15px 28px; border: 3px solid var(--line); border-bottom: 0; border-radius: 24px 24px 0 0; transform: translateY(105%); }
   .summary-layer.open .summary-sheet { transform: translateY(0); }
   .sheet-handle { display: block; width: 44px; height: 5px; margin: 0 auto 10px; border-radius:99px; background:#c7bfce; }
 }
 
 @media (max-width: 480px) {
-  .start-shell { padding: 0; }.start-card { min-height: 100svh; border: 0; border-radius: 0; box-shadow: none; padding: 19px 17px 28px; }.start-card .brand-lockup { transform: scale(.88); transform-origin: left top; }
+  .start-shell { padding: 0; }.start-card { min-height: 100svh; max-height: none; border: 0; border-radius: 0; box-shadow: none; padding: 19px 17px 28px; }.start-card .brand-lockup { transform: scale(.88); transform-origin: left top; }
+  .title-content { margin-top: 8px; }.navigator-stage { min-height: 107px; }.welcome-bubble { min-width: 220px; }.guide-view { padding-top: 10px; }.rule-lead { grid-template-columns: 68px 1fr; gap: 10px; padding: 11px; }.mini-grid { width: 60px; }.partner-guide { grid-template-columns: 46px 1fr; padding: 13px; }.partner-guide-icon { width: 44px; height: 44px; }
   .app-shell { padding-inline: 7px; }
   .status-card { top: 4px; grid-template-columns: minmax(0,1.2fr) .55fr .56fr 34px; gap: 4px; padding: 5px; }
   .status-objections { display: none; }.summary-toggle { padding: 0 4px; font-size: 8px; }
