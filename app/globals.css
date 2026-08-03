@@ -363,3 +363,94 @@ footer b { color: var(--purple); }
   .game-message { margin-block: 8px 6px; min-height: 28px; font-size: 11px; }.action-card { border-width:2px; border-radius:17px; }
   footer { margin-top:20px; }
 }
+
+/* Desktop game board: use the horizontal room and keep a whole turn in view. */
+@media (min-width: 901px) {
+  body:has(.app-shell) { overflow-y: hidden; }
+
+  .app-shell {
+    width: min(100%, 1180px);
+    min-height: 100svh;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-shell .topbar {
+    flex: 0 0 auto;
+    margin-bottom: 9px;
+  }
+
+  .game-layout {
+    width: 100%;
+    min-height: 0;
+    flex: 1 1 auto;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
+  .play-column {
+    --desktop-board: min(54vw, calc(100svh - 230px), 620px);
+    display: grid;
+    grid-template-columns: var(--desktop-board) minmax(300px, 380px);
+    grid-template-rows: auto var(--desktop-board) auto;
+    grid-template-areas:
+      "status action"
+      "board action"
+      "message action";
+    justify-content: center;
+    align-items: start;
+    gap: 9px 20px;
+  }
+
+  .play-column .status-card {
+    grid-area: status;
+    position: static;
+    width: 100%;
+    margin: 0;
+  }
+
+  .play-column .board {
+    grid-area: board;
+    width: 100%;
+    height: 100%;
+  }
+
+  .play-column .game-message {
+    grid-area: message;
+    min-height: 24px;
+    margin: 0 4px;
+  }
+
+  .play-column .action-card {
+    grid-area: action;
+    align-self: start;
+    width: 100%;
+    max-height: calc(100svh - 92px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .app-shell > footer {
+    flex: 0 0 auto;
+    margin-top: 4px;
+  }
+}
+
+/* Short laptop screens keep the same two-column layout with denser controls. */
+@media (min-width: 901px) and (max-height: 800px) {
+  .play-column {
+    --desktop-board: min(54vw, calc(100svh - 218px), 570px);
+    gap-block: 7px;
+  }
+
+  .reading-panel,
+  .partner-panel,
+  .judge-panel,
+  .winner-panel { padding: 13px; }
+
+  .registered-readings { margin-top: 11px; }
+  .custom-form { gap: 8px; margin-top: 11px; padding-top: 11px; }
+  .partner-panel .reply-box textarea { min-height: 92px; }
+  .prompt-preview { margin-top: 8px; }
+}
