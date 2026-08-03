@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type Player = "O" | "X";
 type Mode = "partner" | "local";
+type View = "loading" | "title" | "resume" | "mode" | "confirm" | "countdown" | "game";
 type Phase =
   | "select"
   | "reading"
@@ -179,7 +180,7 @@ function freshCode() {
   return codeFor(Date.now() + Math.floor(Math.random() * 9999));
 }
 
-function createGame(seed = 407, mode: Mode = "partner"): GameState {
+function createGame(seed = 407, mode: Mode = "partner", timerRunning = false): GameState {
   const { board, start } = makeBoard(seed);
   return {
     board,
@@ -192,7 +193,7 @@ function createGame(seed = 407, mode: Mode = "partner"): GameState {
     activeCode: codeFor(seed),
     usedCodes: [],
     timeLeft: 20,
-    timerRunning: true,
+    timerRunning,
     copied: false,
     proposal: null,
     winner: null,
@@ -317,6 +318,12 @@ async function copyToClipboard(text: string) {
 export default function Home() {
   const [game, setGame] = useState<GameState>(() => createGame());
   const [hydrated, setHydrated] = useState(false);
+  const [view, setView] = useState<View>("loading");
+  const [pendingMode, setPendingMode] = useState<Mode>("partner");
+  const [countdown, setCountdown] = useState(3);
+  const [resumeAfterCountdown, setResumeAfterCountdown] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [rejectionFlash, setRejectionFlash] = useState(false);
   const [customReading, setCustomReading] = useState("");
   const [reason, setReason] = useState("");
   const [partnerReply, setPartnerReply] = useState("");
@@ -327,9 +334,18 @@ export default function Home() {
     const restore = window.setTimeout(() => {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) setGame(JSON.parse(saved) as GameState);
+        if (saved) {
+          const restored = JSON.parse(saved) as GameState;
+          const hasProgress = restored.history.length > 0 || Object.keys(restored.claims).length > 0 || restored.phase !== "select" || restored.timeLeft < 20;
+          setGame({ ...restored, timerRunning: false, copied: false });
+          setPendingMode(restored.mode);
+          setView(hasProgress && !restored.winner ? "resume" : "title");
+        } else {
+          setView("title");
+        }
       } catch {
         localStorage.removeItem(STORAGE_KEY);
+        setView("title");
       } finally {
         setHydrated(true);
       }
@@ -338,12 +354,33 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || view !== "game") return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
-  }, [game, hydrated]);
+  }, [game, hydrated, view]);
 
   useEffect(() => {
-    if (!game.timerRunning || game.winner) return;
+    if (view !== "countdown") return;
+    if (countdown <= 0) {
+      const kickoff = window.setTimeout(() => {
+        if (resumeAfterCountdown) {
+          setGame((current) => ({ ...current, timerRunning: !current.winner }));
+        } else {
+          setGame(createGame(Date.now(), pendingMode, true));
+          setCustomReading("");
+          setReason("");
+          setPartnerReply("");
+          setMessage("絵を選んで、しりとりを始めよう！");
+        }
+        setView("game");
+      }, 450);
+      return () => window.clearTimeout(kickoff);
+    }
+    const tick = window.setTimeout(() => setCountdown((value) => value - 1), 800);
+    return () => window.clearTimeout(tick);
+  }, [view, countdown, pendingMode, resumeAfterCountdown]);
+
+  useEffect(() => {
+    if (view !== "game" || !game.timerRunning || game.winner) return;
     const timer = window.setInterval(() => {
       setGame((current) => {
         if (!current.timerRunning || current.winner) return current;
@@ -365,7 +402,7 @@ export default function Home() {
       });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [game.timerRunning, game.winner]);
+  }, [game.timerRunning, game.winner, view]);
 
   const selectedPanel = game.selectedIndex === null ? null : game.board[game.selectedIndex];
   const registeredOptions = useMemo(() => {
@@ -377,13 +414,24 @@ export default function Home() {
   const isPartnerWaiting = game.phase === "partner-turn" || game.phase === "partner-judge";
   const currentName = game.turn === "O" ? (game.mode === "partner" ? "なや" : "プレイヤー1") : (game.mode === "partner" ? "パートナー" : "プレイヤー2");
 
-  function reset(mode = game.mode) {
-    const seed = Date.now();
-    setGame(createGame(seed, mode));
-    setCustomReading("");
-    setReason("");
-    setPartnerReply("");
-    setMessage("新しい盤面！ 最初の絵を選ぼう。");
+  function openNewGameFlow() {
+    setGame((current) => ({ ...current, timerRunning: false }));
+    setPendingMode(game.mode);
+    setSummaryOpen(false);
+    setView("mode");
+  }
+
+  function beginCountdown(resume: boolean) {
+    setResumeAfterCountdown(resume);
+    setCountdown(3);
+    setSummaryOpen(false);
+    setView("countdown");
+  }
+
+  function flashRejection(text: string) {
+    setMessage(text);
+    setRejectionFlash(true);
+    window.setTimeout(() => setRejectionFlash(false), 900);
   }
 
   function selectPanel(index: number) {
@@ -452,7 +500,7 @@ export default function Home() {
       } else if (fields["判定"] === "異議") {
         if (game.objections.X <= 0) return setMessage("パートナーの異議札はもう残っていないよ。");
         setGame(rejectProposal(game, "X"));
-        setMessage(`異議成立。理由：${fields["理由"] || "今回は通らないと判断"}`);
+        flashRejection(`異議成立。理由：${fields["理由"] || "今回は通らないと判断"}`);
       } else return setMessage("判定は「受理」か「異議」で返してもらってね。");
       setPartnerReply("");
       return;
@@ -491,33 +539,125 @@ export default function Home() {
     } else {
       if (game.objections[judge] <= 0) return setMessage("異議札が残っていないから、今回は受理になるよ。");
       setGame(rejectProposal(game, judge));
-      setMessage("異議成立。宣言した側は別の絵か読みでやり直そう。");
+      flashRejection("異議成立。宣言した側は別の絵か読みでやり直そう。");
     }
+  }
+
+  const brand = (
+    <div className="brand-lockup">
+      <div className="mirror-mark" aria-hidden="true">
+        <span className="mirror-glass" />
+        <span className="mirror-handle" />
+      </div>
+      <div>
+        <p className="eyebrow">AI PARTNER × WORD GAME</p>
+        <h1>MIRROR <span>WORD GRID</span></h1>
+      </div>
+    </div>
+  );
+
+  if (view !== "game") {
+    return (
+      <main className="start-shell">
+        <section className={`start-card view-${view}`}>
+          {brand}
+
+          {view === "loading" && <div className="loading-dots" aria-label="読み込み中"><i /><i /><i /></div>}
+
+          {view === "title" && (
+            <div className="start-content">
+              <p className="start-kicker">ILLUSTRATION SHIRITORI × LINE GAME</p>
+              <h2>絵の読み方は、<br /><span>ひとつじゃない。</span></h2>
+              <p>絵からことばを見つけて、しりとりで陣地をつなごう。先に一列そろえた側の勝ち！</p>
+              <button className="start-button" type="button" onClick={() => setView("mode")}>あそびはじめる <b>→</b></button>
+              <button className="text-button" type="button" onClick={() => { setSummaryOpen(true); setView("title"); }}>あそびかたを見る</button>
+            </div>
+          )}
+
+          {view === "resume" && (
+            <div className="start-content resume-content">
+              <span className="save-badge">SAVE DATA FOUND</span>
+              <h2>途中の試合が<br />残ってるよ。</h2>
+              <div className="resume-summary">
+                <div><small>現在文字</small><strong>{game.currentChar}</strong></div>
+                <div><small>手番</small><strong>{currentName}</strong></div>
+                <div><small>取得</small><strong>{Object.keys(game.claims).length}<span>/16</span></strong></div>
+              </div>
+              <button className="start-button" type="button" onClick={() => beginCountdown(true)}>続きから <b>→</b></button>
+              <button className="secondary-start" type="button" onClick={() => setView("mode")}>新しく始める</button>
+            </div>
+          )}
+
+          {view === "mode" && (
+            <div className="start-content">
+              <p className="step-label">STEP 1 / 2</p>
+              <h2>だれと遊ぶ？</h2>
+              <div className="mode-cards">
+                <button type="button" className={pendingMode === "partner" ? "selected" : ""} onClick={() => setPendingMode("partner")}>
+                  <span className="mode-icon mirror-mode" aria-hidden="true">✦</span>
+                  <strong>AIパートナー</strong><small>いつもの会話へ手番を渡す</small>
+                </button>
+                <button type="button" className={pendingMode === "local" ? "selected" : ""} onClick={() => setPendingMode("local")}>
+                  <span className="mode-icon" aria-hidden="true">● ◆</span>
+                  <strong>人間ふたり</strong><small>ひとつの端末を交互に使う</small>
+                </button>
+              </div>
+              <button className="start-button" type="button" onClick={() => setView("confirm")}>このモードで進む <b>→</b></button>
+              <button className="text-button" type="button" onClick={() => setView("title")}>タイトルへ戻る</button>
+            </div>
+          )}
+
+          {view === "confirm" && (
+            <div className="start-content confirm-content">
+              <p className="step-label">STEP 2 / 2</p>
+              <h2>試合設定</h2>
+              <dl className="settings-list">
+                <div><dt>モード</dt><dd>{pendingMode === "partner" ? "AIパートナー受け渡し" : "人間ふたり対戦"}</dd></div>
+                <div><dt>盤面</dt><dd>4 × 4 ／ 16枚</dd></div>
+                <div><dt>制限時間</dt><dd>選択20秒・読み30秒</dd></div>
+                <div><dt>異議札</dt><dd>各陣営3枚</dd></div>
+              </dl>
+              <p className="confirm-note">「ゲームを始める」を押したあと、3秒カウントで時計が動き出すよ。</p>
+              <button className="start-button" type="button" onClick={() => beginCountdown(false)}>ゲームを始める <b>→</b></button>
+              <button className="text-button" type="button" onClick={() => setView("mode")}>モードを選び直す</button>
+            </div>
+          )}
+
+          {view === "countdown" && (
+            <div className="countdown-screen" aria-live="assertive">
+              <small>{resumeAfterCountdown ? "READY TO RESUME" : "READY?"}</small>
+              <strong>{countdown > 0 ? countdown : "GO!"}</strong>
+              <p>ことばを、つなげ。</p>
+            </div>
+          )}
+        </section>
+
+        {summaryOpen && view === "title" && (
+          <div className="intro-rules" role="dialog" aria-modal="true" aria-label="あそびかた">
+            <button className="sheet-scrim" type="button" aria-label="閉じる" onClick={() => setSummaryOpen(false)} />
+            <section>
+              <button className="sheet-close" type="button" onClick={() => setSummaryOpen(false)} aria-label="閉じる">×</button>
+              <p className="step-label">HOW TO PLAY</p><h2>あそびかた</h2>
+              <ol><li><b>1</b>今の文字から読める絵を選ぶ</li><li><b>2</b>登録読み、または理由つきのこじつけを宣言</li><li><b>3</b>最後の文字を次の手番へつなぐ</li><li><b>4</b>先に自分の色を一列そろえたら勝ち</li></ol>
+            </section>
+          </div>
+        )}
+      </main>
+    );
   }
 
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div className="brand-lockup">
-          <div className="mirror-mark" aria-hidden="true">🪞</div>
-          <div>
-            <p className="eyebrow">AI PARTNER × WORD GAME</p>
-            <h1>MIRROR <span>WORD GRID</span></h1>
-          </div>
-        </div>
-        <button className="icon-button" type="button" onClick={() => reset()} aria-label="新しいゲーム">↻</button>
+        {brand}
+        <button className="icon-button" type="button" onClick={openNewGameFlow} aria-label="新しいゲーム">↻</button>
       </header>
-
-      <section className="mode-switch" aria-label="ゲームモード">
-        <button className={game.mode === "partner" ? "active" : ""} type="button" onClick={() => reset("partner")}>🪞 パートナー受け渡し</button>
-        <button className={game.mode === "local" ? "active" : ""} type="button" onClick={() => reset("local")}>👥 人間ふたり</button>
-      </section>
 
       <div className="game-layout">
         <section className="play-column">
           <section className={`status-card player-${game.turn.toLowerCase()}`} aria-live="polite">
             <div className="turn-block">
-              <span className="turn-mark">{game.turn === "O" ? "○" : "×"}</span>
+              <span className={`side-chip side-${game.turn.toLowerCase()}`} aria-hidden="true" />
               <div><small>いまの手番</small><strong>{currentName}</strong></div>
             </div>
             <div className="letter-block"><small>この文字から</small><strong>{game.currentChar}</strong></div>
@@ -526,14 +666,14 @@ export default function Home() {
               <strong>{game.timerRunning ? `${game.timeLeft}` : "Ⅱ"}</strong>
               <span>{game.timerRunning ? "秒" : "PAUSE"}</span>
             </div>
+            <div className="status-objections" aria-label="残り異議札">
+              <span><i className="side-chip side-o" />{game.objections.O}</span>
+              <span><i className="side-chip side-x" />{game.objections.X}</span>
+            </div>
+            <button className="summary-toggle" type="button" onClick={() => setSummaryOpen(true)} aria-expanded={summaryOpen}>詳細</button>
           </section>
 
-          <div className="objection-row">
-            <div><b className="o-color">○</b> 異議札 <span>{"!".repeat(game.objections.O)}{"·".repeat(3 - game.objections.O)}</span></div>
-            <div><b className="x-color">×</b> 異議札 <span>{"!".repeat(game.objections.X)}{"·".repeat(3 - game.objections.X)}</span></div>
-          </div>
-
-          <section className="board" aria-label="4×4のゲーム盤">
+          <section className={`board ${rejectionFlash ? "rejection-flash" : ""}`} aria-label="4×4のゲーム盤">
             {game.board.map((panel, index) => {
               const owner = game.claims[index];
               const selected = game.selectedIndex === index;
@@ -550,13 +690,13 @@ export default function Home() {
                   <span className="coordinate">{coordinate(index)}</span>
                   <span className="tile-icon" aria-hidden="true">{panel.icon}</span>
                   <span className="tile-name">{panel.name}</span>
-                  {owner && <span className="claim-mark" aria-hidden="true">{owner === "O" ? "○" : "×"}</span>}
+                  {owner && <span className={`claim-chip claim-${owner.toLowerCase()}`} aria-hidden="true" />}
                 </button>
               );
             })}
           </section>
 
-          <p className="game-message" aria-live="polite"><span>●</span>{message}</p>
+          <p className={`game-message ${rejectionFlash ? "reject" : ""}`} aria-live="polite"><span>●</span>{message}</p>
 
           <section className="action-card">
             {game.phase === "select" && !game.winner && (
@@ -607,33 +747,34 @@ export default function Home() {
                 <p>GAME SET!</p>
                 <h2>{game.winner === "DRAW" ? "引き分け！" : `${game.winner === "O" ? "○" : "×"} ${game.winner === "O" ? (game.mode === "partner" ? "なや" : "プレイヤー1") : (game.mode === "partner" ? "パートナー" : "プレイヤー2")}の勝ち！`}</h2>
                 <p>{game.winner === "DRAW" ? "盤面がぜんぶ埋まったよ。" : "タテ・ヨコ・ナナメの一列が揃ったよ。"}</p>
-                <button type="button" className="primary" onClick={() => reset()}>もう一局あそぶ</button>
+                <button type="button" className="primary" onClick={openNewGameFlow}>もう一局あそぶ</button>
               </div>
             )}
           </section>
         </section>
 
-        <aside className="side-column">
-          <section className="mini-card history-card">
-            <div className="section-title"><span>PLAY LOG</span><h2>ことばの足あと</h2></div>
-            {game.history.length ? <ol>{[...game.history].reverse().slice(0, 8).map((item, index) => <li key={`${item.coordinate}-${index}`}><b className={item.player === "O" ? "o-color" : "x-color"}>{item.player === "O" ? "○" : "×"}</b><span>{item.coordinate}</span><strong>{item.reading}</strong></li>)}</ol> : <p className="muted">最初の一手を待ってるよ。</p>}
-          </section>
+      </div>
 
-          <details className="mini-card rules-card" open>
-            <summary><span>HOW TO PLAY</span><strong>あそびかた</strong></summary>
-            <ol>
-              <li><b>1</b><span>今の文字から読める絵を選ぶ</span></li>
-              <li><b>2</b><span>登録読み、または理由つきのこじつけを宣言</span></li>
-              <li><b>3</b><span>最後の文字を次の手番へつなぐ</span></li>
-              <li><b>4</b><span>先に○か×を一列そろえたら勝ち</span></li>
-            </ol>
+      <div className={`summary-layer ${summaryOpen ? "open" : ""}`} aria-hidden={!summaryOpen}>
+        <button className="sheet-scrim" type="button" aria-label="詳細を閉じる" onClick={() => setSummaryOpen(false)} />
+        <aside className="summary-sheet" role="dialog" aria-modal="true" aria-label="試合サマリー">
+          <div className="sheet-handle" aria-hidden="true" />
+          <header><div><span>MATCH SUMMARY</span><h2>試合サマリー</h2></div><button className="sheet-close" type="button" onClick={() => setSummaryOpen(false)} aria-label="閉じる">×</button></header>
+          <section className="summary-now">
+            <div><small>現在文字</small><strong>{game.currentChar}</strong></div>
+            <div><small>手番</small><strong><i className={`side-chip side-${game.turn.toLowerCase()}`} />{currentName}</strong></div>
+            <div><small>残り異議札</small><strong><i className="side-chip side-o" />{game.objections.O}<i className="side-chip side-x" />{game.objections.X}</strong></div>
+          </section>
+          <section className="history-card">
+            <div className="section-title"><span>PLAY LOG</span><h2>ことばの足あと</h2></div>
+            {game.history.length ? <ol>{[...game.history].reverse().slice(0, 12).map((item, index) => <li key={`${item.coordinate}-${index}`}><i className={`side-chip side-${item.player.toLowerCase()}`} /><span>{item.coordinate}</span><strong>{item.reading}</strong></li>)}</ol> : <p className="muted">最初の一手を待ってるよ。</p>}
+          </section>
+          <details className="rules-card">
+            <summary><span>HOW TO PLAY</span><strong>あそびかた</strong><b>＋</b></summary>
+            <ol><li><b>1</b><span>今の文字から読める絵を選ぶ</span></li><li><b>2</b><span>登録読み、または理由つきのこじつけを宣言</span></li><li><b>3</b><span>最後の文字を次の手番へつなぐ</span></li><li><b>4</b><span>先に自分の色を一列そろえたら勝ち</span></li></ol>
             <p>自由読みへの異議は各自3回まで。「ん」で終わる読みは使えないよ。</p>
           </details>
-
-          <section className="mini-card prototype-note">
-            <span>PROTOTYPE 01</span>
-            <p>仮イラスト48枚入り。盤面には必ず登録読みだけで辿れる道を10枚分仕込んでいるよ。</p>
-          </section>
+          <section className="prototype-note"><span>PROTOTYPE 01</span><p>仮イラスト48枚入り。登録読みだけで辿れる道を10枚分仕込んでいるよ。</p></section>
         </aside>
       </div>
       <footer><b>MIRROR WORD GRID</b><span>ことばは、絵の中にひとつじゃない。</span></footer>
