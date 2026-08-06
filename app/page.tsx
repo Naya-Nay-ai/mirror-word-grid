@@ -18,7 +18,6 @@ type Phase =
 type Panel = {
   id: string;
   icon: string;
-  imageSrc?: string;
   visualDescription?: string;
   name: string;
   category: string;
@@ -70,77 +69,55 @@ type TurnNotice = {
   startTimer: boolean;
 };
 
-type SharePanel = {
-  id: string;
-  icon: string;
-  name: string;
-  category: string;
-  readings: string[];
-  visualDescription: string;
-};
-
-type ShareState = {
-  v: 1;
-  board: SharePanel[];
-  claims: Array<Player | "">;
-  currentChar: string;
-  turn: Player;
-  objections: [number, number];
-  phase: Phase;
-  winner: Player | "DRAW" | null;
-  winningLine: number[];
-  retryBlocked: number[];
-};
-
 const PANELS: Panel[] = [
-  { id: "frog-prince", icon: "🐸👑", name: "王冠ガエル", category: "怪異", readings: ["かえる", "おうじ", "とのさま", "みどりのかえる"] },
-  { id: "box-cat", icon: "🐈📦", name: "箱入り猫", category: "動物", readings: ["ねこ", "こねこ", "はこねこ", "はこのなか"] },
-  { id: "flying-fish", icon: "🐟☁️", name: "空飛ぶ魚", category: "不思議", readings: ["さかな", "とびうお", "そらをとぶさかな"] },
-  { id: "moon-coffee", icon: "☕🌙", name: "月のコーヒー", category: "不思議", readings: ["コーヒー", "つき", "のみもの", "よるのカップ"] },
-  { id: "gift-ghost", icon: "👻🎁", name: "贈りもの幽霊", category: "怪異", readings: ["ゆうれい", "おばけ", "ゴースト", "ぷれぜんと"] },
-  { id: "melt-clock", icon: "🫠⏰", name: "溶けた時計", category: "不思議", readings: ["とけい", "とけたとけい", "じかん"] },
-  { id: "umbrella", icon: "☂️💧", name: "雨の傘", category: "日用品", readings: ["かさ", "あまがさ", "あめ"] },
-  { id: "cake", icon: "🍰🍓", name: "苺ケーキ", category: "食べ物", readings: ["ケーキ", "おかし", "いちごケーキ"] },
-  { id: "bus", icon: "🚌✨", name: "黄色いバス", category: "日用品", readings: ["バス", "のりもの", "きいろいバス"] },
-  { id: "apple", icon: "🍎✨", name: "赤いりんご", category: "食べ物", readings: ["りんご", "くだもの", "あかいみ"] },
-  { id: "eggplant", icon: "🍆🌿", name: "なす", category: "食べ物", readings: ["なす", "やさい", "むらさき"] },
-  { id: "watermelon", icon: "🍉💦", name: "すいか", category: "食べ物", readings: ["すいか", "くだもの", "しまもよう"] },
-  { id: "ruby", icon: "💎❤️", name: "赤いルビー", category: "不思議", readings: ["ルビー", "ほうせき", "あかいほうせき"] },
-  { id: "dog", icon: "🐕✨", name: "元気な犬", category: "動物", readings: ["いぬ", "こいぬ", "どうぶつ"] },
-  { id: "plush", icon: "🧸🎀", name: "くまのぬい", category: "日用品", readings: ["ぬいぐるみ", "くま", "おもちゃ"] },
-  { id: "mirror", icon: "🪞✨", name: "魔法の鏡", category: "怪異", readings: ["ミラー", "かがみ", "まほうのかがみ"] },
-  { id: "storm", icon: "🌩️🌀", name: "小さな嵐", category: "自然", readings: ["あらし", "かみなり", "くろくも"] },
-  { id: "deer", icon: "🦌🌿", name: "森の鹿", category: "動物", readings: ["しか", "どうぶつ", "つの"] },
-  { id: "key", icon: "🔑✨", name: "秘密の鍵", category: "日用品", readings: ["かぎ", "キー", "とびらのかぎ"] },
-  { id: "mushroom", icon: "🍄🌲", name: "森のきのこ", category: "自然", readings: ["きのこ", "しいたけ", "もりのかさ"] },
-  { id: "top", icon: "🌀🪀", name: "回るこま", category: "日用品", readings: ["こま", "おもちゃ", "まわるこま"] },
-  { id: "pillow", icon: "🛏️💤", name: "ふかふか枕", category: "日用品", readings: ["まくら", "しんぐ", "ねるどうぐ"] },
-  { id: "radio", icon: "📻🎵", name: "歌うラジオ", category: "日用品", readings: ["ラジオ", "おんがく", "こえのはこ"] },
-  { id: "crown", icon: "👑✨", name: "金の王冠", category: "物語", readings: ["おうさま", "かんむり", "おうかん"] },
-  { id: "moon", icon: "🌙⭐", name: "三日月", category: "自然", readings: ["つき", "よぞら", "みかづき"] },
-  { id: "bird", icon: "🐦☁️", name: "空の小鳥", category: "動物", readings: ["とり", "ことり", "そらのどうぶつ"] },
-  { id: "shoe", icon: "👟⚡", name: "速い靴", category: "日用品", readings: ["くつ", "スニーカー", "はきもの"] },
-  { id: "book", icon: "📕✨", name: "赤い絵本", category: "物語", readings: ["ほん", "えほん", "ものがたり"] },
-  { id: "candle", icon: "🕯️🔥", name: "揺れる蝋燭", category: "日用品", readings: ["ろうそく", "ひかり", "ほのお"] },
-  { id: "bread", icon: "🍞☀️", name: "焼きたてパン", category: "食べ物", readings: ["パン", "しょくぱん", "たべもの"] },
-  { id: "star-bottle", icon: "⭐🫙", name: "星の小瓶", category: "不思議", readings: ["ほしのびん", "びん", "きらきら"] },
-  { id: "bubble", icon: "🫧🌈", name: "虹のしゃぼん", category: "自然", readings: ["しゃぼんだま", "あわ", "そらのあわ"] },
-  { id: "elephant", icon: "🐘🎨", name: "絵描きの象", category: "動物", readings: ["ぞう", "えかき", "カラフルなぞう"] },
-  { id: "robot", icon: "🤖🎵", name: "踊るロボット", category: "動作", readings: ["ロボット", "おどるロボット", "ダンサー"] },
-  { id: "dragon", icon: "🐉💤", name: "眠る竜", category: "怪異", readings: ["りゅう", "ドラゴン", "ねむるりゅう"] },
-  { id: "sunflower", icon: "🌻☀️", name: "ひまわり", category: "自然", readings: ["ひまわり", "はな", "きいろいはな"] },
-  { id: "snowman", icon: "☃️🧣", name: "雪だるま", category: "自然", readings: ["ゆきだるま", "スノーマン", "ふゆ"] },
-  { id: "teapot", icon: "🫖💭", name: "湯気のポット", category: "日用品", readings: ["ティーポット", "やかん", "おちゃ"] },
-  { id: "rainbow", icon: "🌈☁️", name: "虹の橋", category: "自然", readings: ["にじ", "なないろ", "そらのはし"] },
-  { id: "rocket", icon: "🚀⭐", name: "星空ロケット", category: "日用品", readings: ["ロケット", "うちゅうせん", "そらとぶふね"] },
-  { id: "hat", icon: "🎩✨", name: "魔法の帽子", category: "物語", readings: ["ぼうし", "まほうのぼうし", "てじな"] },
-  { id: "camera", icon: "📷🌟", name: "思い出カメラ", category: "日用品", readings: ["カメラ", "しゃしんき", "きろく"] },
-  { id: "pencil", icon: "✏️🌈", name: "虹色えんぴつ", category: "日用品", readings: ["えんぴつ", "ふで", "ぶんぼうぐ"] },
-  { id: "cloud-castle", icon: "🏰☁️", name: "雲のお城", category: "物語", readings: ["しろ", "おしろ", "そらのしろ"] },
-  { id: "jellyfish", icon: "🪼🌊", name: "光るくらげ", category: "動物", readings: ["くらげ", "うみのいきもの", "すいちゅう"] },
-  { id: "fox-mask", icon: "🦊🎭", name: "きつね面", category: "怪異", readings: ["きつね", "おめん", "きつねめん"] },
-  { id: "lantern", icon: "🏮✨", name: "祭り提灯", category: "日用品", readings: ["ちょうちん", "あかり", "まつりのあかり"] },
-  { id: "tree-door", icon: "🚪🌳", name: "木の扉", category: "物語", readings: ["とびら", "きのとびら", "いりぐち"] },
+  { id: "frog-prince", icon: "🐸", name: "かえる", category: "動物", readings: ["かえる", "あまがえる", "りょうせいるい", "いきもの"], visualDescription: "正面を向いた緑色のかえるの顔" },
+  { id: "box-cat", icon: "🐱", name: "ねこ", category: "動物", readings: ["ねこ", "こねこ", "にゃんこ", "どうぶつ"], visualDescription: "ひげと三角の耳がある猫の顔" },
+  { id: "flying-fish", icon: "🐟", name: "さかな", category: "動物", readings: ["さかな", "うお", "ぎょるい", "いきもの"], visualDescription: "横向きに泳ぐ青い魚" },
+  { id: "moon-coffee", icon: "☕", name: "コーヒー", category: "飲み物", readings: ["コーヒー", "カップ", "のみもの", "きっさてん"], visualDescription: "湯気が立つ白いカップの温かい飲み物" },
+  { id: "gift-ghost", icon: "👻", name: "おばけ", category: "空想", readings: ["おばけ", "ゆうれい", "ゴースト", "ようかい"], visualDescription: "白く浮かび舌を出した幽霊" },
+  { id: "melt-clock", icon: "⏰", name: "目覚まし時計", category: "日用品", readings: ["とけい", "めざまし", "アラーム", "じかん"], visualDescription: "上にベルが二つ付いた赤い目覚まし時計" },
+  { id: "umbrella", icon: "☂️", name: "かさ", category: "日用品", readings: ["かさ", "あまがさ", "こうもりがさ", "あまぐ"], visualDescription: "持ち手が曲がった開いた傘" },
+  { id: "cake", icon: "🍰", name: "ケーキ", category: "食べ物", readings: ["ケーキ", "ショートケーキ", "おかし", "デザート"], visualDescription: "クリームと苺がのった三角形のケーキ" },
+  { id: "bus", icon: "🚌", name: "バス", category: "乗り物", readings: ["バス", "ろせんバス", "のりもの", "じどうしゃ"], visualDescription: "正面を向いた黄色い路線バス" },
+  { id: "apple", icon: "🍎", name: "りんご", category: "食べ物", readings: ["りんご", "アップル", "くだもの", "あかいみ"], visualDescription: "葉が一枚付いた赤いりんご" },
+  { id: "eggplant", icon: "🍆", name: "なす", category: "食べ物", readings: ["なす", "なすび", "やさい", "むらさき"], visualDescription: "緑のへたが付いた紫色のなす" },
+  { id: "watermelon", icon: "🍉", name: "すいか", category: "食べ物", readings: ["すいか", "くだもの", "フルーツ", "なつのくだもの"], visualDescription: "黒い種が見える三角形のすいか" },
+  { id: "ruby", icon: "💎", name: "宝石", category: "物", readings: ["ほうせき", "ダイヤ", "ジュエル", "たからもの"], visualDescription: "青く輝くカットされた宝石" },
+  { id: "dog", icon: "🐶", name: "いぬ", category: "動物", readings: ["いぬ", "こいぬ", "わんこ", "どうぶつ"], visualDescription: "たれ耳で正面を向いた犬の顔" },
+  { id: "plush", icon: "🐻", name: "くま", category: "動物", readings: ["くま", "こぐま", "ベア", "どうぶつ"], visualDescription: "丸い耳を持つ茶色い熊の顔" },
+  { id: "mirror", icon: "🔍", name: "虫眼鏡", category: "道具", readings: ["むしめがね", "ルーペ", "レンズ", "かくだいきょう"], visualDescription: "丸いレンズに持ち手が付いた虫眼鏡" },
+  { id: "storm", icon: "⚡", name: "かみなり", category: "自然", readings: ["かみなり", "いなずま", "らいめい", "でんき"], visualDescription: "黄色く折れ曲がった稲妻" },
+  { id: "deer", icon: "🦌", name: "しか", category: "動物", readings: ["しか", "こじか", "どうぶつ", "つの"], visualDescription: "枝分かれした角を持つ鹿" },
+  { id: "key", icon: "🔑", name: "かぎ", category: "日用品", readings: ["かぎ", "キー", "あいかぎ", "かいじょう"], visualDescription: "輪の付いた金色の鍵" },
+  { id: "mushroom", icon: "🍄", name: "きのこ", category: "食べ物", readings: ["きのこ", "しいたけ", "マッシュルーム", "くさびら"], visualDescription: "赤い傘に白い点があるきのこ" },
+  { id: "top", icon: "🌀", name: "うずまき", category: "記号", readings: ["うず", "うずまき", "ぐるぐる", "かいてん"], visualDescription: "青い線が中心へ巻き込む渦巻き" },
+  { id: "pillow", icon: "💤", name: "ねむり", category: "記号", readings: ["ねむり", "すいみん", "ひるね", "ねむい"], visualDescription: "眠っていることを表す青いZの記号" },
+  { id: "radio", icon: "📻", name: "ラジオ", category: "家電", readings: ["ラジオ", "ほうそう", "おんせい", "じゅしんき"], visualDescription: "アンテナとつまみが付いたラジオ" },
+  { id: "crown", icon: "👑", name: "王冠", category: "装飾品", readings: ["かんむり", "おうかん", "クラウン", "おうさま"], visualDescription: "宝石が付いた金色の王冠" },
+  { id: "moon", icon: "🌙", name: "月", category: "自然", readings: ["つき", "みかづき", "おつきさま", "よぞら"], visualDescription: "黄色い細い三日月" },
+  { id: "bird", icon: "🐦", name: "とり", category: "動物", readings: ["とり", "ことり", "バード", "どうぶつ"], visualDescription: "横向きに立つ青い小鳥" },
+  { id: "shoe", icon: "👟", name: "スニーカー", category: "衣類", readings: ["くつ", "スニーカー", "うんどうぐつ", "はきもの"], visualDescription: "ひもが付いた運動靴" },
+  { id: "book", icon: "📕", name: "本", category: "日用品", readings: ["ほん", "えほん", "しょせき", "ブック"], visualDescription: "閉じた赤い表紙の本" },
+  { id: "candle", icon: "🕯️", name: "ろうそく", category: "日用品", readings: ["ろうそく", "キャンドル", "あかり", "ひかり"], visualDescription: "火が灯った白いろうそく" },
+  { id: "bread", icon: "🍞", name: "食パン", category: "食べ物", readings: ["パン", "しょくぱん", "ブレッド", "たべもの"], visualDescription: "切れ目のない一斤の食パン" },
+  { id: "star-bottle", icon: "⭐", name: "星", category: "自然", readings: ["ほし", "スター", "ほしぞら", "きらきら"], visualDescription: "黄色い五つ角の星" },
+  { id: "bubble", icon: "💧", name: "しずく", category: "自然", readings: ["しずく", "みず", "すいてき", "なみだ"], visualDescription: "先が尖った青い水滴" },
+  { id: "elephant", icon: "🐘", name: "ぞう", category: "動物", readings: ["ぞう", "エレファント", "どうぶつ", "おおきなどうぶつ"], visualDescription: "長い鼻と大きな耳を持つ象" },
+  { id: "robot", icon: "🤖", name: "ロボット", category: "機械", readings: ["ロボット", "きかい", "じんぞうにんげん", "メカ"], visualDescription: "四角い頭にアンテナが付いたロボットの顔" },
+  { id: "dragon", icon: "🐉", name: "りゅう", category: "空想", readings: ["りゅう", "ドラゴン", "たつ", "かいじゅう"], visualDescription: "緑色で長い体をくねらせる東洋の竜" },
+  { id: "sunflower", icon: "🌻", name: "ひまわり", category: "植物", readings: ["ひまわり", "はな", "きいろいはな", "しょくぶつ"], visualDescription: "茶色い中心と黄色い花びらのひまわり" },
+  { id: "snowman", icon: "⛄", name: "雪だるま", category: "自然", readings: ["ゆきだるま", "スノーマン", "ゆき", "ふゆ"], visualDescription: "丸い雪玉を二つ重ねた雪だるま" },
+  { id: "teapot", icon: "🍵", name: "お茶", category: "飲み物", readings: ["おちゃ", "にほんちゃ", "りょくちゃ", "のみもの"], visualDescription: "緑茶が入った湯のみ茶碗" },
+  { id: "rainbow", icon: "🌈", name: "虹", category: "自然", readings: ["にじ", "レインボー", "なないろ", "そら"], visualDescription: "赤から紫まで七色の弧を描く虹" },
+  { id: "rocket", icon: "🚀", name: "ロケット", category: "乗り物", readings: ["ロケット", "うちゅうせん", "のりもの", "うちゅう"], visualDescription: "炎を噴いて斜め上へ飛ぶロケット" },
+  { id: "hat", icon: "🎩", name: "シルクハット", category: "衣類", readings: ["ぼうし", "シルクハット", "ハット", "かぶりもの"], visualDescription: "黒くて背の高いシルクハット" },
+  { id: "camera", icon: "📷", name: "カメラ", category: "道具", readings: ["カメラ", "しゃしんき", "さつえい", "レンズ"], visualDescription: "正面に丸いレンズがあるカメラ" },
+  { id: "pencil", icon: "✏️", name: "えんぴつ", category: "文房具", readings: ["えんぴつ", "ペンシル", "ぶんぼうぐ", "かくどうぐ"], visualDescription: "先を削った黄色い鉛筆" },
+  { id: "cloud-castle", icon: "🏰", name: "城", category: "建物", readings: ["しろ", "おしろ", "じょうさい", "キャッスル"], visualDescription: "塔と旗がある石造りの城" },
+  { id: "jellyfish", icon: "🐙", name: "たこ", category: "動物", readings: ["たこ", "オクトパス", "うみのいきもの", "なんたいどうぶつ"], visualDescription: "八本の足を広げた赤いたこ" },
+  { id: "fox-mask", icon: "🦊", name: "きつね", category: "動物", readings: ["きつね", "こぎつね", "フォックス", "どうぶつ"], visualDescription: "尖った耳を持つ橙色のきつねの顔" },
+  { id: "lantern", icon: "🏮", name: "ちょうちん", category: "日用品", readings: ["ちょうちん", "あかちょうちん", "あかり", "ランタン"], visualDescription: "黒い枠が付いた赤い紙の提灯" },
+  { id: "tree-door", icon: "🚪", name: "ドア", category: "建物", readings: ["ドア", "とびら", "いりぐち", "もん"], visualDescription: "取っ手が付いた閉じた木の扉" },
 ];
 
 const SPINES = [
@@ -159,17 +136,25 @@ const STORAGE_KEY = "mirror-word-grid-prototype-v1";
 const TIME_LIMITS: Record<Difficulty, number | null> = { easy: null, normal: 60, hard: 30 };
 const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: "EASY", normal: "NORMAL", hard: "HARD" };
 const TUTORIAL_PANELS = [
-  { id: "umbrella", icon: "☂️💧", name: "雨の傘", reading: "かさ" },
-  { id: "flying-fish", icon: "🐟☁️", name: "空飛ぶ魚", reading: "さかな" },
-  { id: "eggplant", icon: "🍆🌿", name: "なす", reading: "なす" },
-  { id: "cake", icon: "🍰🍓", name: "苺ケーキ", reading: "ケーキ" },
-  { id: "apple", icon: "🍎✨", name: "赤いりんご", reading: "りんご" },
-  { id: "box-cat", icon: "🐈📦", name: "箱入り猫", reading: "ねこ" },
-  { id: "bus", icon: "🚌✨", name: "黄色いバス", reading: "バス" },
-  { id: "plush", icon: "🧸🎀", name: "くまのぬい", reading: "ぬいぐるみ" },
-  { id: "moon", icon: "🌙⭐", name: "三日月", reading: "つき" },
+  { id: "umbrella", icon: "☂️", name: "かさ", reading: "かさ" },
+  { id: "flying-fish", icon: "🐟", name: "さかな", reading: "さかな" },
+  { id: "eggplant", icon: "🍆", name: "なす", reading: "なす" },
+  { id: "cake", icon: "🍰", name: "ケーキ", reading: "ケーキ" },
+  { id: "apple", icon: "🍎", name: "りんご", reading: "りんご" },
+  { id: "box-cat", icon: "🐱", name: "ねこ", reading: "ねこ" },
+  { id: "bus", icon: "🚌", name: "バス", reading: "バス" },
+  { id: "plush", icon: "🐻", name: "くま", reading: "くま" },
+  { id: "moon", icon: "🌙", name: "月", reading: "つき" },
 ] as const;
 const SMALL_KANA: Record<string, string> = { "ぁ": "あ", "ぃ": "い", "ぅ": "う", "ぇ": "え", "ぉ": "お", "ゃ": "や", "ゅ": "ゆ", "ょ": "よ", "っ": "つ", "ゎ": "わ" };
+const CLEAR_KANA: Record<string, string> = {
+  "が": "か", "ぎ": "き", "ぐ": "く", "げ": "け", "ご": "こ",
+  "ざ": "さ", "じ": "し", "ず": "す", "ぜ": "せ", "ぞ": "そ",
+  "だ": "た", "ぢ": "ち", "づ": "つ", "で": "て", "ど": "と",
+  "ば": "は", "び": "ひ", "ぶ": "ふ", "べ": "へ", "ぼ": "ほ",
+  "ぱ": "は", "ぴ": "ひ", "ぷ": "ふ", "ぺ": "へ", "ぽ": "ほ",
+  "ゔ": "う",
+};
 const VOWEL_GROUPS: Record<string, string> = {
   あ: "あかがさざただなはばぱまやらわ", い: "いきぎしじちぢにひびぴみり", う: "うくぐすずつづぬふぶぷむゆる", え: "えけげせぜてでねへべぺめれ", お: "おこごそぞとどのほぼぽもよろを",
 };
@@ -184,6 +169,14 @@ function normalizeReading(value: string) {
 
 function readingStart(value: string) {
   return SMALL_KANA[normalizeReading(value)[0]] ?? normalizeReading(value)[0] ?? "";
+}
+
+function clearKana(value: string) {
+  return CLEAR_KANA[value] ?? value;
+}
+
+function readingStartsWith(value: string, currentChar: string) {
+  return clearKana(readingStart(value)) === clearKana(currentChar);
 }
 
 function readingEnd(value: string) {
@@ -267,35 +260,6 @@ function panelVisualDescription(panel: Panel) {
   return panel.visualDescription ?? `${panel.name}として描かれた${panel.category}のイラスト`;
 }
 
-function encodeShareState(state: ShareState) {
-  const bytes = new TextEncoder().encode(JSON.stringify(state));
-  let binary = "";
-  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
-function makeShareState(game: GameState): ShareState {
-  return {
-    v: 1,
-    board: game.board.map((panel) => ({
-      id: panel.id,
-      icon: panel.icon,
-      name: panel.name,
-      category: panel.category,
-      readings: panel.readings,
-      visualDescription: panelVisualDescription(panel),
-    })),
-    claims: game.board.map((_, index) => game.claims[index] ?? ""),
-    currentChar: game.currentChar,
-    turn: game.turn,
-    objections: [game.objections.O, game.objections.X],
-    phase: game.phase,
-    winner: game.winner,
-    winningLine: game.winningLine,
-    retryBlocked: game.retryBlocked,
-  };
-}
-
 function findWinner(claims: Record<number, Player>) {
   for (const line of WIN_LINES) {
     const owner = claims[line[0]];
@@ -375,7 +339,7 @@ function boardSummary(game: GameState) {
     const owner = game.claims[index];
     if (owner) return `${coordinate(index)}:${owner}取得済み`;
     const blocked = game.retryBlocked.includes(index) ? "｜今回の再試行では選択不可" : "";
-    return `${coordinate(index)}｜ID:${panel.id}｜見た目:${panelVisualDescription(panel)}｜読み:${panel.readings.join("・")}${blocked}`;
+    return `${coordinate(index)}｜絵文字:${panel.icon}｜ID:${panel.id}｜名前:${panel.name}｜カテゴリ:${panel.category}｜見た目:${panelVisualDescription(panel)}｜プリセット読み:${panel.readings.join("・")}${blocked}`;
   }).join("\n");
 }
 
@@ -404,7 +368,7 @@ function acceptanceImpact(game: GameState, proposal: Proposal) {
 
 function partnerTurnPrompt(game: GameState) {
   const choices = game.board.map((_, index) => index).filter((index) => !game.claims[index] && !game.retryBlocked.includes(index)).map(coordinate).join("、");
-  return `# MIRROR WORD GRID：パートナーの手番\n\nあなたは×側です。あなた自身の解釈と性格で、勝つための一手を選んでください。\n\n手番コード：${game.activeCode}\n現在の文字：「${game.currentChar}」\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n選択可能：${choices}\n戦況：${lineThreats(game.claims)}\n\n## 盤面\n${boardSummary(game)}\n\n## ルール\n- 空きマスを一つ選び、「${game.currentChar}」から始まる読みを宣言する\n- 登録読みでも、画像から一段階程度で追える自由読みでもよい\n- 「ん」で終わる読みは使えない\n- 自由読みには、画像からそう読んだ理由を書く\n- 直前に異議を受けた選択不可マスは選ばない\n- ○のラインを遮断する、自分のラインを伸ばすなど戦況を必ず考える\n- 説明は自由\n\n## 返答形式\n- PCからコピーしやすいよう、返答全体をMarkdownのコードブロック1つに入れる\n- コードブロックの外には何も書かない\n- 最後の一行は、次の形式をそのまま使う\n\n【手番:A1｜読み:かさ｜理由:雨の絵に描かれた傘だから｜コード:${game.activeCode}】`;
+  return `# MIRROR WORD GRID：パートナーの手番\n\nあなたは×側です。あなた自身の解釈と性格で、勝つための一手を選んでください。\n\n手番コード：${game.activeCode}\n現在の文字：「${game.currentChar}」\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n選択可能：${choices}\n戦況：${lineThreats(game.claims)}\n\n## 盤面\n${boardSummary(game)}\n\n## 読みの優先順位\n1. プリセット読み：理由なしで成立する基本ルート\n2. 自由読み：絵文字・名前・見た目から一段階で追える読み。理由が必要\n3. ゴねり：連想を二段階以上重ねるイレギュラー読み。宣言はできるが異議対象になりやすい\n\n## ルール\n- 空きマスを一つ選び、「${game.currentChar}」から始まる読みを宣言する\n- 語頭の濁音・半濁音は清音とつなげてよい（例：か↔が、は↔ば↔ぱ）\n- 「ん」で終わる読みは使えない\n- 自由読みとゴねりには、絵からそう読んだ理由を書く\n- 直前に異議を受けた選択不可マスは選ばない\n- ○のラインを遮断する、自分のラインを伸ばすなど戦況を必ず考える\n- 説明は自由\n\n## 返答形式\n- PCからコピーしやすいよう、返答全体をMarkdownのコードブロック1つに入れる\n- コードブロックの外には何も書かない\n- 最後の一行は、次の形式をそのまま使う\n\n【手番:A1｜読み:かさ｜理由:傘の絵文字をそのまま読んだ｜コード:${game.activeCode}】`;
 }
 
 function partnerJudgePrompt(game: GameState) {
@@ -426,7 +390,7 @@ function partnerJudgePrompt(game: GameState) {
     ? `【判定:受理｜コード:${game.activeCode}】`
     : `【判定:受理｜次手:A1｜読み:${nextChar}から始まる読み｜理由:その札をそう読んだ理由｜コード:${game.activeCode}】`;
 
-  return `# MIRROR WORD GRID：こじつけ判定＋次の一手\n\nあなたは×側です。○側の自由読みを、納得感と勝ちたい気持ちの両方で裁いてください。読みとして自然でも、通すと相手が有利になるなら異議札を使って止めてかまいません。\n\n手番コード：${game.activeCode}\nマス：${coordinate(proposal.panelIndex)}\n札ID：${panel.id}\n見た目：${panelVisualDescription(panel)}\n宣言した読み：${proposal.reading}\n理由：${proposal.reason}\n現在の文字：${game.currentChar}\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n戦況：${lineThreats(game.claims)}\nこの手の影響：${acceptanceImpact(game, proposal)}\n\n## 判定の分け方\n1. 明確なルール違反は「無効」。異議札を消費しない\n2. 読みとして通る、または納得できるなら「受理」\n3. グレーな読み、または戦略上どうしても止めたい手は「異議」。×の異議札を1枚使う\n\n自由読みは、次の3項目のうち2つ以上を満たすほど受理しやすい：\n- 画像に直接見える特徴がある\n- 対象と一般的に強く結びつく特徴・用途・状態である\n- その札を特定できる対象名や固有の要素を含む\n「かわいい」「うまそう」など多くの札に使える主観だけでは弱い。\n\n## 受理する場合\n${continuation}\n\n## 返答形式\n- PCからコピーしやすいよう、返答全体をMarkdownのコードブロック1つに入れる\n- コードブロックの外には何も書かない\n- 最後の一行は次のどれか一つを、そのまま使う\n\n${acceptedFormat}\n【判定:無効｜理由:画像との関連がほぼない｜コード:${game.activeCode}】\n【判定:異議｜理由:戦略上ここは取らせたくない｜コード:${game.activeCode}】`;
+  return `# MIRROR WORD GRID：こじつけ判定＋次の一手\n\nあなたは×側です。○側の自由読みを、納得感と勝ちたい気持ちの両方で裁いてください。読みとして自然でも、通すと相手が有利になるなら異議札を使って止めてかまいません。\n\n手番コード：${game.activeCode}\nマス：${coordinate(proposal.panelIndex)}\n絵文字：${panel.icon}\n札ID：${panel.id}\n名前：${panel.name}\n見た目：${panelVisualDescription(panel)}\nプリセット読み：${panel.readings.join("・")}\n宣言した読み：${proposal.reading}\n理由：${proposal.reason}\n現在の文字：${game.currentChar}\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n戦況：${lineThreats(game.claims)}\nこの手の影響：${acceptanceImpact(game, proposal)}\n\n## 判定の分け方\n1. 明確なルール違反は「無効」。異議札を消費しない\n2. 絵文字・名前・見た目から一段階で追える自由読みは「受理」しやすい\n3. 連想を二段階以上重ねる読みは「ゴねり」。グレーなゴねり、または戦略上どうしても止めたい手は「異議」。×の異議札を1枚使う\n\n語頭の濁音・半濁音は清音と同じつながりとして扱う（例：か↔が、は↔ば↔ぱ）。\n自由読みは、次の3項目のうち2つ以上を満たすほど受理しやすい：\n- 絵文字に直接見える特徴がある\n- 対象と一般的に強く結びつく特徴・用途・状態である\n- その札を特定できる対象名や固有の要素を含む\n「かわいい」「うまそう」など多くの札に使える主観だけでは弱い。\n\n## 受理する場合\n${continuation}\n\n## 返答形式\n- PCからコピーしやすいよう、返答全体をMarkdownのコードブロック1つに入れる\n- コードブロックの外には何も書かない\n- 最後の一行は次のどれか一つを、そのまま使う\n\n${acceptedFormat}\n【判定:無効｜理由:絵文字との関連がほぼない｜コード:${game.activeCode}】\n【判定:異議｜理由:ゴねりが強い、または戦略上ここは取らせたくない｜コード:${game.activeCode}】`;
 }
 
 async function copyToClipboard(text: string) {
@@ -456,19 +420,6 @@ function MirrorIcon({ small = false }: { small?: boolean }) {
 }
 
 function PanelArtwork({ panel, compact = false }: { panel: Panel; compact?: boolean }) {
-  if (panel.imageSrc) {
-    return (
-      <Image
-        className={`panel-image ${compact ? "compact" : ""}`}
-        src={panel.imageSrc}
-        alt=""
-        width={180}
-        height={180}
-        sizes={compact ? "56px" : "(max-width: 480px) 22vw, 130px"}
-      />
-    );
-  }
-
   return <span className={`panel-emoji ${compact ? "compact" : ""}`} aria-hidden="true">{panel.icon}</span>;
 }
 
@@ -502,11 +453,10 @@ export default function Home() {
   const [customReading, setCustomReading] = useState("");
   const [reason, setReason] = useState("");
   const [partnerReply, setPartnerReply] = useState("");
-  const [shareCopied, setShareCopied] = useState(false);
-  const [message, setMessage] = useState("絵を選んで、しりとりを始めよう！");
+  const [message, setMessage] = useState("絵文字を選んで、しりとりを始めよう！");
   const [turnNotice, setTurnNotice] = useState<TurnNotice | null>(null);
   const [tutorialStep, setTutorialStep] = useState(0);
-  const [tutorialMessage, setTutorialMessage] = useState("「か」から始まる絵を選んでみよう！");
+  const [tutorialMessage, setTutorialMessage] = useState("「か」から始まる絵文字を選んでみよう！");
 
   useEffect(() => {
     const restore = window.setTimeout(() => {
@@ -515,7 +465,8 @@ export default function Home() {
         if (saved) {
           const restored = JSON.parse(saved) as GameState;
           const difficulty = restored.difficulty ?? "normal";
-          const migrated = { ...restored, difficulty, retryBlocked: restored.retryBlocked ?? [], timerRunning: false, copied: false };
+          const board = restored.board.map((savedPanel) => PANELS.find((panel) => panel.id === savedPanel.id) ?? savedPanel);
+          const migrated = { ...restored, board, difficulty, retryBlocked: restored.retryBlocked ?? [], timerRunning: false, copied: false };
           const hasProgress = migrated.history.length > 0 || Object.keys(migrated.claims).length > 0 || migrated.phase !== "select";
           setGame(migrated);
           setPendingMode(migrated.mode);
@@ -554,7 +505,7 @@ export default function Home() {
           setCustomReading("");
           setReason("");
           setPartnerReply("");
-          setMessage("絵を選んで、しりとりを始めよう！");
+          setMessage("絵文字を選んで、しりとりを始めよう！");
         }
         setView("game");
       }, 450);
@@ -603,7 +554,7 @@ export default function Home() {
   const selectedPanel = game.selectedIndex === null ? null : game.board[game.selectedIndex];
   const registeredOptions = useMemo(() => {
     if (!selectedPanel) return [];
-    return selectedPanel.readings.filter((reading) => readingStart(reading) === game.currentChar && readingEnd(reading) !== "ん");
+    return selectedPanel.readings.filter((reading) => readingStartsWith(reading, game.currentChar) && readingEnd(reading) !== "ん");
   }, [selectedPanel, game.currentChar]);
 
   const prompt = game.phase === "partner-judge" && game.proposal ? partnerJudgePrompt(game) : partnerTurnPrompt(game);
@@ -654,14 +605,14 @@ export default function Home() {
 
   function openTutorial() {
     setTutorialStep(0);
-    setTutorialMessage("この中から「か」から始まるものを探して、絵を押してみてね。");
+    setTutorialMessage("この中から「か」から始まるものを探して、絵文字を押してみてね。");
     setView("tutorial");
   }
 
   function selectTutorialPanel(id: string) {
     if (tutorialStep === 0) {
       if (id !== "umbrella") {
-        setTutorialMessage("いまは「か」からだよ。絵の名前だけじゃなく、別の呼び方も探してみてね。");
+        setTutorialMessage("いまは「か」からだよ。絵文字の名前だけじゃなく、別の呼び方も探してみてね。");
         return;
       }
       setTutorialStep(1);
@@ -713,16 +664,16 @@ export default function Home() {
     if (game.selectedIndex === null || !selectedPanel) return;
     const normalized = normalizeReading(reading);
     if (normalized.length < 2) return setMessage("読みは2文字以上で入れてね。");
-    if (readingStart(reading) !== game.currentChar) return setMessage(`「${game.currentChar}」から始まる読みだけ使えるよ。`);
+    if (!readingStartsWith(reading, game.currentChar)) return setMessage(`「${game.currentChar}」から始まる読みだけ使えるよ。濁音・半濁音は清音とつないでOK！`);
     if (readingEnd(reading) === "ん") return setMessage("「ん」で終わる読みは、初期版では使えないよ。");
     const registered = isRegistered(selectedPanel, reading);
-    if (!registered && !explanation.trim()) return setMessage("自由読みには、絵からそう読んだ理由も必要だよ。");
+    if (!registered && !explanation.trim()) return setMessage("自由読みには、絵文字からそう読んだ理由も必要だよ。");
 
     const proposal: Proposal = {
       player: game.turn,
       panelIndex: game.selectedIndex,
       reading: reading.trim(),
-      reason: registered ? "登録済みの読み" : explanation.trim(),
+      reason: registered ? "プリセット読み" : explanation.trim(),
       custom: !registered,
     };
 
@@ -742,7 +693,7 @@ export default function Home() {
 
   function cancelReading() {
     setGame({ ...game, selectedIndex: null, phase: "select", timeLeft: turnSeconds(game.difficulty), timerRunning: game.difficulty !== "easy" });
-    setMessage("別の絵を選び直せるよ。");
+    setMessage("別の絵文字を選び直せるよ。");
   }
 
   async function copyPrompt() {
@@ -750,16 +701,6 @@ export default function Home() {
     if (!copied) return setMessage("コピーできなかったよ。文章を長押ししてコピーしてね。");
     setGame({ ...game, timerRunning: false, copied: true });
     setMessage("パートナーの回答待ち。戻ってきたら、下の大きな欄へ回答を貼ってね。");
-  }
-
-  async function copyBoardLink() {
-    const url = new URL("/share", window.location.origin);
-    url.searchParams.set("state", encodeShareState(makeShareState(game)));
-    const copied = await copyToClipboard(url.toString());
-    if (!copied) return setMessage("リンクをコピーできなかったよ。ブラウザの共有機能を使ってね。");
-    setShareCopied(true);
-    setMessage("この時点の盤面を、閲覧専用リンクとしてコピーしたよ。");
-    window.setTimeout(() => setShareCopied(false), 2200);
   }
 
   function resolvePartnerMove(baseGame: GameState, fields: Record<string, string>, combined = false) {
@@ -789,7 +730,7 @@ export default function Home() {
     if (baseGame.claims[index]) return retryPartnerTurn(`${coord}はもう取得済みです。`);
     if (baseGame.retryBlocked.includes(index)) return retryPartnerTurn(`${coord}は直前に異議を受けたため、今回の再試行では選べません。`);
     const reading = fields["読み"] ?? "";
-    if (readingStart(reading) !== baseGame.currentChar) return retryPartnerTurn(`今は「${baseGame.currentChar}」から始める手番です。`);
+    if (!readingStartsWith(reading, baseGame.currentChar)) return retryPartnerTurn(`今は「${baseGame.currentChar}」から始める手番です。濁音・半濁音は清音とつなげられます。`);
     if (readingEnd(reading) === "ん") return retryPartnerTurn("「ん」で終わる読みは使えません。");
     const custom = !isRegistered(baseGame.board[index], reading);
     const proposal: Proposal = { player: "X", panelIndex: index, reading, reason: fields["理由"] ?? "", custom };
@@ -830,7 +771,7 @@ export default function Home() {
       } else if (fields["判定"] === "無効") {
         const nextGame = rejectProposal(game, "X", false);
         setGame(nextGame);
-        flashRejection(`ルール違反で無効。異議札は減りません。理由：${fields["理由"] || "画像との関連が確認できない"}`);
+        flashRejection(`ルール違反で無効。異議札は減りません。理由：${fields["理由"] || "絵文字との関連が確認できない"}`);
         announceNext(nextGame, "INVALID", "この読みは無効です", `異議札は減りません。${coordinate(game.proposal.panelIndex)}以外の絵で、もう一度読みを作ってね。`);
       } else if (fields["判定"] === "異議") {
         if (game.objections.X <= 0) {
@@ -875,7 +816,7 @@ export default function Home() {
       const nextGame = rejectProposal(game, judge);
       setGame(nextGame);
       flashRejection("異議成立。宣言した側は別の絵でやり直そう。");
-      announceNext(nextGame, "OBJECTION", "異議が成立！", `${coordinate(game.proposal.panelIndex)}は今回の再試行では選べません。別の絵を選んでね。`);
+      announceNext(nextGame, "OBJECTION", "異議が成立！", `${coordinate(game.proposal.panelIndex)}は今回の再試行では選べません。別の絵文字を選んでね。`);
     }
   }
 
@@ -992,12 +933,12 @@ export default function Home() {
                 <div className="guide-column">
                   <section className="rule-lead">
                     <div className="mini-grid" aria-hidden="true"><i /><i /><i /><i /><i /><i className="pink" /><i className="pink" /><i className="pink" /><i /><i /><i /><i /><i /><i /><i /><i /></div>
-                    <div><strong>しりとり × 陣取り</strong><p>16枚の絵を交互に取り、タテ・ヨコ・ナナメのどれか一列を先に自分の色でそろえたら勝ち！</p></div>
+                    <div><strong>しりとり × 陣取り</strong><p>16枚の絵文字を交互に取り、タテ・ヨコ・ナナメのどれか一列を先に自分の色でそろえたら勝ち！</p></div>
                   </section>
 
                   <ol className="rule-steps">
                     <li><b>1</b><div><strong>今の文字を確認</strong><p>画面上の「この文字から」で、使う読みの最初の文字が決まるよ。</p></div></li>
-                    <li><b>2</b><div><strong>絵を選び、読みを宣言</strong><p>登録済みの読みはそのまま成立。自由な読みには、絵から連想した理由も添えてね。</p></div></li>
+                    <li><b>2</b><div><strong>絵文字を選び、読みを宣言</strong><p>プリセット読みはそのまま成立。絵文字から一段階で追える自由読みには、理由も添えてね。</p></div></li>
                     <li><b>3</b><div><strong>最後の文字をつなぐ</strong><p>成立した読みの最後の文字が、次の手番の開始文字になるよ。「ん」で終わる読みは使えない。</p></div></li>
                     <li><b>4</b><div><strong>自分のラインを作る</strong><p>取ったマスには陣営色のチップがつくよ。相手がそろえそうなマスを先に取って妨害してもOK！</p></div></li>
                   </ol>
@@ -1006,10 +947,10 @@ export default function Home() {
                 <div className="guide-column">
                   <section className="kojitsuke-guide">
                     <span className="guide-tag">このゲームの醍醐味</span>
-                    <h3>こじつけ読み、大歓迎！</h3>
-                    <p>正式名称だけじゃなく、別名・種類・色や特徴・状態や動作・描かれた一部分・一般的な連想・用途まで使えるよ。自由読みは「直接見える特徴」「強く結びつく特徴や用途」「その札を特定できる言葉」のうち、2つ以上があると通りやすい！</p>
+                    <h3>見た目は一枚、読み方はたくさん！</h3>
+                    <p>まずはプリセット読み。絵文字・名前・見た目から一段階で追える自由読みも使えるよ。連想を二段階以上重ねるイレギュラー読みは「ゴねり」扱いで、異議を出されやすくなる！</p>
                     <div className="example-reading"><span className="example-art">☂️</span><div><small>例：「り」から始めたい</small><strong>「りょこう」</strong><p>旅行へ持っていく傘だから！</p></div></div>
-                    <p className="rule-caution">「うまそう」「かわいい」だけのように、どの札にも使える主観は弱め。明確な違反は異議札なしで無効、グレーな読みや「そこは取らせたくない！」という戦略的な反対には異議札を使うよ。</p>
+                    <p className="rule-caution">濁音・半濁音は清音とつないでOK（か↔が、は↔ば↔ぱ）。「うまそう」「かわいい」だけのように、どの札にも使える主観や強いゴねりは異議対象になりやすいよ。</p>
                   </section>
 
                   <section className="partner-guide">
@@ -1122,7 +1063,7 @@ export default function Home() {
             </div>
             <div className="letter-block"><small>この文字から</small><strong>{game.currentChar}</strong></div>
             <div className={`timer ${!game.timerRunning ? "paused" : ""}`}>
-              <small>{game.difficulty === "easy" ? "時間無制限" : game.timerRunning ? "絵を選ぶ" : "時計停止"}</small>
+              <small>{game.difficulty === "easy" ? "時間無制限" : game.timerRunning ? "札を選ぶ" : "時計停止"}</small>
               <strong>{game.difficulty === "easy" ? "∞" : game.timerRunning ? `${game.timeLeft}` : "Ⅱ"}</strong>
               <span>{game.difficulty === "easy" ? "EASY" : game.timerRunning ? "秒" : "PAUSE"}</span>
             </div>
@@ -1153,7 +1094,6 @@ export default function Home() {
                 >
                   <span className="coordinate">{coordinate(index)}</span>
                   <span className="tile-art" aria-hidden="true"><PanelArtwork panel={panel} /></span>
-                  <span className="tile-name">{panel.name}</span>
                   {owner && <span className={`claim-chip claim-${owner.toLowerCase()}`} aria-hidden="true" />}
                   {retryBlocked && <span className="retry-lock" aria-hidden="true">異議</span>}
                 </button>
@@ -1164,16 +1104,10 @@ export default function Home() {
           <p className={`game-message ${rejectionFlash ? "reject" : ""}`} aria-live="polite"><span>●</span>{message}</p>
 
           <section className="action-card">
-            <div className="share-toolbar">
-              <button type="button" className={`board-share-button ${shareCopied ? "copied" : ""}`} onClick={copyBoardLink}>
-                🔗 {shareCopied ? "盤面リンクをコピーしました" : "盤面リンクをコピー"}
-              </button>
-              <small>盤面と戦況だけを、操作できない閲覧用リンクで共有</small>
-            </div>
             {game.phase === "select" && !game.winner && (
               <div className="empty-action">
                 <div className="finger">☝️</div>
-                <div><h2>絵をひとつ選ぶ</h2><p>登録読みがなくても、こじつけられそうなら選んでOK。</p></div>
+                <div><h2>絵文字をひとつ選ぶ</h2><p>プリセットがなくても、一段階で読めそうなら選んでOK。</p></div>
               </div>
             )}
 
@@ -1181,8 +1115,8 @@ export default function Home() {
               <div className="reading-panel">
                 <div className="selected-summary"><span><PanelArtwork panel={selectedPanel} compact /></span><div><small>{coordinate(game.selectedIndex!)} / {selectedPanel.category}</small><h2>{selectedPanel.name}</h2></div></div>
                 {registeredOptions.length > 0 ? (
-                  <div className="registered-readings"><small>登録済みの読み</small><div>{registeredOptions.map((reading) => <button type="button" key={reading} onClick={() => submitReading(reading, "")}>{reading}<span>→ {readingEnd(reading)}</span></button>)}</div></div>
-                ) : <p className="no-reading">「{game.currentChar}」から始まる登録読みはなし。こじつけの出番！</p>}
+                  <div className="registered-readings"><small>プリセット読み</small><div>{registeredOptions.map((reading) => <button type="button" key={reading} onClick={() => submitReading(reading, "")}>{reading}<span>→ {readingEnd(reading)}</span></button>)}</div></div>
+                ) : <p className="no-reading">「{game.currentChar}」につながるプリセットはなし。自由読みの出番！</p>}
                 <div className="custom-form">
                   <label><span>自由な読み <b>「{game.currentChar}」から</b></span><input value={customReading} onChange={(event) => setCustomReading(event.target.value)} placeholder={`${game.currentChar}…`} /></label>
                   <label><span>そう読んだ理由 <b>入力中は時計停止</b></span><textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="絵のどこから連想した？" rows={3} /></label>
@@ -1255,10 +1189,10 @@ export default function Home() {
           </section>
           <details className="rules-card">
             <summary><span>HOW TO PLAY</span><strong>あそびかた</strong><b>＋</b></summary>
-            <ol><li><b>1</b><span>今の文字から読める絵を選ぶ</span></li><li><b>2</b><span>登録読み、または理由つきのこじつけを宣言</span></li><li><b>3</b><span>自由読みは相手が受理すれば成立</span></li><li><b>4</b><span>最後の文字を次の手番へつなぐ</span></li><li><b>5</b><span>先に自分の色を一列そろえたら勝ち</span></li></ol>
-            <p>明確な違反は異議札なしで無効。グレー判定や戦略的な反対は異議札を1枚使うよ。AIとの往復・読みと理由の入力中は時計停止。</p>
+            <ol><li><b>1</b><span>今の文字から読める絵文字を選ぶ</span></li><li><b>2</b><span>プリセット、または理由つきの自由読みを宣言</span></li><li><b>3</b><span>二段階以上のゴねりは異議対象になりやすい</span></li><li><b>4</b><span>最後の文字を次の手番へつなぐ</span></li><li><b>5</b><span>先に自分の色を一列そろえたら勝ち</span></li></ol>
+            <p>濁音・半濁音は清音と接続可能。明確な違反は異議札なしで無効、グレー判定や戦略的な反対は異議札を1枚使うよ。AIとの往復・読みと理由の入力中は時計停止。</p>
           </details>
-          <section className="prototype-note"><span>PROTOTYPE 01</span><p>仮イラスト48枚入り。登録読みだけで辿れる道を10枚分仕込んでいるよ。</p></section>
+          <section className="prototype-note"><span>PROTOTYPE 02</span><p>共通性の高い絵文字48枚入り。各札にプリセット読みを4つ用意しているよ。</p></section>
         </aside>
       </div>
       <footer><b>MIRROR WORD GRID</b><span>ことばは、絵の中にひとつじゃない。</span></footer>

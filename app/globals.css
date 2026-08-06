@@ -81,11 +81,9 @@ h1 span { color: var(--pink); display: block; }
 .tile:not(:disabled):active { transform: translateY(2px); box-shadow: none; }
 .tile:disabled { opacity: 1; cursor: default; }
 .coordinate { position: absolute; top: 4px; left: 5px; color: #81798d; font-size: 8px; font-weight: 1000; }
-.tile-art { display: grid; place-items: center; width: 78%; aspect-ratio: 1; overflow: hidden; border-radius: 10px; }
-.panel-emoji { font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; font-size: clamp(22px, 7vw, 38px); line-height: 1.05; filter: drop-shadow(0 2px 0 rgba(47,41,70,.12)); }
-.panel-emoji.compact { font-size: 30px; }
-.panel-image { display: block; width: 100%; height: 100%; object-fit: contain; }
-.panel-image.compact { width: 50px; height: 50px; }
+.tile-art { display: grid; place-items: center; width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 10px; }
+.panel-emoji { font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; font-size: clamp(32px, 8vw, 48px); line-height: 1.05; filter: drop-shadow(0 2px 0 rgba(47,41,70,.12)); }
+.panel-emoji.compact { font-size: 34px; }
 .tile-name { width: 100%; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; color: #4f485e; font-size: clamp(8px, 2.4vw, 11px); line-height: 1.15; font-weight: 900; white-space: nowrap; }
 .tile.selected { background: var(--mint-soft); box-shadow: inset 0 0 0 3px var(--mint), 0 4px 0 var(--line); transform: translateY(-2px); }
 .tile.claimed.o { background: #ffc8d7; }.tile.claimed.x { background: #d7d0ff; }
@@ -138,11 +136,6 @@ input:focus, textarea:focus { border-color: var(--mint); }
 .copy-button.attention { animation: copy-pulse 1.4s ease-in-out infinite; }
 .copy-button.copied { background: var(--mint-soft); }
 @keyframes copy-pulse { 50% { box-shadow: 0 3px 0 var(--line), 0 0 0 5px rgba(255,215,94,.36); } }
-.share-toolbar { display: grid; gap: 5px; padding: 10px 12px 9px; border-bottom: 2px dashed #d8d1df; background: rgba(255,255,255,.82); }
-.board-share-button { min-height: 40px; border: 2px solid var(--line); border-radius: 11px; background: var(--purple-soft); box-shadow: 0 3px 0 var(--line); color: var(--ink); font-size: 12px; font-weight: 1000; cursor: pointer; }
-.board-share-button.copied { background: var(--mint-soft); }
-.board-share-button:active { transform: translateY(3px); box-shadow: none; }
-.share-toolbar small { color: #746d80; font-size: 9px; line-height: 1.35; text-align: center; }
 .partner-waiting { margin: 8px 0 0; padding: 7px 9px; border: 1px dashed #aaa0b6; border-radius: 9px; background: rgba(255,255,255,.7); color: #776f80; font-size: 9px; font-weight: 900; text-align: center; }
 .partner-waiting.active { border-color: #7f6ddc; background: var(--purple-soft); color: #5e4f9e; }
 .reply-box { display: block; margin: 13px 0 9px; }
@@ -454,7 +447,7 @@ footer b { color: var(--purple); }
   .status-card { top: 4px; grid-template-columns: minmax(0,1.2fr) .55fr .56fr 62px; gap: 4px; padding: 5px; }
   .status-objections { display: none; }.status-actions { grid-template-columns: 1fr 26px; min-width: 0; gap: 3px; }.summary-toggle { padding: 0 3px; font-size: 8px; }.game-reset { font-size: 15px; }
   .turn-block, .letter-block, .timer { min-height: 45px; padding: 4px; }.turn-block > .side-chip { width: 24px; height: 24px; border-width: 2px; }.turn-block strong { max-width: 86px; font-size: 11px; }.letter-block strong { font-size: 25px; }.timer strong { font-size: 20px; }
-  .board { gap: 4px; padding: 5px; border-width: 2px; border-radius: 16px; }.tile { padding: 5px 2px 4px; border-width: 1.5px; border-radius: 10px; box-shadow: 0 2px 0 rgba(47,41,70,.34); }.panel-emoji { font-size: clamp(22px, 10vw, 36px); }.claim-chip { width: 15px; height: 15px; right:4px; top:4px; border-width:2px; box-shadow:0 0 0 1px rgba(47,41,70,.55); }
+  .board { gap: 4px; padding: 5px; border-width: 2px; border-radius: 16px; }.tile { padding: 5px 2px 4px; border-width: 1.5px; border-radius: 10px; box-shadow: 0 2px 0 rgba(47,41,70,.34); }.panel-emoji { font-size: clamp(30px, 11vw, 42px); }.claim-chip { width: 15px; height: 15px; right:4px; top:4px; border-width:2px; box-shadow:0 0 0 1px rgba(47,41,70,.55); }
   .game-message { margin-block: 8px 6px; min-height: 28px; font-size: 11px; }.action-card { border-width:2px; border-radius:17px; }
   footer { margin-top:20px; }
 }
@@ -651,15 +644,3 @@ footer b { color: var(--purple); }
   .partner-panel .reply-box textarea { min-height: 66px; }
   .app-shell > footer { display: none; }
 }
-
-/* Share page: intentionally static, so the shared link cannot alter the game. */
-.share-shell { min-height: 100svh; padding: 26px 16px 46px; background:
-  radial-gradient(circle, rgba(111,92,231,.18) 0 2px, transparent 2.4px) 2px 2px / 22px 22px,
-  radial-gradient(circle, rgba(255,111,145,.12) 0 1.5px, transparent 1.9px) 13px 13px / 22px 22px,
-  var(--paper); }
-.share-card { width: min(100%, 900px); margin: 0 auto; padding: clamp(18px, 4vw, 34px); border: 3px solid var(--line); border-radius: 28px; background: rgba(255,253,247,.86); box-shadow: 0 8px 0 rgba(47,41,70,.18); }
-.share-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }.share-kicker { margin: 0 0 4px; color: var(--purple); font-size: 10px; font-weight: 1000; letter-spacing: .14em; }.share-header h1, .share-error h1 { margin: 0; font-size: clamp(28px, 7vw, 43px); line-height: 1.05; }.share-home-link { display: inline-grid; min-height: 38px; place-items: center; padding: 0 12px; border: 2px solid var(--line); border-radius: 11px; background: white; box-shadow: 0 3px 0 var(--line); color: var(--ink); font-size: 11px; font-weight: 1000; text-decoration: none; white-space: nowrap; }.share-home-link:active { transform: translateY(3px); box-shadow: none; }
-.share-lead { margin: 14px 0 18px; color: #6a6274; font-size: 12px; line-height: 1.7; }.share-status { display: grid; grid-template-columns: .65fr .65fr 1.2fr 1.6fr; gap: 8px; }.share-status > div { min-width: 0; padding: 10px; border: 2px solid rgba(47,41,70,.16); border-radius: 13px; background: white; }.share-status small { display: block; color: #81798c; font-size: 8px; }.share-status strong { display: block; margin-top: 4px; overflow-wrap: anywhere; font-size: 12px; line-height: 1.3; }.share-status > div:first-child strong { color: var(--purple); font-size: 26px; line-height: .9; }.share-battle { margin: 12px 0; padding: 11px 13px; border-radius: 13px; background: var(--mint-soft); color: #397165; font-size: 11px; line-height: 1.55; }
-.share-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; padding: 8px; border: 3px solid var(--line); border-radius: 22px; background: var(--yellow); box-shadow: var(--shadow); }.share-tile { position: relative; display: grid; min-width: 0; min-height: 112px; align-content: center; justify-items: center; gap: 3px; padding: 18px 4px 7px; overflow: hidden; border: 2px solid var(--line); border-radius: 15px; background: #fffdf8; text-align: center; }.share-coordinate { position: absolute; top: 4px; left: 5px; color: #81798d; font-size: 8px; font-weight: 1000; }.share-emoji { font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; font-size: clamp(26px, 6vw, 43px); line-height: 1; }.share-tile > strong { width: 100%; overflow: hidden; color: #4f485e; font-size: clamp(8px, 1.5vw, 11px); text-overflow: ellipsis; white-space: nowrap; }.share-tile > small { color: #81798d; font-size: 8px; font-weight: 900; }.share-tile.claimed.o { background: #ffc8d7; }.share-tile.claimed.x { background: #d7d0ff; }.share-tile.retry-blocked { filter: grayscale(.6); }.share-tile.winning { box-shadow: inset 0 0 0 3px white, 0 0 0 3px var(--pink); }.share-claim { position: absolute; top: 5px; right: 5px; width: 17px; height: 17px; border: 3px solid white; box-shadow: 0 0 0 2px rgba(47,41,70,.52); }.share-claim.o { border-radius: 50%; background: #f24d79; }.share-claim.x { border-radius: 4px; background: #624ce6; transform: rotate(45deg); }
-.share-ai-data { margin-top: 18px; padding: 15px; border: 2px solid var(--line); border-radius: 17px; background: #2d2940; color: #f7f3ff; }.share-ai-data h2 { margin: 0; font-size: 16px; }.share-ai-data p { margin: 5px 0 10px; color: #d7d0ed; font-size: 10px; line-height: 1.5; }.share-ai-data pre { max-height: 360px; margin: 0; overflow: auto; white-space: pre-wrap; font: 11px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; }.share-loading { margin: 20vh auto; color: var(--purple); text-align: center; }.share-error { width: min(100%, 520px); margin-top: 15vh; text-align: center; }.share-error > p:not(.share-kicker) { margin: 15px 0 20px; color: #6a6274; font-size: 12px; line-height: 1.7; }
-@media (max-width: 640px) { .share-shell { padding: 0; }.share-card { min-height: 100svh; border: 0; border-radius: 0; box-shadow: none; }.share-header { align-items: center; }.share-status { grid-template-columns: 1fr 1fr; }.share-status > div:last-child { grid-column: 1 / -1; }.share-board { gap: 5px; padding: 6px; border-width: 2px; border-radius: 17px; }.share-tile { min-height: 84px; padding: 16px 2px 5px; border-width: 1.5px; border-radius: 10px; }.share-emoji { font-size: clamp(22px, 10vw, 36px); }.share-tile > strong { font-size: 8px; }.share-tile > small { font-size: 7px; }.share-ai-data { padding: 12px; }.share-ai-data pre { max-height: 320px; font-size: 10px; } }
