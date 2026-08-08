@@ -3,71 +3,16 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-type Player = "O" | "X";
-type Phase = "select" | "reading" | "partner-turn" | "partner-judge" | "local-judge" | "player-judge";
+import { WIN_LINES_4, type Player } from "../game-rules";
+import { decodeShareState, type ShareState, type SharedPhase } from "../share-state";
 
-type SharePanel = {
-  id: string;
-  icon: string;
-  name: string;
-  category: string;
-  readings: string[];
-  visualDescription: string;
-};
-
-type ShareState = {
-  v: 1;
-  board: SharePanel[];
-  claims: Array<Player | "">;
-  currentChar: string;
-  turn: Player;
-  objections: [number, number];
-  phase: Phase;
-  winner: Player | "DRAW" | null;
-  winningLine: number[];
-  retryBlocked: number[];
-};
-
-const WIN_LINES = [
-  [0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15],
-  [0, 4, 8, 12], [1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15],
-  [0, 5, 10, 15], [3, 6, 9, 12],
-];
+const WIN_LINES = WIN_LINES_4;
 
 function coordinate(index: number) {
   return `${String.fromCharCode(65 + (index % 4))}${Math.floor(index / 4) + 1}`;
 }
 
-function decodeShareState(value: string): ShareState | null {
-  try {
-    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-    const bytes = Uint8Array.from(atob(padded), (char) => char.charCodeAt(0));
-    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as Partial<ShareState>;
-    if (
-      parsed.v !== 1 ||
-      !Array.isArray(parsed.board) || parsed.board.length !== 16 ||
-      !Array.isArray(parsed.claims) || parsed.claims.length !== 16 ||
-      !["O", "X"].includes(parsed.turn ?? "") ||
-      typeof parsed.currentChar !== "string" ||
-      !Array.isArray(parsed.objections) || parsed.objections.length !== 2 ||
-      !Array.isArray(parsed.winningLine) || !Array.isArray(parsed.retryBlocked)
-    ) return null;
-
-    const validPanels = parsed.board.every((panel) => (
-      panel && typeof panel.id === "string" && typeof panel.icon === "string" &&
-      typeof panel.name === "string" && typeof panel.category === "string" &&
-      typeof panel.visualDescription === "string" && Array.isArray(panel.readings)
-    ));
-    const validClaims = parsed.claims.every((claim) => claim === "" || claim === "O" || claim === "X");
-    if (!validPanels || !validClaims) return null;
-    return parsed as ShareState;
-  } catch {
-    return null;
-  }
-}
-
-function phaseLabel(phase: Phase, winner: ShareState["winner"]) {
+function phaseLabel(phase: SharedPhase, winner: ShareState["winner"]) {
   if (winner === "DRAW") return "試合終了：引き分け";
   if (winner) return `試合終了：${winner}の勝利`;
   return {
