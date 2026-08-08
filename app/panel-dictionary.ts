@@ -6,11 +6,15 @@ import type { Panel } from "./game-rules";
  * 盤面用 icon は、ZWJ合成を避けた認識しやすい絵文字1つを基本にしてください。
  */
 export const PANELS: Panel[] = [
-  { id: "frog-prince", icon: "🐸", name: "かえる", category: "動物", readings: ["かえる", "あまがえる", "りょうせいるい", "いきもの"], visualDescription: "正面を向いた緑色のかえるの顔" },
-  { id: "box-cat", icon: "🐱", name: "ねこ", category: "動物", readings: ["ねこ", "こねこ", "にゃんこ", "どうぶつ"], visualDescription: "ひげと三角の耳がある猫の顔" },
-  { id: "flying-fish", icon: "🐟", name: "さかな", category: "動物", readings: ["さかな", "うお", "ぎょるい", "いきもの"], visualDescription: "横向きに泳ぐ青い魚" },
-  { id: "moon-coffee", icon: "☕", name: "コーヒー", category: "飲み物", readings: ["コーヒー", "カップ", "のみもの", "きっさてん"], visualDescription: "湯気が立つ白いカップの温かい飲み物" },
-  { id: "gift-ghost", icon: "👻", name: "おばけ", category: "空想", readings: ["おばけ", "ゆうれい", "ゴースト", "ようかい"], visualDescription: "白く浮かび舌を出した幽霊" },
+{ id: "frog-prince", icon: "🐸", name: "かえる", category: "動物", readings: ["かえる", "あまがえる", "りょうせいるい", "おたまじゃくし", "トノサマガエル", "ウシガエル", "フロッグ", "ゲコゲコ", "ぴょこぴょこ"], visualDescription: "正面を向いた緑色のかえるの顔" },
+
+{ id: "box-cat", icon: "🐈", name: "ねこ", category: "動物", readings: ["ねこ", "キャット", "こねこ", "にゃー", "にゃんこ", "シャム", "ペルシャ", "ベンガル", "ロシアンブルー", "ラグドール", "スコティッシュフォールド", "アメリカンショートヘア", "ノルウェージャンフォレストキャット", "メインクーン", "マンチカン"], visualDescription: "四本足で横向きに立つ猫" },
+
+{ id: "flying-fish", icon: "🐟", name: "さかな", category: "動物", readings: ["さかな", "うお", "うおざ", "フィッシュ", "まぐろ", "いわし", "たい", "かつお", "ぎょるい", "とびうお", "あじ", "さば", "ぶり", "ひらめ", "こい", "えい", "サーモン"], visualDescription: "横向きに泳ぐ青い魚" },
+
+{ id: "moon-coffee", icon: "☕", name: "コーヒー", category: "飲み物", readings: ["コーヒー", "カフェ", "こうちゃ", "ティー", "ホットドリンク", "のみもの", "ティーカップ", "カフェラテ", "エスプレッソ", "カプチーノ", "ゆげ", "ラテアート", "きっさ", "おちゃ"], visualDescription: "湯気が立つ白いカップの温かい飲み物" },
+
+{ id: "gift-ghost", icon: "👻", name: "おばけ", category: "空想", readings: ["おばけ", "ゴースト", "ゆうれい", "モンスター", "かいい", "れい", "ぼうれい", "スピリット", "ファントム", "ようかい", "ばけもの", "たましい", "ひとだま", "しんれい", "おんりょう"], visualDescription: "白く浮かび舌を出した幽霊" },
   { id: "melt-clock", icon: "⏰", name: "目覚まし時計", category: "日用品", readings: ["とけい", "めざまし", "アラーム", "じかん"], visualDescription: "上にベルが二つ付いた赤い目覚まし時計" },
   { id: "umbrella", icon: "☂️", name: "かさ", category: "日用品", readings: ["かさ", "あまがさ", "こうもりがさ", "あまぐ"], visualDescription: "持ち手が曲がった開いた傘" },
   { id: "cake", icon: "🍰", name: "ケーキ", category: "食べ物", readings: ["ケーキ", "ショートケーキ", "おかし", "デザート"], visualDescription: "クリームと苺がのった三角形のケーキ" },
