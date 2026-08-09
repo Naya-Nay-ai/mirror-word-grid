@@ -20,12 +20,19 @@ export const WIN_LINES_4 = [
   [0, 5, 10, 15], [3, 6, 9, 12],
 ] as const;
 
+export function hasCompletableLine(claims: Record<number, Player>, player: Player) {
+  const opponent: Player = player === "O" ? "X" : "O";
+  return WIN_LINES_4.some((line) => line.every((index) => claims[index] !== opponent));
+}
+
 export function findWinner(claims: Record<number, Player>) {
   for (const line of WIN_LINES_4) {
     const owner = claims[line[0]];
     if (owner && line.every((index) => claims[index] === owner)) return { winner: owner, line: [...line] };
   }
-  if (Object.keys(claims).length === 16) return { winner: "DRAW" as const, line: [] };
+  if (!hasCompletableLine(claims, "O") && !hasCompletableLine(claims, "X")) {
+    return { winner: "DRAW" as const, line: [] };
+  }
   return { winner: null, line: [] };
 }
 

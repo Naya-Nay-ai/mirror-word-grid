@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   availablePresetReadings,
   findWinner,
+  hasCompletableLine,
   hasArtificialPolitePrefix,
   isRepeatedRejectedReading,
   nextRetryBlocks,
@@ -110,6 +111,28 @@ test("a 4×4 game reaches line victory and a full non-line board reaches draw", 
   assert.deepEqual(findWinner(drawClaims), { winner: "DRAW", line: [] });
 });
 
+test("the game draws immediately when neither side can complete any line", () => {
+  const blockedClaims = {
+    0: "O", 1: "O", 2: "X", 3: "X",
+    4: "X", 5: "X", 6: "O", 7: "O",
+    8: "O", 9: "O", 10: "X", 11: "X",
+    12: "X", 13: "X", 14: "O",
+  };
+  assert.equal(hasCompletableLine(blockedClaims, "O"), false);
+  assert.equal(hasCompletableLine(blockedClaims, "X"), false);
+  assert.deepEqual(findWinner(blockedClaims), { winner: "DRAW", line: [] });
+});
+
+test("line victory takes priority over the draw check", () => {
+  const finalLine = {
+    0: "O", 1: "O", 2: "O", 3: "O",
+    4: "X", 5: "X", 6: "O", 7: "X",
+    8: "O", 9: "X", 10: "X", 11: "O",
+    12: "X", 13: "O", 14: "X", 15: "X",
+  };
+  assert.deepEqual(findWinner(finalLine), { winner: "O", line: [0, 1, 2, 3] });
+});
+
 test("critical copy, tutorial, and responsive UI hooks remain present", async () => {
   const [page, css] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
@@ -122,9 +145,13 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
     "返答を盤面へ反映",
     "盤面リンクをコピー",
     "みうの異議を反映",
-    "この読みを出すと負け！",
+    "「ん」で終わる読みを出したらその場で負け",
     "「ん」で終わる読みを選ぶと×側の即敗北",
   ]) assert.match(page, new RegExp(label));
+  assert.match(page, /読みの正式分類は「正式プリセット」と「自由読み」の2つ/);
+  assert.match(page, /双方とも列を完成できなくなった時点で引き分け/);
+  assert.doesNotMatch(page, /ん返し|難易度|制限時間|時間無制限|時計停止|EASY|NORMAL|HARD|ゴねり/);
+  assert.doesNotMatch(css, /difficulty-picker|\.timer\b/);
   assert.match(css, /@media \(max-width: 480px\)/);
   assert.match(css, /@media \(min-width: 901px\)/);
 });
