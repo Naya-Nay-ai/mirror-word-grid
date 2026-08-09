@@ -143,6 +143,9 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
     "この手番をコピー",
     "判定依頼をコピー",
     "返答を盤面へ反映",
+    "コピーした文を貼り付ける",
+    "返答をコピーしてゲームへ戻る",
+    "しゅの解説を別窓で見る",
     "盤面リンクをコピー",
     "みうの異議を反映",
     "「ん」で終わる読みを出したらその場で負け",
@@ -152,6 +155,8 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
   assert.match(page, /双方とも列を完成できなくなった時点で引き分け/);
   assert.doesNotMatch(page, /ん返し|難易度|制限時間|時間無制限|時計停止|EASY|NORMAL|HARD|ゴねり/);
   assert.doesNotMatch(css, /difficulty-picker|\.timer\b/);
+  assert.match(page, /id: "cloud", icon: "☁️", name: "くも"/);
+  assert.match(css, /\.tutorial-window-layer/);
   assert.match(css, /@media \(max-width: 480px\)/);
   assert.match(css, /@media \(min-width: 901px\)/);
 });
