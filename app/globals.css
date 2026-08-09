@@ -17,14 +17,14 @@
 
 * { box-sizing: border-box; }
 
-html { background: var(--paper); }
+html { background: #f4fbff; }
 
 body {
   margin: 0;
   background:
-    radial-gradient(circle at 12% 4%, rgba(255, 215, 94, .26) 0 82px, transparent 84px),
-    radial-gradient(circle at 90% 18%, rgba(111, 92, 231, .12) 0 110px, transparent 112px),
-    var(--paper);
+    radial-gradient(circle, rgba(111,92,231,.16) 0 5px, transparent 5.6px) 0 0 / 44px 44px,
+    radial-gradient(circle, rgba(255,111,145,.14) 0 5px, transparent 5.6px) 22px 22px / 44px 44px,
+    #f4fbff;
   color: var(--ink);
   font-family: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
   font-weight: 400;
@@ -240,14 +240,11 @@ footer b { color: var(--purple); }
 
 /* Start and resume flow */
 .start-shell { min-height: 100svh; display: grid; place-items: center; padding: 22px; background:
-  radial-gradient(circle, rgba(111,92,231,.18) 0 2px, transparent 2.4px) 2px 2px / 22px 22px,
-  radial-gradient(circle, rgba(255,111,145,.12) 0 1.5px, transparent 1.9px) 13px 13px / 22px 22px,
-  var(--paper); }
+  radial-gradient(circle, rgba(111,92,231,.16) 0 5px, transparent 5.6px) 0 0 / 44px 44px,
+  radial-gradient(circle, rgba(255,111,145,.14) 0 5px, transparent 5.6px) 22px 22px / 44px 44px,
+  #f4fbff; }
 .start-card { width: min(100%, 520px); min-height: min(720px, calc(100svh - 44px)); display: flex; flex-direction: column; padding: 26px; overflow: hidden; position: relative; border: 3px solid rgba(47,41,70,.88); border-radius: 30px; background:
-  radial-gradient(circle at 105% -5%, rgba(111,92,231,.18) 0 120px, transparent 122px),
-  radial-gradient(circle at -10% 110%, rgba(255,111,145,.2) 0 150px, transparent 152px),
-  rgba(255,253,247,.74); box-shadow: 0 10px 0 rgba(47,41,70,.16); }
-.start-card::after { content: ""; position: absolute; z-index: 0; inset: auto -38px 36px auto; width: 150px; height: 150px; border: 22px solid rgba(255,215,94,.28); border-radius: 50%; }
+  linear-gradient(145deg, rgba(255,255,255,.82), rgba(255,250,239,.76)); box-shadow: 0 10px 0 rgba(47,41,70,.16); }
 .start-card > * { position: relative; z-index: 1; }
 .start-brand { display: flex; align-items: center; width: 184px; height: 94px; }
 .start-brand-image { display: block; width: 100%; height: auto; object-fit: contain; }
@@ -278,11 +275,11 @@ footer b { color: var(--purple); }
 .tutorial-button:active { transform: translateY(3px); box-shadow: none; }
 
 /* Temporary CSS navigators. Swap these for Shu & Miu image assets later. */
-.navigator-stage { position: relative; display: flex; justify-content: center; min-height: 116px; margin: 0 auto 8px; }
-.welcome-bubble { position: absolute; z-index: 5; top: -10px; left: 50%; min-width: 240px; padding: 9px 15px; border: 2px solid var(--line); border-radius: 17px; background: rgba(255,255,255,.9); box-shadow: 0 4px 0 rgba(47,41,70,.18); font-size: 11px; line-height: 1.38; text-align: center; transform: translateX(-50%) rotate(-1deg); }
-.welcome-bubble::after { content: ""; position: absolute; bottom: -8px; left: 50%; width: 14px; height: 14px; border-right: 2px solid var(--line); border-bottom: 2px solid var(--line); background: white; transform: translateX(-50%) rotate(45deg); }
+.navigator-stage { position: relative; display: grid; grid-template-columns: minmax(156px, 188px) 118px; align-items: center; justify-content: center; gap: 8px; min-height: 96px; margin: 0 auto 8px; }
+.welcome-bubble { position: relative; z-index: 5; min-width: 0; padding: 10px 12px; border: 2px solid var(--line); border-radius: 17px; background: rgba(255,255,255,.92); box-shadow: 0 4px 0 rgba(47,41,70,.18); font-size: 11px; line-height: 1.38; text-align: center; transform: rotate(-1.5deg); }
+.welcome-bubble::after { content: ""; position: absolute; top: 50%; right: -8px; width: 14px; height: 14px; border-top: 2px solid var(--line); border-right: 2px solid var(--line); background: white; transform: translateY(-50%) rotate(45deg); }
 .welcome-bubble strong { color: var(--pink); font-size: 17px; font-weight: 900; }
-.navigator-pair { display: flex; align-items: flex-end; justify-content: center; gap: 0; margin-top: 35px; }
+.navigator-pair { display: flex; align-items: flex-end; justify-content: center; gap: 0; margin-top: 0; }
 .navigator-pair.compact { margin: 0; transform: scale(.72); transform-origin: right center; }
 .css-bear { --bear-color: #93e7d4; position: relative; display: block; width: 62px; height: 78px; filter: drop-shadow(0 3px 0 rgba(47,41,70,.18)); }
 .css-bear.bear-miu { --bear-color: #ff9fbd; margin-left: -7px; transform: rotate(5deg); }
@@ -469,7 +466,7 @@ footer b { color: var(--purple); }
 
 @media (max-width: 480px) {
   .start-shell { padding: 0; }.start-card { min-height: 100svh; max-height: none; border: 0; border-radius: 0; box-shadow: none; padding: 16px 17px 28px; overflow: visible; }.start-card > .start-brand { width: 124px; }
-  .title-content { margin-top: 0; }.title-logo-stage .start-brand { width: min(100%, 340px); }.title-copy .navigator-stage { margin-top: -12px; }.navigator-stage { min-height: 107px; }.welcome-bubble { min-width: 220px; }.guide-view { padding-top: 10px; }.rule-lead { grid-template-columns: 68px 1fr; gap: 10px; padding: 11px; }.mini-grid { width: 60px; }.partner-guide { grid-template-columns: 46px 1fr; padding: 13px; }.partner-guide-icon { width: 44px; height: 44px; }
+  .title-content { margin-top: 0; }.title-logo-stage .start-brand { width: min(100%, 340px); }.title-copy .navigator-stage { width: min(100%, 330px); min-height: 94px; margin-top: -12px; grid-template-columns: minmax(0, 1fr) 122px; gap: 3px; }.welcome-bubble { min-width: 0; padding-inline: 8px; }.guide-view { padding-top: 10px; }.rule-lead { grid-template-columns: 68px 1fr; gap: 10px; padding: 11px; }.mini-grid { width: 60px; }.partner-guide { grid-template-columns: 46px 1fr; padding: 13px; }.partner-guide-icon { width: 44px; height: 44px; }
   .guide-heading { align-items: flex-start; gap: 6px; }.guide-heading-tools { gap: 3px; }.guide-heading-tools .navigator-pair.compact { width: 83px; }.back-button { min-height: 33px; padding-inline: 8px; }
   .tutorial-heading h2 { font-size: 25px; }.tutorial-status { grid-template-columns: .55fr 1.25fr .8fr; }.tutorial-status strong { font-size: 11px; }.tutorial-status > div:first-child strong { font-size: 24px; }.tutorial-board { grid-template-columns: repeat(3, 1fr); }.tutorial-tile { min-height: 82px; padding-inline: 2px; }.tutorial-tile > span { font-size: 27px; }.tutorial-tile > small { font-size: 9px; }.tutorial-coach { margin-top: 12px; padding: 14px; }.tutorial-character-row { grid-template-columns: 56px 1fr; gap: 8px; }.tutorial-character-row .css-bear { margin-left: -4px; transform: scale(.78); transform-origin: left center; }.tutorial-coach h3 { font-size: 17px; }.tutorial-message { min-height: 0; font-size: 11px; }.tutorial-copy-step pre { font-size: 9px; }
   .app-shell { padding-inline: 7px; }
