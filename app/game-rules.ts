@@ -1,11 +1,16 @@
 export type Player = "O" | "X";
 
+export type PresetReading = string | {
+  display: string;
+  reading: string;
+};
+
 export type Panel = {
   id: string;
   icon: string;
   name: string;
   category: string;
-  readings: string[];
+  readings: PresetReading[];
   visualDescription: string;
 };
 
@@ -64,6 +69,14 @@ export const ESTABLISHED_PREFIX_WORDS = new Set([
   "おちゃ", "おかし", "おにぎり", "ごはん", "おうさま",
 ]);
 
+export function presetReadingValue(value: PresetReading) {
+  return typeof value === "string" ? value : value.reading;
+}
+
+export function presetReadingDisplay(value: PresetReading) {
+  return typeof value === "string" ? value : value.display;
+}
+
 export function normalizeReading(value: string) {
   return value
     .trim()
@@ -99,7 +112,7 @@ export function readingEnd(value: string) {
 
 export function isRegistered(panel: Panel, reading: string) {
   const normalized = normalizeReading(reading);
-  return panel.readings.some((item) => normalizeReading(item) === normalized);
+  return panel.readings.some((item) => normalizeReading(presetReadingValue(item)) === normalized);
 }
 
 export function isRepeatedRejectedReading(attempts: RejectedAttempt[], panelIndex: number, reading: string) {
@@ -112,13 +125,14 @@ export function hasArtificialPolitePrefix(panel: Panel, reading: string) {
   if (isRegistered(panel, normalized) || ESTABLISHED_PREFIX_WORDS.has(normalized)) return false;
   if (!normalized.startsWith("お") && !normalized.startsWith("ご")) return false;
   const base = normalized.slice(1);
-  const knownBases = [panel.name, ...panel.readings].map(normalizeReading);
+  const knownBases = [panel.name, ...panel.readings.map(presetReadingValue)].map(normalizeReading);
   return knownBases.includes(base);
 }
 
 export function availablePresetReadings(panel: Panel, currentChar: string, allowNEnding: boolean) {
   return panel.readings.filter((reading) => (
-    readingStartsWith(reading, currentChar) && (allowNEnding || readingEnd(reading) !== "ん")
+    readingStartsWith(presetReadingValue(reading), currentChar) &&
+    (allowNEnding || readingEnd(presetReadingValue(reading)) !== "ん")
   ));
 }
 

@@ -11,6 +11,8 @@ import {
   isRepeatedRejectedReading,
   nextRetryBlocks,
   normalizeReading,
+  presetReadingDisplay,
+  presetReadingValue,
   readingEnd,
   readingStartsWith,
   winnerAfterNEnding,
@@ -202,6 +204,10 @@ function panelVisualDescription(panel: Panel) {
   return panel.visualDescription ?? `${panel.name}として描かれた${panel.category}のイラスト`;
 }
 
+function presetReadingsForAi(panel: Panel) {
+  return panel.readings.map(presetReadingValue).join("・");
+}
+
 function nextPhase(mode: Mode, turn: Player): Phase {
   return mode === "partner" && turn === "X" ? "partner-turn" : "select";
 }
@@ -291,7 +297,7 @@ function boardSummary(game: GameState) {
     const blocked = game.retryBlocked.includes(index) ? "｜今回の再試行では選択不可" : "";
     const rejected = game.rejectedAttempts.filter((attempt) => attempt.panelIndex === index).map((attempt) => attempt.reading);
     const rejectedText = rejected.length ? `｜再使用禁止の読み:${rejected.join("・")}` : "";
-    return `${coordinate(index)}｜絵文字:${panel.icon}｜ID:${panel.id}｜名前:${panel.name}｜カテゴリ:${panel.category}｜見た目:${panelVisualDescription(panel)}｜正式プリセット読み:${panel.readings.join("・")}${blocked}${rejectedText}`;
+    return `${coordinate(index)}｜絵文字:${panel.icon}｜ID:${panel.id}｜名前:${panel.name}｜カテゴリ:${panel.category}｜見た目:${panelVisualDescription(panel)}｜正式プリセット読み:${presetReadingsForAi(panel)}${blocked}${rejectedText}`;
   }).join("\n");
 }
 
@@ -377,7 +383,7 @@ function partnerJudgePrompt(game: GameState) {
     ? `【判定:受理｜コード:${game.activeCode}】`
     : `【判定:受理｜次手:A1｜読み:${nextChar}から始まる読み｜理由:その札をそう読んだ理由｜コード:${game.activeCode}】`;
 
-  return `# MIRROR WORD GRID：こじつけ判定＋次の一手\n\nあなたは×側です。○側の自由読みを、納得感と勝ちたい気持ちの両方で裁いてください。読みとして自然でも、通すと相手が有利になるなら異議札を使って止めてかまいません。\n\n手番コード：${game.activeCode}\nマス：${coordinate(proposal.panelIndex)}\n絵文字：${panel.icon}\n札ID：${panel.id}\n名前：${panel.name}\n見た目：${panelVisualDescription(panel)}\n正式プリセット：${panel.readings.join("・")}\n宣言した読み：${proposal.reading}\n理由：${proposal.reason}\n現在の文字：${game.currentChar}\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n戦況：${lineThreats(game.claims)}\nこの手の影響：${acceptanceImpact(game, proposal)}\n\n## 判定の分け方\n1. 明確なルール違反は「無効」。異議札を消費しない\n2. 正式プリセットは、見た目との細かな一致を再判定せず必ず「受理」する\n3. 絵文字・名前・見た目から追える自由読みは「受理」しやすい\n4. 強引さのある自由読み、または戦略上どうしても止めたい手は「異議」。×の異議札を1枚使う\n\n少し強引で創造的な自由読みを遊び上「ゴネ読み」と呼ぶことはあるが、独立した正式カテゴリではない。\n語頭の濁音・半濁音は清音と同じつながりとして扱う（例：か↔が、は↔ば↔ぱ）。\n自由読みは、次の3項目のうち2つ以上を満たすほど受理しやすい：\n- 絵文字に直接見える特徴がある\n- 対象と一般的に強く結びつく特徴・用途・状態である\n- その札を特定できる対象名や固有の要素を含む\n「かわいい」「うまそう」など多くの札に使える主観だけでは弱い。\n頭文字を合わせるためだけに元の語へ「お・ご」などを付けた自由読み（例：ねこ→おねこ）は無効。ただし定着した独立語や正式プリセットは有効。\n\n## 受理する場合\n${continuation}\n\n## 返答形式\n- PCからコピーしやすいよう、返答全体をMarkdownのコードブロック1つに入れる\n- コードブロックの外には何も書かない\n- 最後の一行は次のどれか一つを、そのまま使う\n\n${acceptedFormat}\n【判定:無効｜理由:絵文字との関連がほぼない｜コード:${game.activeCode}】\n【判定:異議｜理由:自由読みとして強引、または戦略上ここは取らせたくない｜コード:${game.activeCode}】`;
+  return `# MIRROR WORD GRID：こじつけ判定＋次の一手\n\nあなたは×側です。○側の自由読みを、納得感と勝ちたい気持ちの両方で裁いてください。読みとして自然でも、通すと相手が有利になるなら異議札を使って止めてかまいません。\n\n手番コード：${game.activeCode}\nマス：${coordinate(proposal.panelIndex)}\n絵文字：${panel.icon}\n札ID：${panel.id}\n名前：${panel.name}\n見た目：${panelVisualDescription(panel)}\n正式プリセット：${presetReadingsForAi(panel)}\n宣言した読み：${proposal.reading}\n理由：${proposal.reason}\n現在の文字：${game.currentChar}\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n戦況：${lineThreats(game.claims)}\nこの手の影響：${acceptanceImpact(game, proposal)}\n\n## 判定の分け方\n1. 明確なルール違反は「無効」。異議札を消費しない\n2. 正式プリセットは、見た目との細かな一致を再判定せず必ず「受理」する\n3. 絵文字・名前・見た目から追える自由読みは「受理」しやすい\n4. 強引さのある自由読み、または戦略上どうしても止めたい手は「異議」。×の異議札を1枚使う\n\n少し強引で創造的な自由読みを遊び上「ゴネ読み」と呼ぶことはあるが、独立した正式カテゴリではない。\n語頭の濁音・半濁音は清音と同じつながりとして扱う（例：か↔が、は↔ば↔ぱ）。\n自由読みは、次の3項目のうち2つ以上を満たすほど受理しやすい：\n- 絵文字に直接見える特徴がある\n- 対象と一般的に強く結びつく特徴・用途・状態である\n- その札を特定できる対象名や固有の要素を含む\n「かわいい」「うまそう」など多くの札に使える主観だけでは弱い。\n頭文字を合わせるためだけに元の語へ「お・ご」などを付けた自由読み（例：ねこ→おねこ）は無効。ただし定着した独立語や正式プリセットは有効。\n\n## 受理する場合\n${continuation}\n\n## 返答形式\n- PCからコピーしやすいよう、返答全体をMarkdownのコードブロック1つに入れる\n- コードブロックの外には何も書かない\n- 最後の一行は次のどれか一つを、そのまま使う\n\n${acceptedFormat}\n【判定:無効｜理由:絵文字との関連がほぼない｜コード:${game.activeCode}】\n【判定:異議｜理由:自由読みとして強引、または戦略上ここは取らせたくない｜コード:${game.activeCode}】`;
 }
 
 async function copyToClipboard(text: string) {
@@ -1250,9 +1256,11 @@ export default function Home() {
               <div className="reading-panel">
                 <div className="selected-summary"><span><PanelArtwork panel={selectedPanel} compact /></span><div><small>{coordinate(game.selectedIndex!)} / {selectedPanel.category}</small><h2>{selectedPanel.name}</h2></div></div>
                 {registeredOptions.length > 0 ? (
-                  <div className="registered-readings"><small>正式プリセット</small><div>{registeredOptions.map((reading) => {
+                  <div className="registered-readings"><small>正式プリセット</small><div>{registeredOptions.map((preset) => {
+                    const reading = presetReadingValue(preset);
+                    const display = presetReadingDisplay(preset);
                     const loses = readingEnd(reading) === "ん";
-                    return <button type="button" className={loses ? "n-ending-option" : ""} key={reading} onClick={() => submitReading(reading, "")}>{reading}<span>{loses ? "⚠ んで負け" : `→ ${readingEnd(reading)}`}</span></button>;
+                    return <button type="button" className={loses ? "n-ending-option" : ""} key={`${display}:${reading}`} onClick={() => submitReading(reading, "")}>{display}<span>{loses ? "⚠ んで負け" : `→ ${readingEnd(reading)}`}</span></button>;
                   })}</div></div>
                 ) : <p className="no-reading">「{game.currentChar}」につながる正式プリセットはなし。自由読みの出番！</p>}
                 <div className="custom-form">

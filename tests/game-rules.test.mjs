@@ -9,6 +9,8 @@ import {
   hasArtificialPolitePrefix,
   isRepeatedRejectedReading,
   nextRetryBlocks,
+  presetReadingDisplay,
+  presetReadingValue,
   readingStartsWith,
   winnerAfterNEnding,
 } from "../app/game-rules.ts";
@@ -28,15 +30,36 @@ test("formal preset readings can have any array length", () => {
   assert.deepEqual(availablePresetReadings(cat, "ね", false), ["ねこ"]);
 });
 
-test("panel dictionary keeps 48 unique, simple emoji cards with editable reading arrays", () => {
+test("panel dictionary keeps 54 unique, simple emoji cards with editable reading arrays", () => {
   const segmenter = new Intl.Segmenter("ja", { granularity: "grapheme" });
-  assert.equal(PANELS.length, 48);
-  assert.equal(new Set(PANELS.map((panel) => panel.id)).size, 48);
-  assert.equal(new Set(PANELS.map((panel) => panel.icon)).size, 48);
+  assert.equal(PANELS.length, 54);
+  assert.equal(new Set(PANELS.map((panel) => panel.id)).size, 54);
+  assert.equal(new Set(PANELS.map((panel) => panel.icon)).size, 54);
   assert.equal(PANELS.some((panel) => panel.icon.includes("\u200d")), false);
   assert.equal(PANELS.every((panel) => [...segmenter.segment(panel.icon)].length === 1), true);
   assert.equal(PANELS.every((panel) => panel.readings.length > 0), true);
   assert.equal(PANELS.every((panel) => panel.visualDescription.length > 0), true);
+});
+
+test("display labels and game readings stay separate for kanji presets", () => {
+  const deer = PANELS.find((panel) => panel.id === "deer");
+  const preset = deer.readings.find((item) => typeof item === "object" && item.display === "鹿");
+  assert.equal(presetReadingDisplay(preset), "鹿");
+  assert.equal(presetReadingValue(preset), "しか");
+  assert.deepEqual(availablePresetReadings(deer, "し", false).map(presetReadingValue).includes("しか"), true);
+});
+
+test("legacy IDs remain stable while the watermelon card safely becomes onigiri", () => {
+  assert.equal(PANELS.find((panel) => panel.id === "flying-fish")?.icon, "🐟");
+  assert.equal(PANELS.find((panel) => panel.id === "star-bottle")?.icon, "⭐");
+  assert.deepEqual(PANELS.find((panel) => panel.id === "watermelon"), {
+    id: "watermelon",
+    icon: "🍙",
+    name: "おにぎり",
+    category: "食べ物",
+    readings: ["おにぎり", "おむすび", "ライスボール", { display: "握り飯", reading: "にぎりめし" }, "ごはん", { display: "米", reading: "こめ" }],
+    visualDescription: "海苔が巻かれた三角形のおにぎり",
+  });
 });
 
 test("artificial polite prefixes are rejected but formal readings are preserved", () => {
@@ -76,7 +99,7 @@ test("board share state round-trips without mutable game callbacks or chat text"
     icon: "🐱",
     name: "ねこ",
     category: "動物",
-    readings: ["ねこ"],
+    readings: ["ねこ", { display: "茶トラ", reading: "ちゃとら" }],
     visualDescription: "猫の顔",
   };
   const state = {

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { WIN_LINES_4, type Player } from "../game-rules";
+import { presetReadingValue, WIN_LINES_4, type Player } from "../game-rules";
 import { decodeShareState, type ShareState, type SharedPhase } from "../share-state";
 
 const WIN_LINES = WIN_LINES_4;
@@ -61,7 +61,7 @@ export default function SharePage() {
       "盤面：",
       ...state.board.map((panel, index) => {
         const claim = state.claims[index] ? `${state.claims[index]}取得済み` : state.retryBlocked.includes(index) ? "空き（今回の再試行では選択不可）" : "空き";
-        return `${coordinate(index)}｜カードID:${panel.id}｜見た目:${panel.visualDescription}｜登録読み:${panel.readings.join("・")}｜取得状態:${claim}｜現在の文字:${state.currentChar}｜戦況:${status}`;
+        return `${coordinate(index)}｜カードID:${panel.id}｜見た目:${panel.visualDescription}｜登録読み:${panel.readings.map(presetReadingValue).join("・")}｜取得状態:${claim}｜現在の文字:${state.currentChar}｜戦況:${status}`;
       }),
     ].join("\n");
   }, [state]);

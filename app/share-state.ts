@@ -43,7 +43,13 @@ export function decodeShareState(value: string): ShareState | null {
     const validPanels = parsed.board.every((panel) => (
       panel && typeof panel.id === "string" && typeof panel.icon === "string" &&
       typeof panel.name === "string" && typeof panel.category === "string" &&
-      typeof panel.visualDescription === "string" && Array.isArray(panel.readings)
+      typeof panel.visualDescription === "string" && Array.isArray(panel.readings) &&
+      panel.readings.every((item) => (
+        typeof item === "string" || (
+          item !== null && typeof item === "object" &&
+          typeof item.display === "string" && typeof item.reading === "string"
+        )
+      ))
     ));
     const validClaims = parsed.claims.every((claim) => claim === "" || claim === "O" || claim === "X");
     if (!validPanels || !validClaims) return null;
