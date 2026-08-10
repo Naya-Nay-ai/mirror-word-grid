@@ -147,7 +147,7 @@ const TUTORIAL_SHU_NOTES = [
   "みうの異議を反映すると、みうの札は0枚。同じ『まきまき』は使えないけれど、文字は『ま』のままだよ。",
   "ここで👓を『まじめ』と自由読み。みうはもう異議札を使い切ったから止められない。",
   "『まじめ』は強制承諾されて、👓を取れる。異議札を先に使わせることも戦略になるよ。",
-  "みうが🎄を『メリークリスマス』とゴネてきた。通すと次は『す』。でも止めれば勝ち筋が見えるよ。",
+  "みうが『メリークリスマス』で🎄を取ると宣言しているよ。これは自由読み（ゴネ）。通すと次は『す』、止めれば勝ち筋が見えるよ。",
   "異議で🎄を止めると、みうは同じ『め』から✉️の正式読み『メール』へ変更。次は『る』になる。",
   "『る』から光っている🌀をもう一度選ぼう。却下されたのは『まきまき』という読みで、札そのものではないよ。",
   "🌀の正式プリセット『ループ』なら成立。これで☔・🌀・👓の上段3マスがそろう！",
@@ -742,7 +742,7 @@ export default function Home() {
       setTutorialMessage("みうの異議が成立！ 『まきまき』は却下され、みうの異議札は0枚。文字は『ま』のまま、次の札を探そう。");
     } else if (tutorialStep === 14) {
       setTutorialStep(15);
-      setTutorialMessage("みうは札切れなので『まじめ』を強制承諾。C1の👓をGET！ 次は『め』から、みうが🎄をゴネてきたよ。");
+      setTutorialMessage("みうは札切れなので『まじめ』を強制承諾。C1の👓をGET！ 次は『め』。みうが『メリークリスマス』で🎄を取ると宣言したよ。");
     } else if (tutorialStep === 15) {
       setTutorialStep(16);
       setTutorialMessage("🎄『メリークリスマス』を戦略的に却下！ なや側の異議札も0枚。みうは同じ『め』から✉️へ変更するよ。");
@@ -1062,36 +1062,43 @@ export default function Home() {
                   </div>
                   <p className="tutorial-message">{tutorialMessage}</p>
 
-                  {tutorialStep === 1 && <button className="start-button" type="button" onClick={advanceTutorial}>正式読み「かさ」を使う <b>→</b></button>}
+                  {tutorialStep === 1 && <button className="start-button tutorial-next-action" type="button" onClick={advanceTutorial}>正式読み「かさ」を使う <b>→</b></button>}
                   {tutorialStep === 2 && (
                     <div className="tutorial-copy-step">
                       <pre>現在文字：さ{"\n"}AI代理みうは×側{"\n"}返答：【手番:B3｜読み:さかな】</pre>
-                      <button className="start-button" type="button" onClick={() => copyTutorialPrompt("turn")}>⧉ この手番をコピー</button>
+                      <button className="start-button tutorial-next-action" type="button" onClick={() => copyTutorialPrompt("turn")}>⧉ この手番をコピー</button>
                     </div>
                   )}
                   {(tutorialStep === 3 || tutorialStep === 11) && (
-                    <button className="start-button bears-turn-button" type="button" onClick={() => openTutorialWindow("partner")}>💬 練習用AI窓を開く <b>→</b></button>
+                    <button className="start-button bears-turn-button tutorial-next-action" type="button" onClick={() => openTutorialWindow("partner")}>💬 練習用AI窓を開く <b>→</b></button>
                   )}
                   {(tutorialStep === 4 || tutorialStep === 12) && (
                     <div className="tutorial-return-step">
-                      <label><span>ここにAIパートナーの返答を貼り付ける</span><textarea rows={3} value={tutorialGameReply} onChange={(event) => setTutorialGameReply(event.target.value)} placeholder="コピーした【手番:…】または【判定:…】を貼り付けてね" /></label>
-                      <button className="tutorial-paste-button" type="button" onClick={pasteTutorialReply}>⧉ コピーした返答を貼り付ける</button>
-                      <button className="start-button" type="button" disabled={!tutorialGameReply.trim()} onClick={applyTutorialReply}>{tutorialStep === 4 ? "返答を盤面へ反映" : "みうの異議を反映"} <b>→</b></button>
+                      <label><span>ここにAIパートナーの返答を貼り付ける</span><textarea rows={2} value={tutorialGameReply} onChange={(event) => setTutorialGameReply(event.target.value)} placeholder="コピーした【手番:…】または【判定:…】を貼り付けてね" /></label>
+                      <button className={`tutorial-paste-button ${tutorialGameReply.trim() ? "" : "tutorial-next-action"}`} type="button" onClick={pasteTutorialReply}>⧉ コピーした返答を貼り付ける</button>
+                      <button className={`start-button ${tutorialGameReply.trim() ? "tutorial-next-action" : ""}`} type="button" disabled={!tutorialGameReply.trim()} onClick={applyTutorialReply}>{tutorialStep === 4 ? "返答を盤面へ反映" : "みうの異議を反映"} <b>→</b></button>
                     </div>
                   )}
-                  {tutorialStep === 6 && <button className="start-button" type="button" onClick={advanceTutorial}>正式読み「なきがお」を使う <b>→</b></button>}
-                  {tutorialStep === 7 && <button className="start-button bears-turn-button" type="button" onClick={advanceTutorial}>みうの「おつきさま」を反映 <b>→</b></button>}
-                  {tutorialStep === 9 && <button className="start-button" type="button" onClick={advanceTutorial}>自由読み「まきまき」を宣言 <b>→</b></button>}
+                  {tutorialStep === 6 && <button className="start-button tutorial-next-action" type="button" onClick={advanceTutorial}>正式読み「なきがお」を使う <b>→</b></button>}
+                  {tutorialStep === 7 && <button className="start-button bears-turn-button tutorial-next-action" type="button" onClick={advanceTutorial}>みうの「おつきさま」を反映 <b>→</b></button>}
+                  {tutorialStep === 9 && <button className="start-button tutorial-next-action" type="button" onClick={advanceTutorial}>自由読み「まきまき」を宣言 <b>→</b></button>}
                   {tutorialStep === 10 && (
                     <div className="tutorial-copy-step">
                       <pre>宣言：B1 🌀を「まきまき」{"\n"}理由：線がぐるぐる巻かれて見えるから{"\n"}AI代理みうが判定</pre>
-                      <button className="start-button" type="button" onClick={() => copyTutorialPrompt("judge")}>⧉ 判定依頼をコピー</button>
+                      <button className="start-button tutorial-next-action" type="button" onClick={() => copyTutorialPrompt("judge")}>⧉ 判定依頼をコピー</button>
                     </div>
                   )}
-                  {tutorialStep === 14 && <button className="start-button" type="button" onClick={advanceTutorial}>「まじめ」を強制承諾で通す <b>→</b></button>}
-                  {tutorialStep === 15 && <button className="start-button" type="button" onClick={advanceTutorial}>異議札で🎄を却下する <b>→</b></button>}
-                  {tutorialStep === 16 && <button className="start-button bears-turn-button" type="button" onClick={advanceTutorial}>みうの正式読み「メール」を反映 <b>→</b></button>}
-                  {tutorialStep === 18 && <button className="start-button" type="button" onClick={advanceTutorial}>正式読み「ループ」で取る <b>→</b></button>}
+                  {tutorialStep === 14 && <button className="start-button tutorial-next-action" type="button" onClick={advanceTutorial}>「まじめ」を強制承諾で通す <b>→</b></button>}
+                  {tutorialStep === 15 && (
+                    <div className="tutorial-miu-proposal">
+                      <div><b>🧸 みう</b><span>自由読み（ゴネ）</span></div>
+                      <p>みうは「メリークリスマス」で🎄を取るよ！</p>
+                      <small>理由：クリスマスツリーだから</small>
+                      <button className="start-button tutorial-next-action" type="button" onClick={advanceTutorial}>異議札で🎄を却下する <b>→</b></button>
+                    </div>
+                  )}
+                  {tutorialStep === 16 && <button className="start-button bears-turn-button tutorial-next-action" type="button" onClick={advanceTutorial}>みうの正式読み「メール」を反映 <b>→</b></button>}
+                  {tutorialStep === 18 && <button className="start-button tutorial-next-action" type="button" onClick={advanceTutorial}>正式読み「ループ」で取る <b>→</b></button>}
                   {tutorialStep === 19 && (
                     <div className="tutorial-finish-actions">
                       <button className="start-button" type="button" onClick={() => setView("mode")}>本番で遊ぶ <b>→</b></button>
@@ -1125,12 +1132,12 @@ export default function Home() {
                         </div>
                         {tutorialChatPhase !== "replied" ? (
                           <div className="tutorial-chat-compose">
-                            <label><span>メッセージ</span><textarea rows={4} value={tutorialChatInput} onChange={(event) => { setTutorialChatInput(event.target.value); setTutorialChatPhase(event.target.value.trim() ? "pasted" : "empty"); }} placeholder="ここへコピーした手番を貼り付ける" /></label>
-                            <button className="tutorial-paste-button" type="button" onClick={pasteTutorialPrompt}>⧉ コピーした文を貼り付ける</button>
-                            <button className="start-button" type="button" disabled={!tutorialChatInput.trim()} onClick={sendTutorialPrompt}>みうへ送信する <b>→</b></button>
+                            <label><span>メッセージ</span><textarea rows={2} value={tutorialChatInput} onChange={(event) => { setTutorialChatInput(event.target.value); setTutorialChatPhase(event.target.value.trim() ? "pasted" : "empty"); }} placeholder="ここへコピーした手番を貼り付ける" /></label>
+                            <button className={`tutorial-paste-button ${tutorialChatInput.trim() ? "" : "tutorial-next-action"}`} type="button" onClick={pasteTutorialPrompt}>⧉ コピーした文を貼り付ける</button>
+                            <button className={`start-button ${tutorialChatInput.trim() ? "tutorial-next-action" : ""}`} type="button" disabled={!tutorialChatInput.trim()} onClick={sendTutorialPrompt}>みうへ送信する <b>→</b></button>
                           </div>
                         ) : (
-                          <button className="start-button tutorial-copy-reply" type="button" onClick={copyTutorialReply}>⧉ 返答をコピーしてゲームへ戻る</button>
+                          <button className="start-button tutorial-copy-reply tutorial-next-action" type="button" onClick={copyTutorialReply}>⧉ 返答をコピーしてゲームへ戻る</button>
                         )}
                       </div>
                     ) : (

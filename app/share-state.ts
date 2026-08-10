@@ -58,3 +58,4 @@ export function decodeShareState(value: string): ShareState | null {
     return null;
   }
 }
+

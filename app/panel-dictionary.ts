@@ -64,3 +64,4 @@ export const PANELS: Panel[] = [
   { id: "lantern", icon: "🏮", name: "ちょうちん", category: "日用品", readings: ["ちょうちん", "あかちょうちん", "あかり", "ランタン"], visualDescription: "黒い枠が付いた赤い紙の提灯" },
   { id: "tree-door", icon: "🚪", name: "ドア", category: "建物", readings: ["ドア", "とびら", "いりぐち", "もん"], visualDescription: "取っ手が付いた閉じた木の扉" },
 ];
+

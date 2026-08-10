@@ -62,6 +62,10 @@ test("legacy IDs remain stable while the watermelon card safely becomes onigiri"
   });
 });
 
+test("the reviewed plush card uses the teddy bear emoji", () => {
+  assert.equal(PANELS.find((panel) => panel.id === "plush")?.icon, "🧸");
+});
+
 test("artificial polite prefixes are rejected but formal readings are preserved", () => {
   assert.equal(hasArtificialPolitePrefix(cat, "おねこ"), true);
   assert.equal(hasArtificialPolitePrefix(cat, "おうちねこ"), false);
@@ -195,6 +199,8 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
   ]) assert.match(page, new RegExp(tutorialHook));
   assert.doesNotMatch(page, /ナイト|なつのくだもの/);
   assert.match(css, /\.tutorial-tile\.hint/);
+  assert.match(css, /\.tutorial-next-action/);
+  assert.match(page, /みうは「メリークリスマス」で🎄を取るよ！/);
   assert.match(css, /\.tutorial-window-layer/);
   assert.match(css, /@media \(max-width: 480px\)/);
   assert.match(css, /@media \(min-width: 901px\)/);
