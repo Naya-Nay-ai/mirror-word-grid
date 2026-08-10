@@ -172,7 +172,10 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
     "返答を盤面へ反映",
     "コピーした文を貼り付ける",
     "返答をコピーしてゲームへ戻る",
-    "しゅの解説を別窓で見る",
+    "対戦スタート文をコピー",
+    "準備OKを確認してゲームへ戻る",
+    "ゴネを通して👓をGET",
+    "しゅの解説",
     "盤面リンクをコピー",
     "みうの異議を反映",
     "「ん」で終わる読みを出したらその場で負け",
@@ -190,8 +193,10 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
     'id: "crying-face", icon: "😭"',
     'id: "mail", icon: "✉️"',
     'id: "christmas-tree", icon: "🎄"',
-    "自由読み「まきまき」を宣言",
-    "「まじめ」を強制承諾で通す",
+    "この自由読みで宣言する",
+    "線がぐるぐる巻かれて見えるから",
+    "めがねをかけていて、まじめそうに見えるから",
+    "まじめ」は止められない",
     "異議札で🎄を却下する",
     "正式読み「メール」を反映",
     "正式読み「ループ」で取る",
@@ -200,7 +205,14 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
   assert.doesNotMatch(page, /ナイト|なつのくだもの/);
   assert.match(css, /\.tutorial-tile\.hint/);
   assert.match(css, /\.tutorial-next-action/);
+  assert.match(css, /\.tutorial-header-coach/);
+  assert.match(css, /\.tutorial-gone-form/);
+  assert.match(css, /\.tutorial-gone-result/);
+  assert.match(css, /@keyframes tutorial-bear-bob/);
   assert.match(page, /みうは「メリークリスマス」で🎄を取るよ！/);
+  assert.match(page, /会話全体や説明文はコードブロックに入れない/);
+  assert.match(page, /コードブロックの中には機械読取用の1行以外を書かない/);
+  assert.doesNotMatch(page, /返答全体をMarkdownのコードブロック1つに入れる/);
   assert.match(css, /\.tutorial-window-layer/);
   assert.match(css, /@media \(max-width: 480px\)/);
   assert.match(css, /@media \(min-width: 901px\)/);

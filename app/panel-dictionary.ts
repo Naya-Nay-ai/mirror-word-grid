@@ -65,3 +65,4 @@ export const PANELS: Panel[] = [
   { id: "tree-door", icon: "🚪", name: "ドア", category: "建物", readings: ["ドア", "とびら", "いりぐち", "もん"], visualDescription: "取っ手が付いた閉じた木の扉" },
 ];
 
+

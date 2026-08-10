@@ -321,6 +321,13 @@ footer b { color: var(--purple); }
 
 /* Playable tutorial with Shu & Miu. */
 .tutorial-view { min-height: 0; padding-top: 8px; }
+.tutorial-heading { display: grid; grid-template-columns: auto minmax(260px, 1fr) auto; align-items: center; }
+.tutorial-heading-title { min-width: 230px; }
+.tutorial-header-coach { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; padding: 7px 11px; border: 2px solid var(--line); border-radius: 15px; background: var(--mint-soft); box-shadow: 0 3px 0 rgba(47,41,70,.16); }
+.tutorial-header-coach .css-bear { width: 52px; transform: scale(.64) rotate(-5deg); transform-origin: center; animation: tutorial-bear-bob 1.9s ease-in-out infinite; }
+.tutorial-header-coach div { min-width: 0; }
+.tutorial-header-coach strong { display: block; color: #237d6c; font-size: 10px; }
+.tutorial-header-coach p { margin: 2px 0 0; color: #4e5f5a; font-size: 9px; font-weight: 700; line-height: 1.45; }
 .tutorial-layout { display: grid; gap: 14px; }
 .tutorial-game { min-width: 0; }
 .tutorial-status { display: grid; grid-template-columns: .65fr 1.15fr .9fr .9fr; gap: 7px; margin-bottom: 10px; padding: 7px; border: 2px solid var(--line); border-radius: 16px; background: var(--pink-soft); box-shadow: 0 4px 0 rgba(47,41,70,.16); }
@@ -329,6 +336,7 @@ footer b { color: var(--purple); }
 .tutorial-status strong { margin-top: 2px; font-size: 15px; line-height: 1.05; }
 .tutorial-status > div:first-child strong { color: var(--purple); font-size: 27px; }
 .tutorial-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 9px; border: 3px solid var(--line); border-radius: 22px; background: var(--yellow); box-shadow: var(--shadow); }
+.tutorial-board.waiting-intro { filter: saturate(.55); opacity: .68; }
 .tutorial-tile { position: relative; display: grid; place-items: center; min-width: 0; min-height: 112px; padding: 9px 5px 7px; border: 2px solid var(--line); border-radius: 15px; background: #fffdf8; box-shadow: 0 3px 0 rgba(47,41,70,.34); cursor: pointer; }
 .tutorial-tile:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 5px 0 rgba(47,41,70,.34); }
 .tutorial-tile:disabled { opacity: 1; cursor: default; }
@@ -348,6 +356,8 @@ footer b { color: var(--purple); }
 .tutorial-progress i { height: 7px; border-radius: 99px; background: #e2dce8; }.tutorial-progress i.done { background: var(--mint); }
 .tutorial-character-row { display: grid; grid-template-columns: 68px 1fr; align-items: center; gap: 12px; }
 .tutorial-character-row .css-bear { transform: scale(.92); transform-origin: center; }
+.tutorial-character-row .css-bear, .tutorial-chat-heading .css-bear { animation: tutorial-bear-bob 1.65s ease-in-out infinite; }
+.tutorial-character-row .css-bear .bear-face, .tutorial-chat-heading .css-bear .bear-face { animation: tutorial-bear-talk 1.2s ease-in-out infinite; }
 .tutorial-speech { position: relative; padding: 12px 13px; border: 2px solid var(--line); border-radius: 16px; background: #fff8dc; }
 .tutorial-speech::before { content: ""; position: absolute; left: -8px; top: 50%; width: 13px; height: 13px; border-left: 2px solid var(--line); border-bottom: 2px solid var(--line); background: #fff8dc; transform: translateY(-50%) rotate(45deg); }
 .tutorial-coach h3 { margin: 7px 0 0; font-size: 20px; line-height: 1.28; }
@@ -359,8 +369,12 @@ footer b { color: var(--purple); }
 .tutorial-finish-actions { width: 100%; }
 .tutorial-help-button { width: 100%; min-height: 38px; margin-top: 10px; border: 2px dashed #8f83aa; border-radius: 12px; background: #f6f1ff; color: #5d4d87; font-size: 10px; font-weight: 900; cursor: pointer; }
 .tutorial-return-step { display: grid; gap: 8px; }
-.tutorial-return-step label, .tutorial-chat-compose label { display: grid; gap: 5px; color: #675f72; font-size: 9px; font-weight: 900; }
-.tutorial-return-step textarea, .tutorial-chat-compose textarea { width: 100%; resize: vertical; padding: 10px; border: 2px solid #c9c0d0; border-radius: 11px; background: #fffdf8; color: var(--ink); font: 10px/1.5 ui-monospace, monospace; }
+.tutorial-return-step label, .tutorial-chat-compose label, .tutorial-gone-form label { display: grid; gap: 5px; color: #675f72; font-size: 9px; font-weight: 900; }
+.tutorial-return-step textarea, .tutorial-chat-compose textarea, .tutorial-gone-form input, .tutorial-gone-form textarea { width: 100%; resize: vertical; padding: 10px; border: 2px solid #c9c0d0; border-radius: 11px; background: #fffdf8; color: var(--ink); font: 10px/1.5 ui-monospace, monospace; }
+.tutorial-gone-form { display: grid; gap: 8px; padding: 10px; border: 2px dashed var(--pink); border-radius: 15px; background: #fff6f8; }
+.tutorial-gone-form > small { color: #8a5262; font-size: 9px; font-weight: 800; line-height: 1.45; }
+.tutorial-gone-form .tutorial-next-action::after { content: "ここに入力！"; }
+.tutorial-gone-form button.tutorial-next-action::after { content: "次はここ！"; }
 .tutorial-paste-button { width: 100%; min-height: 38px; padding: 7px 10px; border: 2px solid var(--line); border-radius: 11px; background: var(--mint-soft); box-shadow: 0 2px 0 var(--line); font-size: 10px; font-weight: 900; cursor: pointer; }
 .tutorial-paste-button:active { transform: translateY(2px); box-shadow: none; }
 .tutorial-next-action { position: relative; z-index: 2; isolation: isolate; outline: 4px solid rgba(111,211,164,.32); animation: tutorial-next-action 1.05s ease-in-out infinite; }
@@ -369,9 +383,14 @@ footer b { color: var(--purple); }
 .tutorial-miu-proposal > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .tutorial-miu-proposal > div b { font-size: 11px; }.tutorial-miu-proposal > div span { padding: 3px 7px; border-radius: 99px; background: white; color: #8c4864; font-size: 8px; font-weight: 900; }
 .tutorial-miu-proposal p { margin: 0; color: var(--ink); font-size: 13px; font-weight: 900; line-height: 1.45; }.tutorial-miu-proposal small { color: #756170; font-size: 9px; font-weight: 800; }
+.tutorial-gone-result { background: linear-gradient(135deg, var(--mint-soft), #fffdf8); animation: tutorial-result-pop .48s cubic-bezier(.2,.9,.3,1.25) both; }
+.tutorial-gone-result > div span { background: #fff4ad; color: #705d14; }
 .tutorial-coach .start-button:disabled, .tutorial-chat-pane .start-button:disabled { opacity: .42; cursor: not-allowed; transform: none; box-shadow: 0 5px 0 var(--line); }
 @keyframes tutorial-hint { 50% { transform: translateY(-2px) scale(1.025); box-shadow: inset 0 0 0 4px var(--mint), 0 0 0 8px rgba(111,211,164,.12), 0 7px 18px rgba(71,181,129,.5); } }
 @keyframes tutorial-next-action { 50% { outline-color: rgba(111,211,164,.72); box-shadow: 0 0 0 7px rgba(111,211,164,.16), 0 5px 0 var(--line); transform: translateY(-1px); } }
+@keyframes tutorial-bear-bob { 50% { translate: 0 -4px; } }
+@keyframes tutorial-bear-talk { 50% { translate: 0 1px; rotate: -1deg; } }
+@keyframes tutorial-result-pop { from { opacity: 0; transform: translateY(7px) scale(.97); } }
 .css-bear.mood-thinking .bear-eye { height: 3px; border-radius: 99px; }
 .css-bear.mood-firm .bear-eye { top: 18px; height: 3px; border-radius: 1px; }
 .css-bear.mood-firm .bear-eye.left { transform: rotate(12deg); }.css-bear.mood-firm .bear-eye.right { transform: rotate(-12deg); }
@@ -404,7 +423,7 @@ footer b { color: var(--purple); }
 .tutorial-chat-compose { display: grid; gap: 6px; }.tutorial-chat-pane .start-button { width: 100%; min-height: 42px; font-size: 12px; }.tutorial-copy-reply { background: var(--pink-soft); }
 
 @media (prefers-reduced-motion: reduce) {
-  .tutorial-next-action, .tutorial-tile.hint { animation: none; }
+  .tutorial-next-action, .tutorial-tile.hint, .tutorial-header-coach .css-bear, .tutorial-character-row .css-bear, .tutorial-chat-heading .css-bear, .tutorial-character-row .css-bear .bear-face, .tutorial-chat-heading .css-bear .bear-face, .tutorial-gone-result { animation: none; }
 }
 .tutorial-shu-pane { display: grid; grid-template-columns: 75px 1fr; align-items: start; gap: 12px; }
 .tutorial-shu-pane > .css-bear { transform: scale(1.05); transform-origin: top center; }.tutorial-shu-pane h3 { margin: 7px 0 5px; font-size: 19px; }.tutorial-shu-pane p { margin: 0; color: #655d6f; font-size: 11px; font-weight: 700; line-height: 1.7; }
@@ -502,6 +521,7 @@ footer b { color: var(--purple); }
   .start-shell { padding: 0; }.start-card { min-height: 100svh; max-height: none; border: 0; border-radius: 0; box-shadow: none; padding: 16px 17px 28px; overflow: visible; }.start-card > .start-brand { width: 124px; }
   .title-content { margin-top: 0; }.title-logo-stage .start-brand { width: min(100%, 340px); }.title-copy .navigator-stage { width: min(100%, 330px); min-height: 94px; margin-top: -12px; grid-template-columns: minmax(0, 1fr) 122px; gap: 3px; }.welcome-bubble { min-width: 0; padding-inline: 8px; }.guide-view { padding-top: 10px; }.rule-lead { grid-template-columns: 68px 1fr; gap: 10px; padding: 11px; }.mini-grid { width: 60px; }.partner-guide { grid-template-columns: 46px 1fr; padding: 13px; }.partner-guide-icon { width: 44px; height: 44px; }
   .guide-heading { align-items: flex-start; gap: 6px; }.guide-heading-tools { gap: 3px; }.guide-heading-tools .navigator-pair.compact { width: 83px; }.back-button { min-height: 33px; padding-inline: 8px; }
+  .tutorial-heading { grid-template-columns: minmax(0, 1fr) auto; }.tutorial-heading-title { min-width: 0; }.tutorial-heading .guide-heading-tools { grid-column: 2; grid-row: 1; }.tutorial-header-coach { grid-column: 1 / -1; grid-row: 2; grid-template-columns: 44px 1fr; width: 100%; padding: 6px 9px; }.tutorial-header-coach .css-bear { width: 44px; transform: scale(.55) rotate(-5deg); }.tutorial-header-coach p { font-size: 8.5px; }
   .tutorial-heading h2 { font-size: 25px; }.tutorial-status { grid-template-columns: .7fr 1.3fr; }.tutorial-status strong { font-size: 11px; }.tutorial-status > div:first-child strong { font-size: 24px; }.tutorial-board { grid-template-columns: repeat(3, 1fr); }.tutorial-tile { min-height: 82px; padding-inline: 2px; }.tutorial-tile > span { font-size: 27px; }.tutorial-tile > small { font-size: 9px; }.tutorial-coach { margin-top: 12px; padding: 14px; }.tutorial-character-row { grid-template-columns: 56px 1fr; gap: 8px; }.tutorial-character-row .css-bear { margin-left: -4px; transform: scale(.78); transform-origin: left center; }.tutorial-coach h3 { font-size: 17px; }.tutorial-message { min-height: 0; font-size: 11px; }.tutorial-copy-step pre { font-size: 9px; }.tutorial-window-layer { padding: 8px; }.tutorial-window { max-height: calc(100svh - 16px); border-radius: 19px; }.tutorial-window > header { padding: 8px 11px; }.tutorial-chat-pane, .tutorial-shu-pane { padding: 8px 10px 11px; }.tutorial-shu-pane { grid-template-columns: 58px 1fr; }.tutorial-shu-pane > .css-bear { transform: scale(.82); transform-origin: top left; }.tutorial-shu-pane ol { grid-template-columns: 1fr; }.tutorial-chat-log { min-height: 54px; max-height: 106px; }.tutorial-next-action::after { top: -12px; right: 5px; font-size: 8px; }
   .app-shell { padding-inline: 7px; }
   .status-card { top: 4px; grid-template-columns: minmax(0,1.2fr) .55fr 62px; gap: 4px; padding: 5px; }
