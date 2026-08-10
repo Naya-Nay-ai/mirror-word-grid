@@ -179,6 +179,22 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
   assert.doesNotMatch(page, /ん返し|難易度|制限時間|時間無制限|時計停止|EASY|NORMAL|HARD|ゴねり/);
   assert.doesNotMatch(css, /difficulty-picker|\.timer\b/);
   assert.match(page, /id: "cloud", icon: "☁️", name: "くも"/);
+  for (const tutorialHook of [
+    'id: "umbrella", icon: "☔"',
+    'id: "swirl", icon: "🌀"',
+    'id: "glasses", icon: "👓"',
+    'id: "crying-face", icon: "😭"',
+    'id: "mail", icon: "✉️"',
+    'id: "christmas-tree", icon: "🎄"',
+    "自由読み「まきまき」を宣言",
+    "「まじめ」を強制承諾で通す",
+    "異議札で🎄を却下する",
+    "正式読み「メール」を反映",
+    "正式読み「ループ」で取る",
+    "☔・🌀・👓の上段3マス",
+  ]) assert.match(page, new RegExp(tutorialHook));
+  assert.doesNotMatch(page, /ナイト|なつのくだもの/);
+  assert.match(css, /\.tutorial-tile\.hint/);
   assert.match(css, /\.tutorial-window-layer/);
   assert.match(css, /@media \(max-width: 480px\)/);
   assert.match(css, /@media \(min-width: 901px\)/);
