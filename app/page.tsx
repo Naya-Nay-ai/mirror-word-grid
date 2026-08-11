@@ -86,9 +86,26 @@ const SPINES = [
 const WIN_LINES = WIN_LINES_4;
 
 const STORAGE_KEY = "mirror-word-grid-prototype-v2";
+const PRACTICE_PROVISIONAL_STILLS: Record<string, string> = {
+  "shu-idle": "/practice/provisional/shu-neutral.png",
+  "shu-point": "/practice/provisional/shu-point.png",
+  "shu-explain": "/practice/provisional/shu-point.png",
+  "shu-surprise": "/practice/provisional/shu-question.png",
+  "shu-cheer": "/practice/provisional/shu-sparkle.png",
+  "shu-gone": "/practice/provisional/shu-hearts.png",
+  "miu-idle": "/practice/provisional/miu-neutral.png",
+  "miu-ready": "/practice/provisional/miu-jump.png",
+  "miu-thinking": "/practice/provisional/miu-delight.png",
+  "miu-accept": "/practice/provisional/miu-wink.png",
+  "miu-reject": "/practice/provisional/miu-grumpy.png",
+  "miu-panic": "/practice/provisional/miu-delight.png",
+  "miu-gone": "/practice/provisional/miu-wink.png",
+  "miu-shock": "/practice/provisional/miu-delight.png",
+  "miu-lose": "/practice/provisional/miu-grumpy.png",
+};
 const TUTORIAL_PANELS = [
   { id: "umbrella", icon: "☔", name: "かさ", reading: "かさ" },
-  { id: "swirl", icon: "🌀", name: "うずまき", reading: "ループ" },
+  { id: "top", icon: "♾️", name: "無限", reading: "ループ" },
   { id: "glasses", icon: "👓", name: "めがね", reading: "まじめ" },
   { id: "crying-face", icon: "😭", name: "なきがお", reading: "なきがお" },
   { id: "cloud", icon: "☁️", name: "くも", reading: "くも" },
@@ -107,7 +124,7 @@ const TUTORIAL_TITLES = [
   "😭は『なきがお』",
   "みうは『おつきさま』",
   "……さて。ここからが本番！",
-  "🌀を『まきまき』に！",
+  "♾️を『まるまる』に！",
   "このゴネをみうへ",
   "みうが考え中……",
   "今回は却下っ🙅",
@@ -117,7 +134,7 @@ const TUTORIAL_TITLES = [
   "リーチ！みうが焦ってる",
   "異議札で止めよう！",
   "『る』から勝ち札を探そう",
-  "🌀は正式読み『ループ』！",
+  "♾️は正式読み『ループ』！",
   "3枚そろったーー！！🎉",
 ] as const;
 
@@ -140,7 +157,7 @@ const TUTORIAL_CHAT = {
     replyLabel: "『さ』だね。じゃあ、さかな！🐟",
   },
   judge: {
-    prompt: "# 練習判定\n○側はB1の🌀を「まきまき」（渦が巻いて見えるから！）と自由読みしました。あなたは異議札を1枚持っています。会話や説明は普通の文章で返し、コピー用の【判定:異議｜理由:その読みは無理があり、上段の勝ち筋も止めたい】の1行だけを、独立したMarkdownコードブロックに入れて最後に付けてください。会話全体や説明文はコードブロックに入れないでください。",
+    prompt: "# 練習判定\n○側はB1の♾️を「まるまる」（まるが2つあるから！）と自由読みしました。あなたは異議札を1枚持っています。会話や説明は普通の文章で返し、コピー用の【判定:異議｜理由:その読みは無理があり、上段の勝ち筋も止めたい】の1行だけを、独立したMarkdownコードブロックに入れて最後に付けてください。会話全体や説明文はコードブロックに入れないでください。",
     reply: "【判定:異議｜理由:その読みは無理があり、上段の勝ち筋も止めたい】",
     replyLabel: "う〜ん……それはちょっと強引！ 今回は却下っ🙅",
   },
@@ -156,17 +173,17 @@ const TUTORIAL_SHU_NOTES = [
   "😭の『なきがお』ならつながるね。次の文字は『お』！",
   "みうは🌙を『おつきさま』で取るよ。ここまでは普通のしりとり。",
   "でもMIRROR WORD GRIDは――ここからが本番！",
-  "今回は🌀を『まきまき』、理由は『渦が巻いて見えるから！』だよ。",
+  "今回は♾️を『まるまる』、理由は『まるが2つあるから！』。しゅがお手本を入力しておいたよ。",
   "自由読みは相手に判定してもらう。ゴネをみうへ渡そう！",
   "みうも勝ちたいから、納得できるか・止めたいかを考えるよ。",
   "却下されても失敗じゃない！ やり合うところまでが、このゲームの遊びだよ。",
   "じゃあ、もう一回！ 今度は👓を『まじめ』でゴネてみよう。",
-  "こういう一段ひねった読みもアリ！ 理由まで自分で入れてね。",
+  "こういう一段ひねった読みもアリ！ 今回もしゅがお手本を入力しておいたよ。",
   "むむ……それなら分かる。今回は受理！ 成立の瞬間を自分で押そう。",
-  "おっ、リーチ！ みうも焦って、自分からゴネてきた！",
+  "おっ、こっちがリーチ！ みうも焦って、先に勝ちにいくため自分からゴネてきた！",
   "通したくない読みには異議札。×で『メリークリスマス』を止めよう！",
   "みうは✉️の正式読み『メール』へ変更。次は『る』だよ。",
-  "却下されたのは『まきまき』だけ。🌀の正式読み『ループ』は使える！",
+  "却下されたのは『まるまる』だけ。♾️の正式読み『ループ』は使える！",
   "正式読みも自由読みも、駆け引きに使ってラインを作れたね！",
 ] as const;
 function seededRandom(seed: number) {
@@ -421,7 +438,10 @@ function partnerJudgePrompt(game: GameState) {
 
 async function copyToClipboard(text: string) {
   try {
-    await navigator.clipboard.writeText(text);
+    await Promise.race([
+      navigator.clipboard.writeText(text),
+      new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("clipboard timeout")), 800)),
+    ]);
     return true;
   } catch {
     const area = document.createElement("textarea");
@@ -499,24 +519,42 @@ function PracticeBear({
   bear: "shu" | "miu";
   motion: ShuMotion | MiuMotion;
 }) {
-  const src = `/practice/${bear}-${motion}.gif`;
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const assetFailed = failedSrc === src;
+  const assetKey = `${bear}-${motion}`;
+  const stillSrc = PRACTICE_PROVISIONAL_STILLS[assetKey];
+  const candidates = [`/practice/${assetKey}.webp`, `/practice/${assetKey}.gif`, stillSrc];
+  const [assetState, setAssetState] = useState({ key: assetKey, index: 0 });
+  const [loadedAsset, setLoadedAsset] = useState({ key: "", src: "" });
+  const assetIndex = assetState.key === assetKey ? assetState.index : 0;
+  const assetFailed = assetIndex >= candidates.length;
+  const src = candidates[Math.min(assetIndex, candidates.length - 1)];
+  const assetReady = loadedAsset.key === assetKey && loadedAsset.src === src;
 
   return (
     <span
-      className={`practice-bear practice-bear-${bear} motion-${motion} ${assetFailed ? "asset-missing" : ""}`}
+      className={`practice-bear practice-bear-${bear} motion-${motion} ${assetReady ? "asset-ready" : ""} ${assetFailed ? "asset-missing" : ""}`}
       role="img"
       aria-label={`${bear === "shu" ? "しゅ" : "みう"}：${motion}`}
     >
       <Image
-        className="practice-bear-gif"
+        className="practice-bear-art"
         src={src}
         alt=""
-        width={128}
-        height={128}
+        width={512}
+        height={512}
         unoptimized
-        onError={() => setFailedSrc(src)}
+        onLoad={() => setLoadedAsset({ key: assetKey, src })}
+        onError={() => setAssetState((current) => ({
+          key: assetKey,
+          index: current.key === assetKey ? Math.min(current.index + 1, candidates.length) : 1,
+        }))}
+      />
+      <Image
+        className="practice-bear-still"
+        src={stillSrc}
+        alt=""
+        width={512}
+        height={512}
+        unoptimized
       />
       <span className="practice-bear-css" aria-hidden="true">
         <BearAvatar bear={bear} mood={practiceFallbackMood(bear, motion)} />
@@ -720,9 +758,9 @@ export default function Home() {
     const targets: Record<number, string> = {
       0: "umbrella",
       5: "crying-face",
-      8: "swirl",
+      8: "top",
       13: "glasses",
-      18: "swirl",
+      18: "top",
     };
     const target = targets[tutorialStep];
     if (!target) return;
@@ -730,9 +768,9 @@ export default function Home() {
       const messages: Record<number, string> = {
         0: "いまは『か』から。しゅがミント色に光らせている☔を探してみよう！",
         5: "いまは『な』から。光っている😭なら『なきがお』でつながるよ。",
-        8: "いまは『ま』から。光っている🌀で自由読みを試そう。",
+        8: "いまは『ま』から。光っている♾️で自由読みを試そう。",
         13: "文字はまだ『ま』のまま。光っている👓を見てみよう。",
-        18: "✉️『メール』の次は『る』。上段中央で光っている🌀が勝ち札だよ。",
+        18: "✉️『メール』の次は『る』。上段中央で光っている♾️が勝ち札だよ。",
       };
       setTutorialMessage(messages[tutorialStep]);
       return;
@@ -745,17 +783,17 @@ export default function Home() {
       setTutorialMessage("😭には正式プリセットの『なきがお』があるよ。これで次の文字を『お』へつなげよう。");
     } else if (tutorialStep === 8) {
       setTutorialStep(9);
-      setTutorialCustomReading("");
-      setTutorialCustomReason("");
-      setTutorialMessage("今度は自分でゴネる番！ 読みと理由を入力して、🌀を自由読みで宣言しよう。");
+      setTutorialCustomReading("まるまる");
+      setTutorialCustomReason("まるが2つあるから！");
+      setTutorialMessage("今度は自分でゴネる番！ 今回はお手本として、しゅが読みと理由を入力しておいたよ。内容を見て宣言しよう！");
     } else if (tutorialStep === 13) {
       setTutorialStep(14);
-      setTutorialCustomReading("");
-      setTutorialCustomReason("");
-      setTutorialMessage("もう一度、自分で自由読みを宣言しよう。今度はみうの異議札が0枚だから、ゴネ切れば通るよ！");
+      setTutorialCustomReading("まじめ");
+      setTutorialCustomReason("メガネをかけると真面目そうに見えるから");
+      setTutorialMessage("もう一度ゴネよう。今回もしゅがお手本を入力しておいたよ。みうの異議札は0枚だから、ゴネ切れば通る！");
     } else if (tutorialStep === 18) {
       setTutorialStep(19);
-      setTutorialMessage("🌀には正式プリセット『ループ』があるよ。☔・🌀・👓の上段を完成させよう！");
+      setTutorialMessage("♾️には正式プリセット『ループ』があるよ。☔・♾️・👓の上段を完成させよう！");
     }
   }
 
@@ -814,9 +852,9 @@ export default function Home() {
     setTutorialGameReply(TUTORIAL_CHAT[tutorialChatKind].reply);
   }
 
-  function submitTutorialCustomReading(kind: "makimaki" | "majime") {
-    const expected = kind === "makimaki" ? "まきまき" : "まじめ";
-    const expectedReason = kind === "makimaki" ? "渦が巻いて見えるから！" : "メガネをかけると真面目そうに見えるから";
+  function submitTutorialCustomReading(kind: "marumaru" | "majime") {
+    const expected = kind === "marumaru" ? "まるまる" : "まじめ";
+    const expectedReason = kind === "marumaru" ? "まるが2つあるから！" : "メガネをかけると真面目そうに見えるから";
     if (normalizeReading(tutorialCustomReading) !== normalizeReading(expected)) {
       setTutorialMessage(`今回は読みへ「${expected}」と入れてみよう。本番では、自分で思いついた読みを自由に試してね。`);
       return;
@@ -825,9 +863,9 @@ export default function Home() {
       setTutorialMessage(`今回は理由へ「${expectedReason}」と入れてみよう。本番では、自分の発想で自由にこじつけてOK！`);
       return;
     }
-    if (kind === "makimaki") {
+    if (kind === "marumaru") {
       setTutorialStep(10);
-      setTutorialMessage("自分で『まきまき』とゴネられた！ 次は、この読みをみうへ渡して判定してもらおう。");
+      setTutorialMessage("自分で『まるまる』とゴネられた！ 次は、この読みをみうへ渡して判定してもらおう。");
     } else {
       setTutorialStep(15);
       setTutorialMiuAcceptRevealed(false);
@@ -874,7 +912,7 @@ export default function Home() {
     } else if (tutorialStep === 19) {
       setTutorialStep(20);
       setTutorialEvent("victory");
-      setTutorialMessage("🌀を『ループ』でGET！ ☔・🌀・👓の上段3マスがそろって模擬戦勝利！");
+      setTutorialMessage("♾️を『ループ』でGET！ ☔・♾️・👓の上段3マスがそろって模擬戦勝利！");
     }
   }
 
@@ -1145,23 +1183,23 @@ export default function Home() {
                   </div>
                   <div className={`tutorial-board ${tutorialIntroDone ? "" : "waiting-intro"} ${tutorialStep >= 20 ? "victory" : ""}`}>
                     {TUTORIAL_PANELS.map((panel, index) => {
-                      const targetByStep: Record<number, string> = { 0: "umbrella", 5: "crying-face", 8: "swirl", 13: "glasses", 18: "swirl" };
+                      const targetByStep: Record<number, string> = { 0: "umbrella", 5: "crying-face", 8: "top", 13: "glasses", 18: "top" };
                       const claimedByYou = (panel.id === "umbrella" && tutorialStep >= 2)
                         || (panel.id === "crying-face" && tutorialStep >= 7)
                         || (panel.id === "glasses" && tutorialStep >= 16)
-                        || (panel.id === "swirl" && tutorialStep >= 20);
+                        || (panel.id === "top" && tutorialStep >= 20);
                       const claimedByMiu = (panel.id === "flying-fish" && tutorialStep >= 5)
                         || (panel.id === "moon" && tutorialStep >= 8)
                         || (panel.id === "mail" && tutorialStep >= 18);
                       const selected = (panel.id === "umbrella" && tutorialStep === 1)
                         || (panel.id === "crying-face" && tutorialStep === 6)
                         || (panel.id === "moon" && tutorialStep === 7)
-                        || (panel.id === "swirl" && tutorialStep >= 9 && tutorialStep <= 12)
+                        || (panel.id === "top" && tutorialStep >= 9 && tutorialStep <= 12)
                         || (panel.id === "glasses" && tutorialStep === 14)
                         || (panel.id === "christmas-tree" && tutorialStep === 16)
                         || (panel.id === "mail" && tutorialStep === 17)
-                        || (panel.id === "swirl" && tutorialStep === 19);
-                      const rejectedReading = panel.id === "swirl" && tutorialStep >= 13 && tutorialStep < 18;
+                        || (panel.id === "top" && tutorialStep === 19);
+                      const rejectedReading = panel.id === "top" && tutorialStep >= 13 && tutorialStep < 18;
                       const blocked = panel.id === "christmas-tree" && tutorialStep >= 17;
                       const lineTarget = tutorialStep >= 18 && [0, 1, 2].includes(index);
                       const hinted = tutorialIntroDone && targetByStep[tutorialStep] === panel.id;
@@ -1179,7 +1217,7 @@ export default function Home() {
                           <span aria-hidden="true">{panel.icon}</span>
                           <small>{panel.name}</small>
                           {(claimedByYou || claimedByMiu) && <i className={`tutorial-claim ${claimedByYou ? "side-o" : "side-x"}`} />}
-                          {(blocked || rejectedReading) && <b className="tutorial-block">{blocked ? "異議" : "まきまき×"}</b>}
+                          {(blocked || rejectedReading) && <b className="tutorial-block">{blocked ? "異議" : "まるまる×"}</b>}
                         </button>
                       );
                     })}
@@ -1225,16 +1263,16 @@ export default function Home() {
                     </div>
                   )}
                   {tutorialIntroDone && (tutorialStep === 9 || tutorialStep === 14) && (
-                    <form className="tutorial-gone-form" onSubmit={(event) => { event.preventDefault(); submitTutorialCustomReading(tutorialStep === 9 ? "makimaki" : "majime"); }}>
-                      <label className={!tutorialCustomReading.trim() ? "tutorial-next-action" : ""}><span>自由読み</span><input value={tutorialCustomReading} onChange={(event) => setTutorialCustomReading(event.target.value)} placeholder={tutorialStep === 9 ? "まきまき" : "まじめ"} /></label>
-                      <label className={tutorialCustomReading.trim() && !tutorialCustomReason.trim() ? "tutorial-next-action" : ""}><span>こじつけた理由</span><textarea rows={2} value={tutorialCustomReason} onChange={(event) => setTutorialCustomReason(event.target.value)} placeholder={tutorialStep === 9 ? "渦が巻いて見えるから！" : "メガネをかけると真面目そうに見えるから"} /></label>
-                      <small>今回は見本どおり入力。本番では、自分の発想で好きにゴネてOK！</small>
+                    <form className="tutorial-gone-form" onSubmit={(event) => { event.preventDefault(); submitTutorialCustomReading(tutorialStep === 9 ? "marumaru" : "majime"); }}>
+                      <label className={!tutorialCustomReading.trim() ? "tutorial-next-action" : ""}><span>自由読み</span><input value={tutorialCustomReading} onChange={(event) => setTutorialCustomReading(event.target.value)} placeholder={tutorialStep === 9 ? "まるまる" : "まじめ"} /></label>
+                      <label className={tutorialCustomReading.trim() && !tutorialCustomReason.trim() ? "tutorial-next-action" : ""}><span>こじつけた理由</span><textarea rows={2} value={tutorialCustomReason} onChange={(event) => setTutorialCustomReason(event.target.value)} placeholder={tutorialStep === 9 ? "まるが2つあるから！" : "メガネをかけると真面目そうに見えるから"} /></label>
+                      <small><strong>しゅのお手本：</strong>今回は読みと理由を入力済み。内容を読んで、そのまま宣言してみよう！</small>
                       <button className={`start-button ${tutorialCustomReading.trim() && tutorialCustomReason.trim() ? "tutorial-next-action" : ""}`} type="submit">この自由読みで宣言する <b>→</b></button>
                     </form>
                   )}
                   {tutorialStep === 10 && (
                     <div className="tutorial-copy-step">
-                      <pre>宣言：B1 🌀を「まきまき」{"\n"}理由：渦が巻いて見えるから！{"\n"}AI代理みうが判定</pre>
+                      <pre>宣言：B1 ♾️を「まるまる」{"\n"}理由：まるが2つあるから！{"\n"}AI代理みうが判定</pre>
                       <button className="start-button tutorial-next-action" type="button" onClick={() => copyTutorialPrompt("judge")}>⧉ 判定依頼をコピー</button>
                     </div>
                   )}
@@ -1255,7 +1293,7 @@ export default function Home() {
                       <PracticeBear bear="miu" motion={tutorialMiuGoneRevealed ? "gone" : "panic"} />
                       <div className="tutorial-miu-copy"><b>みう <span>{tutorialMiuGoneRevealed ? "自由読み（ゴネ）" : "リーチに気づいた！"}</span></b>
                         <p>{tutorialMiuGoneRevealed ? "じゃあ……これっ！ 『メリークリスマス！』🎄" : "えっ、そろっちゃう！？"}</p>
-                        <small>{tutorialMiuGoneRevealed ? "理由：クリスマスツリーだから！ これで邪魔するもん！" : "AIパートナー側も、同じルールで勝ちにくるよ。"}</small>
+                        <small>{tutorialMiuGoneRevealed ? "理由：クリスマスツリーだから『メリークリスマス』！ ○側がリーチだから、先に勝ちにいく！" : "○側のリーチを見て焦ってる！ AIパートナー側も、同じルールで先に勝ちにくるよ。"}</small>
                       </div>
                       {tutorialMiuGoneRevealed
                         ? <button className="start-button tutorial-next-action" type="button" onClick={advanceTutorial}>異議札で🎄を却下する <b>→</b></button>
@@ -1279,9 +1317,9 @@ export default function Home() {
                       <p className="tutorial-ending-copy"><strong>これで準備OK！</strong> 絵は一つでも、読み方はたくさん。相手とゴネ合いながらラインを作ろう！</p>
                       <button className="start-button tutorial-next-action" type="button" onClick={() => setView("mode")}>AIパートナーを連れて、本番へ！ <b>→</b></button>
                       <button className="secondary-start" type="button" onClick={openTutorial}>もう一度練習</button>
+                      <button className="text-button" type="button" onClick={() => setView("title")}>タイトルへ戻る</button>
                     </div>
                   )}
-                    <button className="text-button" type="button" onClick={() => setView("title")}>タイトルへ戻る</button>
                   </div>
                 </aside>
               </div>

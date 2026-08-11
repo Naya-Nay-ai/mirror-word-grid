@@ -359,11 +359,11 @@ footer b { color: var(--purple); }
 .tutorial-coach { display: flex; flex-direction: column; align-self: start; min-width: 0; padding: 18px; border: 3px solid var(--line); border-radius: 22px; background: white; box-shadow: var(--shadow); text-align: left; }
 .tutorial-coach-guide { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 11px; }
 .practice-bear { display: grid; place-items: center; width: 88px; height: 88px; }
-.practice-bear > * { grid-area: 1 / 1; }.practice-bear-gif { width: 100%; height: 100%; object-fit: contain; }.practice-bear-css { display: none; }
-.practice-bear.asset-missing .practice-bear-gif { display: none; }.practice-bear.asset-missing .practice-bear-css { display: grid; place-items: center; }
+.practice-bear > * { grid-area: 1 / 1; }.practice-bear-art, .practice-bear-still { width: 100%; height: 100%; object-fit: contain; transform: scale(1.32); }.practice-bear-still { display: block; }.practice-bear-css { display: none; }.practice-bear.asset-ready .practice-bear-still { display: none; }
+.practice-bear.asset-missing .practice-bear-art, .practice-bear.asset-missing .practice-bear-still { display: none; }.practice-bear.asset-missing .practice-bear-css { display: grid; place-items: center; }
 .practice-bear-css .css-bear { transform: scale(.92); transform-origin: center; animation: tutorial-bear-bob 1.65s ease-in-out infinite; }
 .practice-bear-css .css-bear .bear-face { animation: tutorial-bear-talk 1.2s ease-in-out infinite; }
-.practice-bear.motion-point, .practice-bear.motion-ready, .practice-bear.motion-cheer { animation: tutorial-bear-hop 1.45s ease-in-out infinite; }.practice-bear.motion-surprise, .practice-bear.motion-panic, .practice-bear.motion-shock { animation: tutorial-bear-pop .7s ease both; }.practice-bear.motion-gone { animation: tutorial-gone-bear 1.1s ease-in-out infinite; }
+.practice-bear.motion-idle, .practice-bear.motion-explain, .practice-bear.motion-thinking { animation: tutorial-bear-bob 1.9s ease-in-out infinite; }.practice-bear.motion-point, .practice-bear.motion-ready, .practice-bear.motion-cheer { animation: tutorial-bear-hop 1.45s ease-in-out infinite; }.practice-bear.motion-surprise, .practice-bear.motion-panic, .practice-bear.motion-shock, .practice-bear.motion-reject, .practice-bear.motion-lose { animation: tutorial-bear-pop .7s ease both; }.practice-bear.motion-gone, .practice-bear.motion-accept { animation: tutorial-gone-bear 1.1s ease-in-out infinite; }
 .tutorial-speech { position: relative; padding: 12px 13px; border: 2px solid var(--line); border-radius: 16px; background: #fff8dc; }
 .tutorial-speech::before { content: ""; position: absolute; left: -8px; top: 50%; width: 13px; height: 13px; border-left: 2px solid var(--line); border-bottom: 2px solid var(--line); background: #fff8dc; transform: translateY(-50%) rotate(45deg); }
 .tutorial-coach h3 { margin: 6px 0 0; font-size: 20px; line-height: 1.28; }.tutorial-speech p { margin: 8px 0 0; color: #635b6d; font-size: 14px; font-weight: 700; line-height: 1.6; }
@@ -437,7 +437,7 @@ footer b { color: var(--purple); }
 
 @media (prefers-reduced-motion: reduce) {
   .tutorial-next-action, .tutorial-tile.hint, .tutorial-board.victory .tutorial-tile:nth-child(-n+3), .practice-bear, .practice-bear-css .css-bear, .practice-bear-css .bear-face, .tutorial-gone-result, .tutorial-event { animation: none; }
-  .practice-bear-gif { display: none !important; }.practice-bear-css { display: grid !important; place-items: center; }
+  .practice-bear-art { display: none !important; }.practice-bear-still { display: block !important; }.practice-bear.asset-missing .practice-bear-still { display: none !important; }.practice-bear.asset-missing .practice-bear-css { display: grid !important; place-items: center; }
 }
 .tutorial-shu-pane { display: grid; grid-template-columns: 75px 1fr; align-items: start; gap: 12px; }
 .tutorial-shu-pane > .css-bear { transform: scale(1.05); transform-origin: top center; }.tutorial-shu-pane h3 { margin: 7px 0 5px; font-size: 19px; }.tutorial-shu-pane p { margin: 0; color: #655d6f; font-size: 11px; font-weight: 700; line-height: 1.7; }
@@ -526,6 +526,7 @@ footer b { color: var(--purple); }
   .tutorial-status { order: 1; margin: 0; grid-template-columns: repeat(2, 1fr); }
   .tutorial-coach-guide { order: 2; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; padding: 12px; border: 3px solid var(--line); border-radius: 20px; background: white; box-shadow: var(--shadow); }
   .tutorial-coach-guide .practice-bear { width: 72px; height: 72px; }
+  .practice-bear-art, .practice-bear-still { transform: scale(1.18); }
   .tutorial-board { order: 3; }
   .tutorial-coach-actions { order: 4; gap: 10px; margin: 0; padding: 14px; border: 3px solid var(--line); border-radius: 20px; background: white; box-shadow: var(--shadow); }
   .tutorial-board { gap: 5px; padding: 6px; }
@@ -744,7 +745,123 @@ footer b { color: var(--purple); }
   .selected-summary > span, .partner-heading > span { width: 48px; height: 48px; }
   .registered-readings { margin-top: 8px; }
   .custom-form { gap: 6px; margin-top: 8px; padding-top: 8px; }
-  .partner-panel > p { font-size: 9px; }
   .partner-panel .reply-box textarea { min-height: 66px; }
   .app-shell > footer { display: none; }
+}
+
+/* Chrome / Edge readability pass: keep decorative headings, but never solve space with tiny body text. */
+body { font-size: 16px; }
+
+.eyebrow,
+.start-kicker,
+.step-label,
+.section-title span,
+.prototype-note > span,
+.rules-card summary span,
+.summary-sheet > header span,
+.save-badge { font-size: 11px; }
+
+.coordinate,
+.tutorial-coordinate,
+.turn-block small,
+.letter-block small,
+.status-objections span,
+.summary-toggle { font-size: 11px; }
+
+.tile-name,
+.play-column .tile-name { font-size: 12px; }
+
+.objection-row { font-size: 13px; }
+.retry-lock { font-size: 11px; }
+
+.game-message,
+.play-column .game-message {
+  min-height: 44px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.empty-action p,
+.partner-panel > p,
+.partner-briefing > p,
+.proposal-card p,
+.judge-question,
+.rules-card li,
+.history-card li,
+.muted,
+.winner-panel > p { font-size: 13px; }
+
+.selected-summary small,
+.partner-heading small,
+.registered-readings > small,
+label > span,
+.reply-box > span,
+.code-chip,
+.partner-waiting,
+.prompt-preview,
+.judge-kicker,
+.proposal-card small,
+.rules-card > p,
+.prototype-note p,
+.history-card li span,
+.summary-now small { font-size: 12px; }
+
+.primary,
+.secondary,
+.danger,
+.copy-button,
+.accept-button,
+.object-button,
+.invalid-button,
+.mode-switch button { font-size: 14px; }
+
+.registered-readings button { font-size: 14px; }
+.registered-readings button span,
+.judge-actions button small { font-size: 11px; }
+.prompt-preview pre { font-size: 12px; }
+
+.text-button,
+.back-button { font-size: 13px; }
+.rule-lead p,
+.rule-steps p,
+.kojitsuke-guide > p,
+.partner-guide p,
+.example-reading p,
+.partner-guide small { font-size: 13px; }
+.rule-steps strong { font-size: 15px; }
+.example-reading small,
+.quick-rules span { font-size: 11px; }
+.guide-tag { font-size: 11px; }
+
+.tutorial-chapters span { font-size: 13px; }
+.tutorial-status small { font-size: 12px; }
+.tutorial-tile > small { font-size: 13px; }
+.tutorial-speech p {
+  font-family: "M PLUS Rounded 1c", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.65;
+}
+.tutorial-message { font-size: 14px; }
+.tutorial-gone-form > small { font-size: 13px; }
+.tutorial-next-action::after { font-size: 11px; }
+.tutorial-miu-copy b span { font-size: 11px; }
+.tutorial-miu-proposal small { font-size: 13px; }
+.tutorial-chat-bubble pre { font-size: 12px; }
+
+@media (min-width: 901px) {
+  .play-column .action-card { overflow-y: auto; }
+}
+
+@media (max-width: 480px) {
+  .topbar .eyebrow { font-size: 11px; }
+  .tile-name,
+  .play-column .tile-name { font-size: 11px; }
+  .turn-block strong { font-size: 12px; }
+  .summary-toggle { font-size: 11px; }
+  .tutorial-tile > small { font-size: 13px; }
+  .tutorial-speech p,
+  .tutorial-message { font-size: 14px; }
+  .tutorial-copy-step pre { font-size: 12px; }
+  .tutorial-next-action::after { font-size: 11px; }
 }

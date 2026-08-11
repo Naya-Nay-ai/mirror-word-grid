@@ -30,11 +30,11 @@ test("formal preset readings can have any array length", () => {
   assert.deepEqual(availablePresetReadings(cat, "ね", false), ["ねこ"]);
 });
 
-test("panel dictionary keeps 54 unique, simple emoji cards with editable reading arrays", () => {
+test("panel dictionary keeps 65 unique, simple emoji cards with editable reading arrays", () => {
   const segmenter = new Intl.Segmenter("ja", { granularity: "grapheme" });
-  assert.equal(PANELS.length, 54);
-  assert.equal(new Set(PANELS.map((panel) => panel.id)).size, 54);
-  assert.equal(new Set(PANELS.map((panel) => panel.icon)).size, 54);
+  assert.equal(PANELS.length, 65);
+  assert.equal(new Set(PANELS.map((panel) => panel.id)).size, 65);
+  assert.equal(new Set(PANELS.map((panel) => panel.icon)).size, 65);
   assert.equal(PANELS.some((panel) => panel.icon.includes("\u200d")), false);
   assert.equal(PANELS.every((panel) => [...segmenter.segment(panel.icon)].length === 1), true);
   assert.equal(PANELS.every((panel) => panel.readings.length > 0), true);
@@ -57,13 +57,28 @@ test("legacy IDs remain stable while the watermelon card safely becomes onigiri"
     icon: "🍙",
     name: "おにぎり",
     category: "食べ物",
-    readings: ["おにぎり", "おむすび", "ライスボール", { display: "握り飯", reading: "にぎりめし" }, "ごはん", { display: "米", reading: "こめ" }],
+    readings: ["おにぎり", "おむすび", "ライスボール", { display: "握り飯", reading: "にぎりめし" }, { display: "米", reading: "こめ" }],
     visualDescription: "海苔が巻かれた三角形のおにぎり",
   });
 });
 
 test("the reviewed plush card uses the teddy bear emoji", () => {
   assert.equal(PANELS.find((panel) => panel.id === "plush")?.icon, "🧸");
+});
+
+test("the reviewed infinity card and eleven additional cards are present without changing legacy IDs", () => {
+  assert.deepEqual(PANELS.find((panel) => panel.id === "top"), {
+    id: "top",
+    icon: "♾️",
+    name: "無限",
+    category: "記号",
+    readings: [{ display: "無限大", reading: "むげんだい" }, { display: "メビウスの輪", reading: "メビウスのわ" }, "ぐるぐる", "スパイラル", "ループ"],
+    visualDescription: "無限を表す記号",
+  });
+  const additions = ["microphone", "rabbit", "snow", "salad", "swimmer", "police-car", "jockey", "bath", "scream", "ring", "fire"];
+  assert.deepEqual(additions.every((id) => PANELS.some((panel) => panel.id === id)), true);
+  assert.equal(PANELS.find((panel) => panel.id === "moon-coffee")?.icon, "☕");
+  assert.equal(PANELS.find((panel) => panel.id === "envelope")?.icon, "✉️");
 });
 
 test("artificial polite prefixes are rejected but formal readings are preserved", () => {
@@ -188,21 +203,24 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
   assert.match(page, /id: "cloud", icon: "☁️", name: "くも"/);
   for (const tutorialHook of [
     'id: "umbrella", icon: "☔"',
-    'id: "swirl", icon: "🌀"',
+    'id: "top", icon: "♾️"',
     'id: "glasses", icon: "👓"',
     'id: "crying-face", icon: "😭"',
     'id: "mail", icon: "✉️"',
     'id: "christmas-tree", icon: "🎄"',
     "この自由読みで宣言する",
-    "渦が巻いて見えるから！",
+    "まるが2つあるから！",
     "メガネをかけると真面目そうに見えるから",
     "むむ……！ それなら分かる。今回は受理！",
     "異議札で🎄を却下する",
     "みうの「メール」を反映",
     "正式読み「ループ」で取る",
-    "☔・🌀・👓の上段3マス",
+    "☔・♾️・👓の上段3マス",
+    "しゅがお手本を入力しておいたよ",
+    "○側のリーチを見て焦ってる",
   ]) assert.match(page, new RegExp(tutorialHook));
   assert.doesNotMatch(page, /ナイト|なつのくだもの/);
+  assert.doesNotMatch(page, /まきまき|渦が巻いて見えるから|id: "swirl"|icon: "🌀"/);
   assert.match(css, /\.tutorial-tile\.hint/);
   assert.match(css, /\.tutorial-next-action/);
   for (const chapter of ["基本のしりとり", "ゴネに挑戦！", "異議札を使おう！", "勝ちにいこう！"]) {
@@ -213,14 +231,20 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
   assert.match(page, /却下されても失敗じゃないよ/);
   assert.match(page, /えっ、そろっちゃう！？/);
   assert.match(page, /負けたーー！ でも、いいゴネだった！/);
-  assert.match(page, /\/practice\/\$\{bear\}-\$\{motion\}\.gif/);
+  assert.match(page, /\/practice\/\$\{assetKey\}\.webp/);
+  assert.match(page, /\/practice\/\$\{assetKey\}\.gif/);
+  assert.match(page, /\/practice\/provisional\/shu-neutral\.png/);
+  assert.match(page, /\/practice\/provisional\/miu-grumpy\.png/);
   for (const motion of ["point", "explain", "surprise", "cheer", "gone", "ready", "thinking", "accept", "reject", "panic", "shock", "lose"]) {
     assert.match(page, new RegExp(`(?:motion=|motion === |motion-)[^\\n]{0,40}${motion}`));
   }
   assert.match(css, /\.tutorial-coach-guide/);
-  assert.match(css, /\.practice-bear-gif/);
+  assert.match(css, /\.practice-bear-art/);
+  assert.match(css, /\.practice-bear-still/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /min-height: 44px/);
+  assert.match(css, /Chrome \/ Edge readability pass/);
+  assert.match(css, /\.tutorial-speech p[\s\S]{0,220}font-size: 15px/);
   assert.match(css, /\.tutorial-gone-form/);
   assert.match(css, /\.tutorial-gone-result/);
   assert.match(css, /@keyframes tutorial-bear-bob/);
