@@ -381,6 +381,7 @@ footer b { color: var(--purple); }
 .tutorial-gone-form { display: grid; gap: 8px; padding: 10px; border: 2px dashed var(--pink); border-radius: 15px; background: #fff6f8; }
 .tutorial-gone-form > small { color: #80505e; font-size: 12px; font-weight: 800; line-height: 1.5; }
 .reading-format-error { display: block; color: #b22f45 !important; font-size: 13px !important; font-weight: 900 !important; line-height: 1.45; }
+.reading-aid-help { display: block; color: #75608d; font-size: 13px; font-weight: 800; line-height: 1.45; }
 .tutorial-gone-form .tutorial-next-action::after { content: "ここに入力！"; }
 .tutorial-gone-form button.tutorial-next-action::after { content: "次はここ！"; }
 .tutorial-paste-button { width: 100%; padding: 7px 10px; border: 2px solid var(--line); border-radius: 11px; background: var(--mint-soft); box-shadow: 0 2px 0 var(--line); font-weight: 900; cursor: pointer; }

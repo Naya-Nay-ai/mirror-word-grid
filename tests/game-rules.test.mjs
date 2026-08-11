@@ -11,9 +11,12 @@ import {
   isKanaOnlyReading,
   isRepeatedRejectedReading,
   nextRetryBlocks,
+  parseMachineReply,
   presetReadingDisplay,
   presetReadingValue,
+  readingEnd,
   readingStartsWith,
+  resolveDeclaredReading,
   winnerAfterNEnding,
   winLinesFor,
 } from "../app/game-rules.ts";
@@ -40,6 +43,36 @@ test("free readings accept kana and reject kanji, latin letters, and numbers", (
   for (const reading of ["真面目", "まる2つ", "loop", "めがね猫", ""]) {
     assert.equal(isKanaOnlyReading(reading), false, reading);
   }
+});
+
+test("kanji display text uses a separate kana reading for all shiritori checks", () => {
+  const resolved = resolveDeclaredReading("トッピングにナッツを少々", "とっぴんぐになっつをしょうしょう");
+  assert.deepEqual(resolved, {
+    display: "トッピングにナッツを少々",
+    reading: "とっぴんぐになっつをしょうしょう",
+  });
+  assert.equal(readingStartsWith(resolved.reading, "と"), true);
+  assert.equal(readingEnd(resolved.reading), "う");
+  assert.deepEqual(resolveDeclaredReading("トッピングにナッツを少々"), {
+    error: "漢字・々・英数字などを使うときは、判定用の読み仮名も入力してね。",
+  });
+  assert.deepEqual(resolveDeclaredReading("メリークリスマス"), {
+    display: "メリークリスマス",
+    reading: "メリークリスマス",
+  });
+});
+
+test("partner replies execute exactly one standalone machine line in a Markdown code block", () => {
+  assert.deepEqual(parseMachineReply("いい手だね！\n```\n【手番:A1｜読み:少々｜読み仮名:しょうしょう｜理由:ナッツを少々｜コード:MWG-ABCDE】\n```"), {
+    ok: true,
+    line: "【手番:A1｜読み:少々｜読み仮名:しょうしょう｜理由:ナッツを少々｜コード:MWG-ABCDE】",
+    fields: { 手番: "A1", 読み: "少々", 読み仮名: "しょうしょう", 理由: "ナッツを少々", コード: "MWG-ABCDE" },
+  });
+  const pastedPrompt = "回答例:\n【判定:受理｜コード:MWG-ABCDE】\n【判定:無効｜理由:例｜コード:MWG-ABCDE】\n【判定:異議｜理由:例｜コード:MWG-ABCDE】";
+  assert.equal(parseMachineReply(pastedPrompt).ok, false);
+  const multiple = "```\n【判定:受理｜コード:MWG-ABCDE】\n```\n```\n【判定:異議｜理由:例｜コード:MWG-ABCDE】\n```";
+  assert.equal(parseMachineReply(multiple).ok, false);
+  assert.equal(parseMachineReply("```\n説明\n【判定:異議｜理由:例｜コード:MWG-ABCDE】\n```").ok, false);
 });
 
 test("panel dictionary keeps 65 unique, simple emoji cards with editable reading arrays", () => {

@@ -101,6 +101,47 @@ export function isKanaOnlyReading(value: string) {
   return compact.length > 0 && /^[\u3040-\u30ff]+$/u.test(compact);
 }
 
+export type DeclaredReadingResult =
+  | { display: string; reading: string }
+  | { error: string };
+
+export function resolveDeclaredReading(display: string, readingAid = ""): DeclaredReadingResult {
+  const label = display.trim();
+  const aid = readingAid.trim();
+  if (!label) return { error: "自由読みを入力してね。" };
+  if (isKanaOnlyReading(label) && !aid) return { display: label, reading: label };
+  if (!aid) return { error: "漢字・々・英数字などを使うときは、判定用の読み仮名も入力してね。" };
+  if (!isKanaOnlyReading(aid)) return { error: "読み仮名は、ひらがなかカタカナで入力してね。" };
+  return { display: label, reading: aid };
+}
+
+export type MachineReplyParseResult =
+  | { ok: true; fields: Record<string, string>; line: string }
+  | { ok: false; error: string };
+
+export function parseMachineReply(text: string): MachineReplyParseResult {
+  const candidates: string[] = [];
+  for (const match of text.matchAll(/```[^\r\n]*\r?\n([\s\S]*?)```/g)) {
+    const content = match[1].trim();
+    if (/^【[^】\r\n]+】$/u.test(content)) candidates.push(content);
+  }
+  if (candidates.length !== 1) {
+    return { ok: false, error: "パートナー返答を正しく読み取れませんでした。ChatGPTの返答に含まれる機械読取用コードブロックを貼り付けてください。" };
+  }
+
+  const line = candidates[0];
+  const fields: Record<string, string> = {};
+  for (const part of line.slice(1, -1).split(/[｜|]/)) {
+    const splitAt = part.search(/[:：]/);
+    if (splitAt <= 0) return { ok: false, error: "パートナー返答を正しく読み取れませんでした。ChatGPTの返答に含まれる機械読取用コードブロックを貼り付けてください。" };
+    const key = part.slice(0, splitAt).trim();
+    const value = part.slice(splitAt + 1).trim();
+    if (!key || !value || fields[key]) return { ok: false, error: "パートナー返答を正しく読み取れませんでした。ChatGPTの返答に含まれる機械読取用コードブロックを貼り付けてください。" };
+    fields[key] = value;
+  }
+  return { ok: true, fields, line };
+}
+
 export function readingStart(value: string) {
   const normalized = normalizeReading(value);
   return SMALL_KANA[normalized[0]] ?? normalized[0] ?? "";

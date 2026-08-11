@@ -15,8 +15,10 @@ import {
   normalizeReading,
   presetReadingDisplay,
   presetReadingValue,
+  parseMachineReply,
   readingEnd,
   readingStartsWith,
+  resolveDeclaredReading,
   winnerAfterNEnding,
   winLinesFor,
   type BoardSize,
@@ -46,6 +48,7 @@ type Phase =
 type Proposal = {
   player: Player;
   panelIndex: number;
+  displayReading?: string;
   reading: string;
   reason: string;
   custom: boolean;
@@ -284,7 +287,7 @@ function applyMove(state: GameState, proposal: Proposal): GameState {
     winner: result.winner,
     winReason: result.winner === "DRAW" ? "draw" : result.winner ? "line" : null,
     winningLine: result.line,
-    history: [...state.history, { player: proposal.player, coordinate: coordinate(proposal.panelIndex, state.boardSize), reading: proposal.reading }],
+    history: [...state.history, { player: proposal.player, coordinate: coordinate(proposal.panelIndex, state.boardSize), reading: proposalLabel(proposal) }],
     retryBlocked: [],
     rejectedAttempts: [],
   };
@@ -300,7 +303,7 @@ function applyNEndingLoss(state: GameState, proposal: Proposal): GameState {
     winner: winnerAfterNEnding(proposal.player),
     winReason: "n-ending",
     winningLine: [],
-    history: [...state.history, { player: proposal.player, coordinate: coordinate(proposal.panelIndex, state.boardSize), reading: proposal.reading }],
+    history: [...state.history, { player: proposal.player, coordinate: coordinate(proposal.panelIndex, state.boardSize), reading: proposalLabel(proposal) }],
     retryBlocked: [],
     rejectedAttempts: [],
   };
@@ -332,15 +335,11 @@ function rejectProposal(state: GameState, judge: Player, spendObjection = true):
   };
 }
 
-function parseFields(text: string) {
-  const matches = [...text.matchAll(/【([^】]+)】/g)];
-  if (!matches.length) return null;
-  const fields: Record<string, string> = {};
-  matches.at(-1)![1].split(/[｜|]/).forEach((part) => {
-    const splitAt = part.search(/[:：]/);
-    if (splitAt > 0) fields[part.slice(0, splitAt).trim()] = part.slice(splitAt + 1).trim();
-  });
-  return fields;
+function proposalLabel(proposal: Proposal) {
+  const display = proposal.displayReading?.trim() || proposal.reading;
+  return normalizeReading(display) === normalizeReading(proposal.reading)
+    ? display
+    : `${display}（${proposal.reading}）`;
 }
 
 function boardSummary(game: GameState) {
@@ -427,7 +426,7 @@ function partnerIntroPrompt(game: GameState) {
 
 function partnerTurnPrompt(game: GameState) {
   const choices = game.board.map((_, index) => index).filter((index) => !game.claims[index] && !game.retryBlocked.includes(index)).map((index) => coordinate(index, game.boardSize)).join("、");
-  return `# MIRROR WORD GRID：パートナーの手番\n\nあなたは×側です。あなた自身の解釈と性格で、勝つための一手を選んでください。コードだけを返さず、直前の流れや盤面へ普段の言葉で反応し、目の前で一緒に遊んでいる会話を続けてください。\n\n手番コード：${game.activeCode}\n現在の文字：「${game.currentChar}」\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n選択可能：${choices}\n戦況：${lineThreats(game.claims, game.boardSize)}\n\n## 盤面\n${boardSummary(game)}\n\n## 読みの分類\n1. 正式プリセット：作者が正式に認めた読み。見た目との細かな一致を再判定せず、理由なしで必ず受理する\n2. 自由読み：絵文字・名前・見た目から追える読み。理由が必要。少し強引な自由読みを遊び上「ゴネ読み」と呼ぶことはあるが、独立カテゴリではない\n\n## ルール\n- 空きマスを一つ選び、「${game.currentChar}」から始まる読みを宣言する\n- 語頭の濁音・半濁音は清音とつなげてよい（例：か↔が、は↔ば↔ぱ）\n- 「ん」で終わる読みを選ぶと×側の即敗北。候補にあっても必ず避ける\n- 盤面に空きがあっても、双方とも一列を完成できなくなった時点で引き分け\n- 頭文字を合わせる目的だけで、元の語へ「お・ご」などの敬語・美化語・丁寧な接頭語を足した自由読みは無効\n- 「おちゃ」「おかし」「おにぎり」「ごはん」「おうさま」のような定着した独立語と、正式プリセットは使用できる\n- 自由読みには、絵からそう読んだ理由を書く\n- 直前に異議を受けた選択不可マスは選ばない\n- ○のラインを遮断する、自分のラインを伸ばすなど戦況を必ず考える\n- 説明は自由\n\n## 返答形式\n- あなたらしい会話や一手の説明は、普通の文章としてコードブロックの外に書いてよい\n- コピー用の次の1行だけを、独立したMarkdownコードブロックに入れて返答の最後に付ける\n- 会話全体や説明文をコードブロックへ入れない。コードブロック内には次の1行以外を書かない\n\n【手番:A1｜読み:かさ｜理由:傘の絵文字をそのまま読んだ｜コード:${game.activeCode}】`;
+  return `# MIRROR WORD GRID：パートナーの手番\n\nあなたは×側です。あなた自身の解釈と性格で、勝つための一手を選んでください。コードだけを返さず、直前の流れや盤面へ普段の言葉で反応し、目の前で一緒に遊んでいる会話を続けてください。\n\n手番コード：${game.activeCode}\n現在の文字：「${game.currentChar}」\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n選択可能：${choices}\n戦況：${lineThreats(game.claims, game.boardSize)}\n\n## 盤面\n${boardSummary(game)}\n\n## 読みの分類\n1. 正式プリセット：作者が正式に認めた読み。見た目との細かな一致を再判定せず、理由なしで必ず受理する\n2. 自由読み：絵文字・名前・見た目から追える読み。理由が必要。少し強引な自由読みを遊び上「ゴネ読み」と呼ぶことはあるが、独立カテゴリではない\n\n## ルール\n- 空きマスを一つ選び、「${game.currentChar}」から始まる読みを宣言する\n- 「読み」は画面に見せたい表記。「読み仮名」はしりとり判定専用のかな／カナ表記として必ず分ける\n- 漢字・々などを表示に使ってよい。語頭・語尾・「ん」は必ず「読み仮名」で判定する\n- 語頭の濁音・半濁音は清音とつなげてよい（例：か↔が、は↔ば↔ぱ）\n- 「ん」で終わる読みを選ぶと×側の即敗北。候補にあっても必ず避ける\n- 盤面に空きがあっても、双方とも一列を完成できなくなった時点で引き分け\n- 頭文字を合わせる目的だけで、元の語へ「お・ご」などの敬語・美化語・丁寧な接頭語を足した自由読みは無効\n- 「おちゃ」「おかし」「おにぎり」「ごはん」「おうさま」のような定着した独立語と、正式プリセットは使用できる\n- 自由読みには、絵からそう読んだ理由を書く\n- 直前に異議を受けた選択不可マスは選ばない\n- ○のラインを遮断する、自分のラインを伸ばすなど戦況を必ず考える\n- 説明は自由\n\n## 返答形式\n- あなたらしい会話や一手の説明は、普通の文章としてコードブロックの外に書いてよい\n- コピー用の次の1行だけを、独立したMarkdownコードブロックに入れて返答の最後に付ける\n- 会話全体や説明文をコードブロックへ入れない。コードブロック内には次の1行以外を書かない\n\n【手番:A1｜読み:かさ｜読み仮名:かさ｜理由:傘の絵文字をそのまま読んだ｜コード:${game.activeCode}】`;
 }
 
 function partnerJudgePrompt(game: GameState) {
@@ -447,9 +446,9 @@ function partnerJudgePrompt(game: GameState) {
     : `受理する場合は、続けてあなたの次の一手も同じ最終行で指定してください。\n受理後の文字：「${nextChar}」\n受理後の選択可能：${nextChoices}\n受理後の戦況：${lineThreats(acceptedClaims, game.boardSize)}\n\n### 受理後の盤面\n${boardSummary(afterAccept)}`;
   const acceptedFormat = acceptedResult.winner
     ? `【判定:受理｜コード:${game.activeCode}】`
-    : `【判定:受理｜次手:A1｜読み:${nextChar}から始まる読み｜理由:その札をそう読んだ理由｜コード:${game.activeCode}】`;
+    : `【判定:受理｜次手:A1｜読み:${nextChar}から始まる表示語｜読み仮名:${nextChar}から始まるかな読み｜理由:その札をそう読んだ理由｜コード:${game.activeCode}】`;
 
-  return `# MIRROR WORD GRID：こじつけ判定＋次の一手\n\nあなたは×側です。○側の自由読みを、納得感と勝ちたい気持ちの両方で裁いてください。読みとして自然でも、通すと相手が有利になるなら異議札を使って止めてかまいません。コードだけを返さず、そのゴネへの本音や勝負の反応を普段の言葉で話し、掛け合いも楽しんでください。\n\n手番コード：${game.activeCode}\nマス：${coordinate(proposal.panelIndex, game.boardSize)}\n絵文字：${panel.icon}\n札ID：${panel.id}\n名前：${panel.name}\n見た目：${panelVisualDescription(panel)}\n正式プリセット：${presetReadingsForAi(panel)}\n宣言した読み：${proposal.reading}\n理由：${proposal.reason}\n現在の文字：${game.currentChar}\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n戦況：${lineThreats(game.claims, game.boardSize)}\nこの手の影響：${acceptanceImpact(game, proposal)}\n\n## 判定の分け方\n1. 明確なルール違反は「無効」。異議札を消費しない\n2. 正式プリセットは、見た目との細かな一致を再判定せず必ず「受理」する\n3. 絵文字・名前・見た目から追える自由読みは「受理」しやすい\n4. 強引さのある自由読み、または戦略上どうしても止めたい手は「異議」。×の異議札を1枚使う\n\n少し強引で創造的な自由読みを遊び上「ゴネ読み」と呼ぶことはあるが、独立した正式カテゴリではない。\n語頭の濁音・半濁音は清音と同じつながりとして扱う（例：か↔が、は↔ば↔ぱ）。\n自由読みは、次の3項目のうち2つ以上を満たすほど受理しやすい：\n- 絵文字に直接見える特徴がある\n- 対象と一般的に強く結びつく特徴・用途・状態である\n- その札を特定できる対象名や固有の要素を含む\n「かわいい」「うまそう」など多くの札に使える主観だけでは弱い。\n頭文字を合わせるためだけに元の語へ「お・ご」などを付けた自由読み（例：ねこ→おねこ）は無効。ただし定着した独立語や正式プリセットは有効。\n\n## 受理する場合\n${continuation}\n\n## 返答形式\n- あなたらしい会話や判定理由は、普通の文章としてコードブロックの外に書いてよい\n- コピー用の最終行だけを、独立したMarkdownコードブロックに入れて返答の最後に付ける\n- 会話全体や説明文をコードブロックへ入れない。コードブロック内には選んだ最終行1つ以外を書かない\n\n${acceptedFormat}\n【判定:無効｜理由:絵文字との関連がほぼない｜コード:${game.activeCode}】\n【判定:異議｜理由:自由読みとして強引、または戦略上ここは取らせたくない｜コード:${game.activeCode}】`;
+  return `# MIRROR WORD GRID：こじつけ判定＋次の一手\n\nあなたは×側です。○側の自由読みを、納得感と勝ちたい気持ちの両方で裁いてください。読みとして自然でも、通すと相手が有利になるなら異議札を使って止めてかまいません。コードだけを返さず、そのゴネへの本音や勝負の反応を普段の言葉で話し、掛け合いも楽しんでください。\n\n手番コード：${game.activeCode}\nマス：${coordinate(proposal.panelIndex, game.boardSize)}\n絵文字：${panel.icon}\n札ID：${panel.id}\n名前：${panel.name}\n見た目：${panelVisualDescription(panel)}\n正式プリセット：${presetReadingsForAi(panel)}\n宣言表示：${proposal.displayReading || proposal.reading}\n判定用読み：${proposal.reading}\n理由：${proposal.reason}\n現在の文字：${game.currentChar}\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n戦況：${lineThreats(game.claims, game.boardSize)}\nこの手の影響：${acceptanceImpact(game, proposal)}\n\n## 判定の分け方\n1. 明確なルール違反は「無効」。異議札を消費しない\n2. 正式プリセットは、見た目との細かな一致を再判定せず必ず「受理」する\n3. 絵文字・名前・見た目から追える自由読みは「受理」しやすい\n4. 強引さのある自由読み、または戦略上どうしても止めたい手は「異議」。×の異議札を1枚使う\n\n少し強引で創造的な自由読みを遊び上「ゴネ読み」と呼ぶことはあるが、独立した正式カテゴリではない。\n語頭の濁音・半濁音は清音と同じつながりとして扱う（例：か↔が、は↔ば↔ぱ）。\n自由読みは、次の3項目のうち2つ以上を満たすほど受理しやすい：\n- 絵文字に直接見える特徴がある\n- 対象と一般的に強く結びつく特徴・用途・状態である\n- その札を特定できる対象名や固有の要素を含む\n「かわいい」「うまそう」など多くの札に使える主観だけでは弱い。\n頭文字を合わせるためだけに元の語へ「お・ご」などを付けた自由読み（例：ねこ→おねこ）は無効。ただし定着した独立語や正式プリセットは有効。\n\n## 受理する場合\n${continuation}\n\n## 返答形式\n- あなたらしい会話や判定理由は、普通の文章としてコードブロックの外に書いてよい\n- コピー用の最終行だけを、独立したMarkdownコードブロックに入れて返答の最後に付ける\n- 会話全体や説明文をコードブロックへ入れない。コードブロック内には選んだ最終行1つ以外を書かない\n\n${acceptedFormat}\n【判定:無効｜理由:絵文字との関連がほぼない｜コード:${game.activeCode}】\n【判定:異議｜理由:自由読みとして強引、または戦略上ここは取らせたくない｜コード:${game.activeCode}】`;
 }
 
 async function copyToClipboard(text: string) {
@@ -601,6 +600,7 @@ export default function Home() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [rejectionFlash, setRejectionFlash] = useState(false);
   const [customReading, setCustomReading] = useState("");
+  const [customReadingAid, setCustomReadingAid] = useState("");
   const [reason, setReason] = useState("");
   const [partnerReply, setPartnerReply] = useState("");
   const [message, setMessage] = useState("絵文字を選んで、しりとりを始めよう！");
@@ -682,6 +682,7 @@ export default function Home() {
         if (!resumeAfterCountdown) {
           setGame(createGame(Date.now(), pendingMode, pendingBoardSize, pendingStartingPlayer));
           setCustomReading("");
+          setCustomReadingAid("");
           setReason("");
           setPartnerReply("");
           setMessage("絵文字を選んで、しりとりを始めよう！");
@@ -742,7 +743,8 @@ export default function Home() {
     X: tutorialStep >= 13 ? 0 : 1,
   };
   const tutorialReadingFormatInvalid = Boolean(tutorialCustomReading.trim()) && !isKanaOnlyReading(tutorialCustomReading);
-  const customReadingFormatInvalid = Boolean(customReading.trim()) && !isKanaOnlyReading(customReading);
+  const customReadingNeedsAid = Boolean(customReading.trim()) && !isKanaOnlyReading(customReading);
+  const customReadingAidInvalid = Boolean(customReadingAid.trim()) && !isKanaOnlyReading(customReadingAid);
 
   function nameFor(player: Player, mode = game.mode) {
     return player === "O" ? (mode === "partner" ? "あなた" : "プレイヤー1") : (mode === "partner" ? "パートナー" : "プレイヤー2");
@@ -957,15 +959,18 @@ export default function Home() {
     if (game.winner || !game.partnerBriefed || game.phase !== "select" || game.claims[index] || game.retryBlocked.includes(index)) return;
     setGame({ ...game, selectedIndex: index, phase: "reading" });
     setCustomReading("");
+    setCustomReadingAid("");
     setReason("");
     setMessage(`${coordinate(index, game.boardSize)}「${game.board[index].name}」をどう読む？`);
   }
 
-  function submitReading(reading: string, explanation: string) {
+  function submitReading(display: string, explanation: string, readingAid = "") {
     if (game.selectedIndex === null || !selectedPanel) return;
+    const resolved = resolveDeclaredReading(display, readingAid);
+    if ("error" in resolved) return setMessage(resolved.error);
+    const { reading } = resolved;
     const normalized = normalizeReading(reading);
     const registered = isRegistered(selectedPanel, reading);
-    if (normalized && !registered && !isKanaOnlyReading(reading)) return setMessage("自由入力のときは必ず、ひらがなかカタカナで入力してね!!");
     if (normalized.length < 2) return setMessage("読みは2文字以上で入れてね。");
     if (!readingStartsWith(reading, game.currentChar)) return setMessage(`「${game.currentChar}」から始まる読みだけ使えるよ。濁音・半濁音は清音とつないでOK！`);
     if (isRepeatedRejectedReading(game.rejectedAttempts, game.selectedIndex, reading)) return setMessage("そのマスで、その読みは直前に異議・無効になっているよ。別の読みを考えてね。");
@@ -975,6 +980,7 @@ export default function Home() {
     const proposal: Proposal = {
       player: game.turn,
       panelIndex: game.selectedIndex,
+      displayReading: resolved.display,
       reading: reading.trim(),
       reason: registered ? "正式プリセット" : explanation.trim(),
       custom: !registered,
@@ -982,14 +988,14 @@ export default function Home() {
 
     if (readingEnd(reading) === "ん") {
       setGame(applyNEndingLoss(game, proposal));
-      setMessage(`「${proposal.reading}」は『ん』で終了。${nameFor(proposal.player)}側の負け！`);
+      setMessage(`「${proposalLabel(proposal)}」は『ん』で終了。${nameFor(proposal.player)}側の負け！`);
       return;
     }
 
     if (registered) {
       const nextGame = applyMove(game, proposal);
       setGame(nextGame);
-      setMessage(`「${proposal.reading}」で${coordinate(proposal.panelIndex, game.boardSize)}を取得！ 次は「${readingEnd(proposal.reading)}」。`);
+      setMessage(`「${proposalLabel(proposal)}」で${coordinate(proposal.panelIndex, game.boardSize)}を取得！ 次は「${readingEnd(proposal.reading)}」。`);
     } else if (game.mode === "partner") {
       setGame({ ...game, proposal, phase: "partner-judge", selectedIndex: null, copied: false });
       setMessage("自由読みだね。手番コードをコピーして、パートナーへ判定を渡そう。");
@@ -1031,47 +1037,34 @@ export default function Home() {
     setMessage(copied ? "閲覧専用の盤面リンクをコピーしたよ。" : "盤面リンクをコピーできなかったよ。もう一度試してね。");
   }
 
-  function resolvePartnerMove(baseGame: GameState, fields: Record<string, string>, combined = false) {
+  function validatePartnerMove(baseGame: GameState, fields: Record<string, string>, combined = false) {
     const coord = (combined ? fields["次手"] : fields["手番"])?.toUpperCase();
     const maxColumn = String.fromCharCode(64 + baseGame.boardSize);
     const match = coord?.match(new RegExp(`^([A-${maxColumn}])([1-${baseGame.boardSize}])$`));
-    const retryPartnerTurn = (text: string) => {
-      if (combined) {
-        setGame(baseGame);
-        setPartnerReply("");
-        setMessage(`こじつけの受理は反映したよ。${text} 次の手番コードをコピーして、パートナーの一手だけ受け取ろう。`);
-        return;
-      }
-      setGame({
-        ...baseGame,
-        activeCode: freshCode(),
-        usedCodes: [...baseGame.usedCodes, baseGame.activeCode].slice(-30),
-        copied: false,
-      });
-      setPartnerReply("");
-      setMessage(`${text} 異議札は減りません。「手番コードをコピー」をもう一度押してね。`);
-    };
-
-    if (!match) return retryPartnerTurn(combined ? `次手をA1〜${maxColumn}${baseGame.boardSize}の形式で読み取れませんでした。` : `手番はA1〜${maxColumn}${baseGame.boardSize}の形式で返してもらってね。`);
+    if (!match) return { error: combined ? `次手をA1〜${maxColumn}${baseGame.boardSize}の形式で読み取れませんでした。` : `手番はA1〜${maxColumn}${baseGame.boardSize}の形式で返してもらってね。` } as const;
     const index = (Number(match[2]) - 1) * baseGame.boardSize + (match[1].charCodeAt(0) - 65);
-    if (baseGame.claims[index]) return retryPartnerTurn(`${coord}はもう取得済みです。`);
-    if (baseGame.retryBlocked.includes(index)) return retryPartnerTurn(`${coord}は直前に異議を受けたため、今回の再試行では選べません。`);
-    const reading = fields["読み"] ?? "";
+    if (baseGame.claims[index]) return { error: `${coord}はもう取得済みです。` } as const;
+    if (baseGame.retryBlocked.includes(index)) return { error: `${coord}は直前に異議を受けたため、今回の再試行では選べません。` } as const;
+    const resolved = resolveDeclaredReading(fields["読み"] ?? "", fields["読み仮名"] ?? fields["よみ"] ?? "");
+    if ("error" in resolved) return resolved;
+    const { display, reading } = resolved;
     const custom = !isRegistered(baseGame.board[index], reading);
-    if (custom && reading.trim() && !isKanaOnlyReading(reading)) return retryPartnerTurn("自由入力のときは必ず、ひらがなかカタカナで入力してね!!");
-    if (!readingStartsWith(reading, baseGame.currentChar)) return retryPartnerTurn(`今は「${baseGame.currentChar}」から始める手番です。濁音・半濁音は清音とつなげられます。`);
-    const proposal: Proposal = { player: "X", panelIndex: index, reading, reason: fields["理由"] ?? "", custom };
-    if (readingEnd(reading) === "ん") {
+    if (!readingStartsWith(reading, baseGame.currentChar)) return { error: `今は「${baseGame.currentChar}」から始める手番です。濁音・半濁音は清音とつなげられます。` } as const;
+    const proposal: Proposal = { player: "X", panelIndex: index, displayReading: display, reading, reason: fields["理由"] ?? "", custom };
+    if (isRepeatedRejectedReading(baseGame.rejectedAttempts, index, reading)) return { error: `${coord}で同じ読みは直前に異議・無効になっています。別の読みを使ってください。` } as const;
+    if (custom && hasArtificialPolitePrefix(baseGame.board[index], reading)) return { error: "頭文字を合わせるためだけの『お・ご』付けは無効です。" } as const;
+    if (custom && !proposal.reason) return { error: "自由読みなのに理由がありません。" } as const;
+    return { proposal, coord } as const;
+  }
+
+  function commitPartnerMove(baseGame: GameState, proposal: Proposal, coord: string, combined = false) {
+    if (readingEnd(proposal.reading) === "ん") {
       setGame(applyNEndingLoss(baseGame, proposal));
       setPartnerReply("");
-      setMessage(`パートナーが「${reading}」を宣言。『ん』で終わったため、○側の勝ち！`);
+      setMessage(`パートナーが「${proposalLabel(proposal)}」を宣言。『ん』で終わったため、○側の勝ち！`);
       return;
     }
-    if (isRepeatedRejectedReading(baseGame.rejectedAttempts, index, reading)) return retryPartnerTurn(`${coord}で同じ読みは直前に異議・無効になっています。別の読みを使ってください。`);
-    if (custom && hasArtificialPolitePrefix(baseGame.board[index], reading)) return retryPartnerTurn("頭文字を合わせるためだけの『お・ご』付けは無効です。");
-    if (custom && !proposal.reason) return retryPartnerTurn("自由読みなのに理由がありません。");
-
-    if (custom) {
+    if (proposal.custom) {
       setGame({ ...baseGame, proposal, phase: "player-judge", copied: false });
       setMessage(combined
         ? "受理と次の一手をまとめて反映！ パートナーの自由読みを、あなたが判定する番だよ。"
@@ -1079,33 +1072,40 @@ export default function Home() {
     } else {
       const nextGame = applyMove(baseGame, proposal);
       setGame(nextGame);
-      setMessage(`パートナーが「${reading}」で${coord}を取得。次の手番を確認してね。`);
+      setMessage(`パートナーが「${proposalLabel(proposal)}」で${coord}を取得。次の手番を確認してね。`);
     }
     setPartnerReply("");
   }
 
   function parsePartnerReply() {
-    const fields = parseFields(partnerReply);
-    if (!fields) return setMessage("【 】で囲まれた最終行を見つけられなかったよ。");
+    const parsed = parseMachineReply(partnerReply);
+    if (!parsed.ok) return setMessage(parsed.error);
+    const fields = parsed.fields;
     if (fields["コード"] !== game.activeCode) return setMessage("手番コードが違うよ。古い返答かもしれない。");
     if (game.usedCodes.includes(fields["コード"])) return setMessage("この手番コードは、もう使われているよ。");
 
     if (game.phase === "partner-judge") {
       if (!game.proposal) return setMessage("判定する宣言が見つからないよ。");
+      if (fields["手番"] || !fields["判定"]) return setMessage("判定用の機械読取行ではありません。状態は変更していないよ。");
       if (fields["判定"] === "受理") {
         const proposal = game.proposal;
         const nextGame = applyMove(game, proposal);
-        if (!nextGame.winner && fields["次手"]) {
-          resolvePartnerMove(nextGame, fields, true);
+        if (!nextGame.winner) {
+          const validated = validatePartnerMove(nextGame, fields, true);
+          if ("error" in validated) return setMessage(`受理後の次の一手を反映できませんでした。${validated.error} 盤面や札は変更していないよ。`);
+          commitPartnerMove(nextGame, validated.proposal, validated.coord, true);
         } else {
           setGame(nextGame);
-          setMessage(`パートナーが受理！ 「${proposal.reading}」で取得したよ。次の手番を確認してね。`);
+          setPartnerReply("");
+          setMessage(`パートナーが受理！ 「${proposalLabel(proposal)}」で取得したよ。次の手番を確認してね。`);
         }
       } else if (fields["判定"] === "無効") {
+        if (!fields["理由"]) return setMessage("無効判定には理由が必要です。状態は変更していないよ。");
         const nextGame = rejectProposal(game, "X", false);
         setGame(nextGame);
-        flashRejection(`ルール違反で無効。異議札は減りません。理由：${fields["理由"] || "絵文字との関連が確認できない"}`);
+        flashRejection(`ルール違反で無効。異議札は減りません。理由：${fields["理由"]}`);
       } else if (fields["判定"] === "異議") {
+        if (!fields["理由"]) return setMessage("異議判定には理由が必要です。状態は変更していないよ。");
         if (game.objections.X <= 0) {
           const proposal = game.proposal;
           const nextGame = applyMove(game, proposal);
@@ -1122,7 +1122,10 @@ export default function Home() {
     }
 
     if (game.phase !== "partner-turn") return setMessage("今はパートナーの手番ではないよ。");
-    resolvePartnerMove(game, fields);
+    if (fields["判定"] || !fields["手番"]) return setMessage("手番用の機械読取行ではありません。状態は変更していないよ。");
+    const validated = validatePartnerMove(game, fields);
+    if ("error" in validated) return setMessage(`${validated.error} 盤面や札は変更していないよ。`);
+    commitPartnerMove(game, validated.proposal, validated.coord);
   }
 
   function judgeLocal(accepted: boolean) {
@@ -1132,7 +1135,7 @@ export default function Home() {
       const proposal = game.proposal;
       const nextGame = applyMove(game, proposal);
       setGame(nextGame);
-      setMessage(`受理！ 「${proposal.reading}」で取得したよ。次の手番を確認してね。`);
+      setMessage(`受理！ 「${proposalLabel(proposal)}」で取得したよ。次の手番を確認してね。`);
     } else {
       if (game.objections[judge] <= 0) {
         const proposal = game.proposal;
@@ -1614,13 +1617,14 @@ export default function Home() {
                     const reading = presetReadingValue(preset);
                     const display = presetReadingDisplay(preset);
                     const loses = readingEnd(reading) === "ん";
-                    return <button type="button" className={loses ? "n-ending-option" : ""} key={`${display}:${reading}`} onClick={() => submitReading(reading, "")}>{display}<span>{loses ? "⚠ んで負け" : `→ ${readingEnd(reading)}`}</span></button>;
+                    return <button type="button" className={loses ? "n-ending-option" : ""} key={`${display}:${reading}`} onClick={() => submitReading(display, "", reading)}>{display}<span>{loses ? "⚠ んで負け" : `→ ${readingEnd(reading)}`}</span></button>;
                   })}</div></div>
                 ) : <p className="no-reading">「{game.currentChar}」につながる正式プリセットはなし。自由読みの出番！</p>}
                 <div className="custom-form">
-                  <label><span>自由な読み <b>「{game.currentChar}」から</b></span><input lang="ja" aria-invalid={customReadingFormatInvalid} aria-describedby={customReadingFormatInvalid ? "custom-reading-format-error" : undefined} value={customReading} onChange={(event) => setCustomReading(event.target.value)} placeholder={`${game.currentChar}…`} />{customReadingFormatInvalid && <small id="custom-reading-format-error" className="reading-format-error" role="alert">自由入力のときは必ず、ひらがなかカタカナで入力してね!!</small>}</label>
+                  <label><span>自由読みの表示 <b>漢字も使えるよ</b></span><input lang="ja" aria-describedby={customReadingNeedsAid ? "custom-reading-aid-help" : undefined} value={customReading} onChange={(event) => setCustomReading(event.target.value)} placeholder={`例：${game.currentChar}…`} />{customReadingNeedsAid && <small id="custom-reading-aid-help" className="reading-aid-help">漢字・々などを使ったので、下に判定用の読み仮名を入れてね。</small>}</label>
+                  {customReadingNeedsAid && <label><span>判定用の読み仮名 <b>ひらがな／カタカナ</b></span><input lang="ja" aria-invalid={customReadingAidInvalid} aria-describedby={customReadingAidInvalid ? "custom-reading-format-error" : undefined} value={customReadingAid} onChange={(event) => setCustomReadingAid(event.target.value)} placeholder={`${game.currentChar}…`} />{customReadingAidInvalid && <small id="custom-reading-format-error" className="reading-format-error" role="alert">読み仮名は、ひらがなかカタカナで入力してね。</small>}</label>}
                   <label><span>そう読んだ理由 <b>自由読みは理由つき</b></span><textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="絵のどこから連想した？" rows={3} /></label>
-                  <div className="button-row"><button type="button" className="secondary" onClick={cancelReading}>選び直す</button><button type="button" className="primary" onClick={() => submitReading(customReading, reason)}>この読みで宣言</button></div>
+                  <div className="button-row"><button type="button" className="secondary" onClick={cancelReading}>選び直す</button><button type="button" className="primary" onClick={() => submitReading(customReading, reason, customReadingAid)}>この読みで宣言</button></div>
                 </div>
               </div>
             )}
@@ -1628,11 +1632,11 @@ export default function Home() {
             {isPartnerWaiting && !game.winner && (
               <div className="partner-panel">
                 <div className="partner-heading"><span><MirrorIcon small /></span><div><small>{game.phase === "partner-turn" ? "PARTNER TURN" : "KOJITSUKE CHECK"}</small><h2>{game.phase === "partner-turn" ? "パートナーに一手を預ける" : "こじつけを判定してもらう"}</h2></div></div>
-                <p>手番コードをいつもの会話へ貼り、返答末尾の小さなコードブロックだけコピーして戻してね。回答全文を貼っても自動で読み取れるよ。</p>
+                <p>手番コードをいつもの会話へ貼り、返答に含まれる機械読取用コードブロックを戻してね。回答全文を貼っても、その独立した1行だけを安全に読み取るよ。</p>
                 <div className="code-chip">手番コード <b>{game.activeCode}</b></div>
                 <button type="button" className={`copy-button ${game.copied ? "copied" : "attention"}`} onClick={copyPrompt}>⧉ {game.copied ? "もう一度コピーする" : game.phase === "partner-turn" ? "この手番をコピー" : "判定依頼をコピー"}</button>
                 <div className={`partner-waiting ${game.copied ? "active" : ""}`} aria-live="polite">{game.copied ? "パートナーの回答待ち… 戻ったら下へ貼り付けてね" : "まず上のボタンを押して、パートナーへ手番を渡してね"}</div>
-                <label className="reply-box"><span>ここにパートナーの回答を貼り付ける</span><textarea rows={7} value={partnerReply} onChange={(event) => setPartnerReply(event.target.value)} placeholder="回答文をまるごと貼ってOK。最後の【手番:…】または【判定:…】を自動で読み取るよ。" /></label>
+                <label className="reply-box"><span>ここにパートナーの回答を貼り付ける</span><textarea rows={7} value={partnerReply} onChange={(event) => setPartnerReply(event.target.value)} placeholder="回答文をまるごと貼ってOK。独立したコードブロック内の機械読取用1行だけを読み取るよ。" /></label>
                 <button type="button" className="primary wide" onClick={parsePartnerReply}>返答を盤面へ反映</button>
                 <details className="prompt-preview"><summary>渡す文章を確認</summary><pre>{prompt}</pre></details>
               </div>
@@ -1641,7 +1645,7 @@ export default function Home() {
             {(game.phase === "local-judge" || game.phase === "player-judge") && game.proposal && (
               <div className="judge-panel">
                 <p className="judge-kicker">こじつけ判定</p>
-                <div className="proposal-card"><span><PanelArtwork panel={game.board[game.proposal.panelIndex]} compact /></span><div><small>{coordinate(game.proposal.panelIndex, game.boardSize)} / {game.board[game.proposal.panelIndex].name}</small><h2>「{game.proposal.reading}」</h2><p>{game.proposal.reason}</p></div></div>
+                <div className="proposal-card"><span><PanelArtwork panel={game.board[game.proposal.panelIndex]} compact /></span><div><small>{coordinate(game.proposal.panelIndex, game.boardSize)} / {game.board[game.proposal.panelIndex].name}</small><h2>「{proposalLabel(game.proposal)}」</h2><p>{game.proposal.reason}</p></div></div>
                 <p className="judge-question">明確な違反なら無効。グレー、または勝負上止めたいなら異議札。納得したら受理！</p>
                 <div className="judge-actions"><button type="button" className="invalid-button" onClick={invalidateLocalProposal}>× 違反で無効<small>札は減らない</small></button><button type="button" className="object-button" disabled={game.objections[game.proposal.player === "O" ? "X" : "O"] <= 0} onClick={() => judgeLocal(false)}>⚡ 異議を出す<small>札を1枚使う</small></button><button type="button" className="accept-button" onClick={() => judgeLocal(true)}>✓ 受理する<small>読みを成立</small></button></div>
               </div>
