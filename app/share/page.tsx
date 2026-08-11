@@ -3,13 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { WIN_LINES_4, type Player } from "../game-rules";
+import { winLinesFor, type BoardSize, type Player } from "../game-rules";
 import { decodeShareState, type ShareState, type SharedPhase } from "../share-state";
 
-const WIN_LINES = WIN_LINES_4;
-
-function coordinate(index: number) {
-  return `${String.fromCharCode(65 + (index % 4))}${Math.floor(index / 4) + 1}`;
+function coordinate(index: number, boardSize: BoardSize) {
+  return `${String.fromCharCode(65 + (index % boardSize))}${Math.floor(index / boardSize) + 1}`;
 }
 
 function phaseLabel(phase: SharedPhase, winner: ShareState["winner"]) {
@@ -27,10 +25,10 @@ function phaseLabel(phase: SharedPhase, winner: ShareState["winner"]) {
 
 function battleSituation(state: ShareState) {
   const count = (player: Player) => state.claims.filter((claim) => claim === player).length;
-  const threats = WIN_LINES.flatMap((line) => (["O", "X"] as Player[]).flatMap((player) => {
+  const threats = winLinesFor(state.boardSize).flatMap((line) => (["O", "X"] as Player[]).flatMap((player) => {
     const owned = line.filter((index) => state.claims[index] === player);
     const empty = line.filter((index) => !state.claims[index]);
-    return owned.length === 3 && empty.length === 1 ? [`${player}は${coordinate(empty[0])}で勝利`]: [];
+    return owned.length === state.boardSize - 1 && empty.length === 1 ? [`${player}は${coordinate(empty[0], state.boardSize)}で勝利`]: [];
   }));
   return `○ ${count("O")}マス／× ${count("X")}マス。${threats.length ? `勝利候補：${threats.join("、")}` : "次の一手で完成するラインはなし。"}`;
 }
@@ -61,7 +59,7 @@ export default function SharePage() {
       "盤面：",
       ...state.board.map((panel, index) => {
         const claim = state.claims[index] ? `${state.claims[index]}取得済み` : state.retryBlocked.includes(index) ? "空き（今回の再試行では選択不可）" : "空き";
-        return `${coordinate(index)}｜カードID:${panel.id}｜見た目:${panel.visualDescription}｜登録読み:${panel.readings.join("・")}｜取得状態:${claim}｜現在の文字:${state.currentChar}｜戦況:${status}`;
+        return `${coordinate(index, state.boardSize)}｜カードID:${panel.id}｜見た目:${panel.visualDescription}｜登録読み:${panel.readings.join("・")}｜取得状態:${claim}｜現在の文字:${state.currentChar}｜戦況:${status}`;
       }),
     ].join("\n");
   }, [state]);
@@ -102,14 +100,14 @@ export default function SharePage() {
 
         <p className="share-battle"><b>現在の戦況：</b>{battleSituation(state)}</p>
 
-        <section className="share-board" aria-label="共有された4×4のゲーム盤。閲覧専用">
+        <section className={`share-board board-size-${state.boardSize}`} aria-label={`共有された${state.boardSize}×${state.boardSize}のゲーム盤。閲覧専用`}>
           {state.board.map((panel, index) => {
             const claim = state.claims[index];
             const winning = state.winningLine.includes(index);
             const blocked = state.retryBlocked.includes(index) && !claim;
             return (
               <article key={`${panel.id}-${index}`} className={`share-tile ${claim ? `claimed ${claim.toLowerCase()}` : ""} ${winning ? "winning" : ""} ${blocked ? "retry-blocked" : ""}`}>
-                <span className="share-coordinate">{coordinate(index)}</span>
+                <span className="share-coordinate">{coordinate(index, state.boardSize)}</span>
                 <span className="share-emoji" aria-hidden="true">{panel.icon}</span>
                 <strong>{panel.name}</strong>
                 <small>{claim ? `${claim}取得済み` : blocked ? "異議で選択不可" : "空き"}</small>

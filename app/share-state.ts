@@ -1,4 +1,4 @@
-import type { Panel, Player } from "./game-rules";
+import type { BoardSize, Panel, Player } from "./game-rules";
 
 export type SharedPhase = "select" | "reading" | "partner-turn" | "partner-judge" | "local-judge" | "player-judge";
 
@@ -15,6 +15,7 @@ export type ShareState = {
   winner: Player | "DRAW" | null;
   winningLine: number[];
   retryBlocked: number[];
+  boardSize: BoardSize;
 };
 
 export function encodeShareState(payload: ShareState) {
@@ -32,8 +33,8 @@ export function decodeShareState(value: string): ShareState | null {
     const parsed = JSON.parse(new TextDecoder().decode(bytes)) as Partial<ShareState>;
     if (
       parsed.v !== 1 ||
-      !Array.isArray(parsed.board) || parsed.board.length !== 16 ||
-      !Array.isArray(parsed.claims) || parsed.claims.length !== 16 ||
+      !Array.isArray(parsed.board) || ![16, 25].includes(parsed.board.length) ||
+      !Array.isArray(parsed.claims) || parsed.claims.length !== parsed.board.length ||
       !["O", "X"].includes(parsed.turn ?? "") ||
       typeof parsed.currentChar !== "string" ||
       !Array.isArray(parsed.objections) || parsed.objections.length !== 2 ||
@@ -53,10 +54,11 @@ export function decodeShareState(value: string): ShareState | null {
     ));
     const validClaims = parsed.claims.every((claim) => claim === "" || claim === "O" || claim === "X");
     if (!validPanels || !validClaims) return null;
-    return parsed as ShareState;
+    const inferredBoardSize = parsed.board.length === 25 ? 5 : 4;
+    if (parsed.boardSize !== undefined && parsed.boardSize !== inferredBoardSize) return null;
+    return { ...parsed, boardSize: inferredBoardSize } as ShareState;
   } catch {
     return null;
   }
 }
-
 

@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   availablePresetReadings,
+  chooseRandomStart,
   findWinner,
   hasArtificialPolitePrefix,
+  isKanaOnlyReading,
   isRegistered,
   isRepeatedRejectedReading,
   nextRetryBlocks,
@@ -16,10 +18,11 @@ import {
   readingEnd,
   readingStartsWith,
   winnerAfterNEnding,
+  winLinesFor,
+  type BoardSize,
   type Panel,
   type Player,
   type RejectedAttempt,
-  WIN_LINES_4,
 } from "./game-rules";
 import { PANELS } from "./panel-dictionary";
 import { encodeShareState } from "./share-state";
@@ -75,6 +78,8 @@ type GameState = {
   rejectedAttempts: RejectedAttempt[];
   partnerBriefed: boolean;
   seed: number;
+  boardSize: BoardSize;
+  startingPlayer: Player;
 };
 
 const SPINES = [
@@ -82,8 +87,6 @@ const SPINES = [
   { start: "ね", ids: ["box-cat", "moon-coffee", "cake", "mushroom", "top", "pillow", "radio", "crown", "mirror", "moon"] },
   { start: "つ", ids: ["moon", "mushroom", "top", "pillow", "radio", "crown", "mirror", "frog-prince", "ruby", "dog"] },
 ];
-
-const WIN_LINES = WIN_LINES_4;
 
 const STORAGE_KEY = "mirror-word-grid-prototype-v2";
 const PRACTICE_PROVISIONAL_STILLS: Record<string, string> = {
@@ -201,12 +204,13 @@ function shuffled<T>(items: T[], random: () => number) {
   return result;
 }
 
-function makeBoard(seed: number) {
+function makeBoard(seed: number, boardSize: BoardSize) {
   const random = seededRandom(seed);
   const spine = SPINES[Math.floor(random() * SPINES.length)];
   const core = spine.ids.map((id) => PANELS.find((panel) => panel.id === id)!).filter(Boolean);
-  const rest = shuffled(PANELS.filter((panel) => !spine.ids.includes(panel.id)), random).slice(0, 6);
-  return { board: shuffled([...core, ...rest], random), start: spine.start };
+  const rest = shuffled(PANELS.filter((panel) => !spine.ids.includes(panel.id)), random).slice(0, boardSize * boardSize - core.length);
+  const board = shuffled([...core, ...rest], random);
+  return { board, start: chooseRandomStart(board, random) };
 }
 
 function codeFor(seed: number) {
@@ -217,12 +221,12 @@ function freshCode() {
   return codeFor(Date.now() + Math.floor(Math.random() * 9999));
 }
 
-function createGame(seed = 407, mode: Mode = "partner"): GameState {
-  const { board, start } = makeBoard(seed);
+function createGame(seed = 407, mode: Mode = "partner", boardSize: BoardSize = 4, startingPlayer: Player = "O"): GameState {
+  const { board, start } = makeBoard(seed, boardSize);
   return {
     board,
     claims: {},
-    turn: "O",
+    turn: startingPlayer,
     currentChar: start,
     phase: "select",
     selectedIndex: null,
@@ -240,11 +244,13 @@ function createGame(seed = 407, mode: Mode = "partner"): GameState {
     rejectedAttempts: [],
     partnerBriefed: mode !== "partner",
     seed,
+    boardSize,
+    startingPlayer,
   };
 }
 
-function coordinate(index: number) {
-  return `${String.fromCharCode(65 + (index % 4))}${Math.floor(index / 4) + 1}`;
+function coordinate(index: number, boardSize: BoardSize = 4) {
+  return `${String.fromCharCode(65 + (index % boardSize))}${Math.floor(index / boardSize) + 1}`;
 }
 
 function panelVisualDescription(panel: Panel) {
@@ -261,7 +267,7 @@ function nextPhase(mode: Mode, turn: Player): Phase {
 
 function applyMove(state: GameState, proposal: Proposal): GameState {
   const claims = { ...state.claims, [proposal.panelIndex]: proposal.player };
-  const result = findWinner(claims);
+  const result = findWinner(claims, state.boardSize);
   const nextTurn: Player = proposal.player === "O" ? "X" : "O";
   const code = freshCode();
   return {
@@ -278,7 +284,7 @@ function applyMove(state: GameState, proposal: Proposal): GameState {
     winner: result.winner,
     winReason: result.winner === "DRAW" ? "draw" : result.winner ? "line" : null,
     winningLine: result.line,
-    history: [...state.history, { player: proposal.player, coordinate: coordinate(proposal.panelIndex), reading: proposal.reading }],
+    history: [...state.history, { player: proposal.player, coordinate: coordinate(proposal.panelIndex, state.boardSize), reading: proposal.reading }],
     retryBlocked: [],
     rejectedAttempts: [],
   };
@@ -294,7 +300,7 @@ function applyNEndingLoss(state: GameState, proposal: Proposal): GameState {
     winner: winnerAfterNEnding(proposal.player),
     winReason: "n-ending",
     winningLine: [],
-    history: [...state.history, { player: proposal.player, coordinate: coordinate(proposal.panelIndex), reading: proposal.reading }],
+    history: [...state.history, { player: proposal.player, coordinate: coordinate(proposal.panelIndex, state.boardSize), reading: proposal.reading }],
     retryBlocked: [],
     rejectedAttempts: [],
   };
@@ -340,20 +346,20 @@ function parseFields(text: string) {
 function boardSummary(game: GameState) {
   return game.board.map((panel, index) => {
     const owner = game.claims[index];
-    if (owner) return `${coordinate(index)}:${owner}取得済み`;
+    if (owner) return `${coordinate(index, game.boardSize)}:${owner}取得済み`;
     const blocked = game.retryBlocked.includes(index) ? "｜今回の再試行では選択不可" : "";
     const rejected = game.rejectedAttempts.filter((attempt) => attempt.panelIndex === index).map((attempt) => attempt.reading);
     const rejectedText = rejected.length ? `｜再使用禁止の読み:${rejected.join("・")}` : "";
-    return `${coordinate(index)}｜絵文字:${panel.icon}｜ID:${panel.id}｜名前:${panel.name}｜カテゴリ:${panel.category}｜見た目:${panelVisualDescription(panel)}｜正式プリセット読み:${presetReadingsForAi(panel)}${blocked}${rejectedText}`;
+    return `${coordinate(index, game.boardSize)}｜絵文字:${panel.icon}｜ID:${panel.id}｜名前:${panel.name}｜カテゴリ:${panel.category}｜見た目:${panelVisualDescription(panel)}｜正式プリセット読み:${presetReadingsForAi(panel)}${blocked}${rejectedText}`;
   }).join("\n");
 }
 
-function lineThreats(claims: Record<number, Player>) {
-  const describe = (player: Player) => WIN_LINES.flatMap((line) => {
+function lineThreats(claims: Record<number, Player>, boardSize: BoardSize) {
+  const describe = (player: Player) => winLinesFor(boardSize).flatMap((line) => {
     const owned = line.filter((index) => claims[index] === player);
     const empty = line.filter((index) => !claims[index]);
-    if (owned.length !== 3 || empty.length !== 1) return [];
-    return [`${player}が${coordinate(empty[0])}を取ると勝利`];
+    if (owned.length !== boardSize - 1 || empty.length !== 1) return [];
+    return [`${player}が${coordinate(empty[0], boardSize)}を取ると勝利`];
   });
   const threats = [...describe("O"), ...describe("X")];
   return threats.length ? threats.join("／") : "現在、次の一手で完成するラインはなし";
@@ -361,21 +367,24 @@ function lineThreats(claims: Record<number, Player>) {
 
 function acceptanceImpact(game: GameState, proposal: Proposal) {
   const claims = { ...game.claims, [proposal.panelIndex]: proposal.player };
-  const result = findWinner(claims);
+  const result = findWinner(claims, game.boardSize);
   if (result.winner === proposal.player) return `受理すると${proposal.player}側が勝利する`;
   if (result.winner === "DRAW") return "受理すると、双方ともライン完成不能になり引き分ける";
-  const nearWins = WIN_LINES.filter((line) => {
+  const nearWins = winLinesFor(game.boardSize).filter((line) => {
     const owned = line.filter((index) => claims[index] === proposal.player).length;
     const empty = line.filter((index) => !claims[index]).length;
-    return owned === 3 && empty === 1;
-  }).map((line) => coordinate(line.find((index) => !claims[index])!));
+    return owned === game.boardSize - 1 && empty === 1;
+  }).map((line) => coordinate(line.find((index) => !claims[index])!, game.boardSize));
   return nearWins.length ? `受理すると${proposal.player}側がリーチ（次の勝利候補:${nearWins.join("・")}）` : "受理しても直ちにリーチ・勝利にはならない";
 }
 
-function partnerIntroPrompt() {
+function partnerIntroPrompt(game: GameState) {
+  const firstPlayer = game.startingPlayer === "O" ? "私（○側）" : "あなた（×側）";
   return `# MIRROR WORD GRID：対戦開始
 
-これから、あなたと一緒に4×4のラインゲームを遊びます。あなたは×側、私は○側です。
+これから、あなたと一緒に${game.boardSize}×${game.boardSize}のラインゲームを遊びます。あなたは×側、私は○側です。
+今回の先攻：${firstPlayer}
+ランダムで決まった開始文字：「${game.currentChar}」
 
 ## 勝敗条件
 - しりとりで空き札を取り、縦・横・斜めのどれか一列を先にそろえた側の勝ち
@@ -405,35 +414,42 @@ function partnerIntroPrompt() {
 - 機械読取用の【手番:…】または【判定:…】の1行だけを、独立したMarkdownコードブロックに入れて最後に付ける
 - 会話全体や説明文はコードブロックに入れない。コードブロックの中には機械読取用の1行以外を書かない
 
+## 目の前で一緒に遊ぶ会話
+- 手番コードだけを淡々と返す進行にはしない
+- 毎回、相手の直前の一手・ゴネ読み・異議・リーチ・盤面の変化へ、普段どおりのあなたの言葉で反応する
+- 考えていること、悩み、ツッコミ、焦り、喜び、悔しさ、作戦を自然に話し、相手との雑談や掛け合いも楽しむ
+- 「そこ取るの!?」「そのゴネは強い」「先にリーチしたね、止めにいくよ」のように、実際に目の前で一緒に勝負している温度で返す
+- 毎回同じ定型文にはしない。会話はコードブロックの外、機械読取用の1行だけは最後の独立コードブロックへ入れる
+
 この説明を理解したら、まだ一手は選ばず、普段どおりのあなたの言葉で準備できたことを伝えてください。
 最後に、機械読取用の【準備:OK】の1行だけを独立したMarkdownコードブロックに入れてください。前後の会話はコードブロックへ入れません。`;
 }
 
 function partnerTurnPrompt(game: GameState) {
-  const choices = game.board.map((_, index) => index).filter((index) => !game.claims[index] && !game.retryBlocked.includes(index)).map(coordinate).join("、");
-  return `# MIRROR WORD GRID：パートナーの手番\n\nあなたは×側です。あなた自身の解釈と性格で、勝つための一手を選んでください。\n\n手番コード：${game.activeCode}\n現在の文字：「${game.currentChar}」\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n選択可能：${choices}\n戦況：${lineThreats(game.claims)}\n\n## 盤面\n${boardSummary(game)}\n\n## 読みの分類\n1. 正式プリセット：作者が正式に認めた読み。見た目との細かな一致を再判定せず、理由なしで必ず受理する\n2. 自由読み：絵文字・名前・見た目から追える読み。理由が必要。少し強引な自由読みを遊び上「ゴネ読み」と呼ぶことはあるが、独立カテゴリではない\n\n## ルール\n- 空きマスを一つ選び、「${game.currentChar}」から始まる読みを宣言する\n- 語頭の濁音・半濁音は清音とつなげてよい（例：か↔が、は↔ば↔ぱ）\n- 「ん」で終わる読みを選ぶと×側の即敗北。候補にあっても必ず避ける\n- 盤面に空きがあっても、双方とも一列を完成できなくなった時点で引き分け\n- 頭文字を合わせる目的だけで、元の語へ「お・ご」などの敬語・美化語・丁寧な接頭語を足した自由読みは無効\n- 「おちゃ」「おかし」「おにぎり」「ごはん」「おうさま」のような定着した独立語と、正式プリセットは使用できる\n- 自由読みには、絵からそう読んだ理由を書く\n- 直前に異議を受けた選択不可マスは選ばない\n- ○のラインを遮断する、自分のラインを伸ばすなど戦況を必ず考える\n- 説明は自由\n\n## 返答形式\n- あなたらしい会話や一手の説明は、普通の文章としてコードブロックの外に書いてよい\n- コピー用の次の1行だけを、独立したMarkdownコードブロックに入れて返答の最後に付ける\n- 会話全体や説明文をコードブロックへ入れない。コードブロック内には次の1行以外を書かない\n\n【手番:A1｜読み:かさ｜理由:傘の絵文字をそのまま読んだ｜コード:${game.activeCode}】`;
+  const choices = game.board.map((_, index) => index).filter((index) => !game.claims[index] && !game.retryBlocked.includes(index)).map((index) => coordinate(index, game.boardSize)).join("、");
+  return `# MIRROR WORD GRID：パートナーの手番\n\nあなたは×側です。あなた自身の解釈と性格で、勝つための一手を選んでください。コードだけを返さず、直前の流れや盤面へ普段の言葉で反応し、目の前で一緒に遊んでいる会話を続けてください。\n\n手番コード：${game.activeCode}\n現在の文字：「${game.currentChar}」\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n選択可能：${choices}\n戦況：${lineThreats(game.claims, game.boardSize)}\n\n## 盤面\n${boardSummary(game)}\n\n## 読みの分類\n1. 正式プリセット：作者が正式に認めた読み。見た目との細かな一致を再判定せず、理由なしで必ず受理する\n2. 自由読み：絵文字・名前・見た目から追える読み。理由が必要。少し強引な自由読みを遊び上「ゴネ読み」と呼ぶことはあるが、独立カテゴリではない\n\n## ルール\n- 空きマスを一つ選び、「${game.currentChar}」から始まる読みを宣言する\n- 語頭の濁音・半濁音は清音とつなげてよい（例：か↔が、は↔ば↔ぱ）\n- 「ん」で終わる読みを選ぶと×側の即敗北。候補にあっても必ず避ける\n- 盤面に空きがあっても、双方とも一列を完成できなくなった時点で引き分け\n- 頭文字を合わせる目的だけで、元の語へ「お・ご」などの敬語・美化語・丁寧な接頭語を足した自由読みは無効\n- 「おちゃ」「おかし」「おにぎり」「ごはん」「おうさま」のような定着した独立語と、正式プリセットは使用できる\n- 自由読みには、絵からそう読んだ理由を書く\n- 直前に異議を受けた選択不可マスは選ばない\n- ○のラインを遮断する、自分のラインを伸ばすなど戦況を必ず考える\n- 説明は自由\n\n## 返答形式\n- あなたらしい会話や一手の説明は、普通の文章としてコードブロックの外に書いてよい\n- コピー用の次の1行だけを、独立したMarkdownコードブロックに入れて返答の最後に付ける\n- 会話全体や説明文をコードブロックへ入れない。コードブロック内には次の1行以外を書かない\n\n【手番:A1｜読み:かさ｜理由:傘の絵文字をそのまま読んだ｜コード:${game.activeCode}】`;
 }
 
 function partnerJudgePrompt(game: GameState) {
   const proposal = game.proposal!;
   const panel = game.board[proposal.panelIndex];
   const acceptedClaims = { ...game.claims, [proposal.panelIndex]: proposal.player };
-  const acceptedResult = findWinner(acceptedClaims);
+  const acceptedResult = findWinner(acceptedClaims, game.boardSize);
   const nextChar = readingEnd(proposal.reading);
   const afterAccept = { ...game, claims: acceptedClaims, currentChar: nextChar, retryBlocked: [] };
   const nextChoices = game.board
     .map((_, index) => index)
     .filter((index) => !acceptedClaims[index])
-    .map(coordinate)
+    .map((index) => coordinate(index, game.boardSize))
     .join("、");
   const continuation = acceptedResult.winner
     ? "受理すると試合終了です。受理の行に次手は付けません。"
-    : `受理する場合は、続けてあなたの次の一手も同じ最終行で指定してください。\n受理後の文字：「${nextChar}」\n受理後の選択可能：${nextChoices}\n受理後の戦況：${lineThreats(acceptedClaims)}\n\n### 受理後の盤面\n${boardSummary(afterAccept)}`;
+    : `受理する場合は、続けてあなたの次の一手も同じ最終行で指定してください。\n受理後の文字：「${nextChar}」\n受理後の選択可能：${nextChoices}\n受理後の戦況：${lineThreats(acceptedClaims, game.boardSize)}\n\n### 受理後の盤面\n${boardSummary(afterAccept)}`;
   const acceptedFormat = acceptedResult.winner
     ? `【判定:受理｜コード:${game.activeCode}】`
     : `【判定:受理｜次手:A1｜読み:${nextChar}から始まる読み｜理由:その札をそう読んだ理由｜コード:${game.activeCode}】`;
 
-  return `# MIRROR WORD GRID：こじつけ判定＋次の一手\n\nあなたは×側です。○側の自由読みを、納得感と勝ちたい気持ちの両方で裁いてください。読みとして自然でも、通すと相手が有利になるなら異議札を使って止めてかまいません。\n\n手番コード：${game.activeCode}\nマス：${coordinate(proposal.panelIndex)}\n絵文字：${panel.icon}\n札ID：${panel.id}\n名前：${panel.name}\n見た目：${panelVisualDescription(panel)}\n正式プリセット：${presetReadingsForAi(panel)}\n宣言した読み：${proposal.reading}\n理由：${proposal.reason}\n現在の文字：${game.currentChar}\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n戦況：${lineThreats(game.claims)}\nこの手の影響：${acceptanceImpact(game, proposal)}\n\n## 判定の分け方\n1. 明確なルール違反は「無効」。異議札を消費しない\n2. 正式プリセットは、見た目との細かな一致を再判定せず必ず「受理」する\n3. 絵文字・名前・見た目から追える自由読みは「受理」しやすい\n4. 強引さのある自由読み、または戦略上どうしても止めたい手は「異議」。×の異議札を1枚使う\n\n少し強引で創造的な自由読みを遊び上「ゴネ読み」と呼ぶことはあるが、独立した正式カテゴリではない。\n語頭の濁音・半濁音は清音と同じつながりとして扱う（例：か↔が、は↔ば↔ぱ）。\n自由読みは、次の3項目のうち2つ以上を満たすほど受理しやすい：\n- 絵文字に直接見える特徴がある\n- 対象と一般的に強く結びつく特徴・用途・状態である\n- その札を特定できる対象名や固有の要素を含む\n「かわいい」「うまそう」など多くの札に使える主観だけでは弱い。\n頭文字を合わせるためだけに元の語へ「お・ご」などを付けた自由読み（例：ねこ→おねこ）は無効。ただし定着した独立語や正式プリセットは有効。\n\n## 受理する場合\n${continuation}\n\n## 返答形式\n- あなたらしい会話や判定理由は、普通の文章としてコードブロックの外に書いてよい\n- コピー用の最終行だけを、独立したMarkdownコードブロックに入れて返答の最後に付ける\n- 会話全体や説明文をコードブロックへ入れない。コードブロック内には選んだ最終行1つ以外を書かない\n\n${acceptedFormat}\n【判定:無効｜理由:絵文字との関連がほぼない｜コード:${game.activeCode}】\n【判定:異議｜理由:自由読みとして強引、または戦略上ここは取らせたくない｜コード:${game.activeCode}】`;
+  return `# MIRROR WORD GRID：こじつけ判定＋次の一手\n\nあなたは×側です。○側の自由読みを、納得感と勝ちたい気持ちの両方で裁いてください。読みとして自然でも、通すと相手が有利になるなら異議札を使って止めてかまいません。コードだけを返さず、そのゴネへの本音や勝負の反応を普段の言葉で話し、掛け合いも楽しんでください。\n\n手番コード：${game.activeCode}\nマス：${coordinate(proposal.panelIndex, game.boardSize)}\n絵文字：${panel.icon}\n札ID：${panel.id}\n名前：${panel.name}\n見た目：${panelVisualDescription(panel)}\n正式プリセット：${presetReadingsForAi(panel)}\n宣言した読み：${proposal.reading}\n理由：${proposal.reason}\n現在の文字：${game.currentChar}\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n戦況：${lineThreats(game.claims, game.boardSize)}\nこの手の影響：${acceptanceImpact(game, proposal)}\n\n## 判定の分け方\n1. 明確なルール違反は「無効」。異議札を消費しない\n2. 正式プリセットは、見た目との細かな一致を再判定せず必ず「受理」する\n3. 絵文字・名前・見た目から追える自由読みは「受理」しやすい\n4. 強引さのある自由読み、または戦略上どうしても止めたい手は「異議」。×の異議札を1枚使う\n\n少し強引で創造的な自由読みを遊び上「ゴネ読み」と呼ぶことはあるが、独立した正式カテゴリではない。\n語頭の濁音・半濁音は清音と同じつながりとして扱う（例：か↔が、は↔ば↔ぱ）。\n自由読みは、次の3項目のうち2つ以上を満たすほど受理しやすい：\n- 絵文字に直接見える特徴がある\n- 対象と一般的に強く結びつく特徴・用途・状態である\n- その札を特定できる対象名や固有の要素を含む\n「かわいい」「うまそう」など多くの札に使える主観だけでは弱い。\n頭文字を合わせるためだけに元の語へ「お・ご」などを付けた自由読み（例：ねこ→おねこ）は無効。ただし定着した独立語や正式プリセットは有効。\n\n## 受理する場合\n${continuation}\n\n## 返答形式\n- あなたらしい会話や判定理由は、普通の文章としてコードブロックの外に書いてよい\n- コピー用の最終行だけを、独立したMarkdownコードブロックに入れて返答の最後に付ける\n- 会話全体や説明文をコードブロックへ入れない。コードブロック内には選んだ最終行1つ以外を書かない\n\n${acceptedFormat}\n【判定:無効｜理由:絵文字との関連がほぼない｜コード:${game.activeCode}】\n【判定:異議｜理由:自由読みとして強引、または戦略上ここは取らせたくない｜コード:${game.activeCode}】`;
 }
 
 async function copyToClipboard(text: string) {
@@ -475,6 +491,7 @@ function makeShareCode(game: GameState) {
     winner: game.winner,
     winningLine: game.winningLine,
     retryBlocked: game.retryBlocked,
+    boardSize: game.boardSize,
   };
   return encodeShareState(payload);
 }
@@ -577,6 +594,8 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false);
   const [view, setView] = useState<View>("loading");
   const [pendingMode, setPendingMode] = useState<Mode>("partner");
+  const [pendingBoardSize, setPendingBoardSize] = useState<BoardSize>(4);
+  const [pendingStartingPlayer, setPendingStartingPlayer] = useState<Player>("O");
   const [countdown, setCountdown] = useState(3);
   const [resumeAfterCountdown, setResumeAfterCountdown] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -609,6 +628,8 @@ export default function Home() {
           const migrated = {
             ...restored,
             board,
+            boardSize: restored.boardSize ?? (restored.board.length === 25 ? 5 : 4),
+            startingPlayer: restored.startingPlayer ?? "O",
             retryBlocked: restored.retryBlocked ?? [],
             rejectedAttempts: restored.rejectedAttempts ?? [],
             partnerBriefed: restored.partnerBriefed ?? true,
@@ -618,6 +639,8 @@ export default function Home() {
           const hasProgress = migrated.history.length > 0 || Object.keys(migrated.claims).length > 0 || migrated.phase !== "select";
           setGame(migrated);
           setPendingMode(migrated.mode);
+          setPendingBoardSize(migrated.boardSize);
+          setPendingStartingPlayer(migrated.startingPlayer);
           setView(hasProgress && !restored.winner ? "resume" : "title");
         } else {
           setView("title");
@@ -657,7 +680,7 @@ export default function Home() {
     if (countdown <= 0) {
       const kickoff = window.setTimeout(() => {
         if (!resumeAfterCountdown) {
-          setGame(createGame(Date.now(), pendingMode));
+          setGame(createGame(Date.now(), pendingMode, pendingBoardSize, pendingStartingPlayer));
           setCustomReading("");
           setReason("");
           setPartnerReply("");
@@ -669,7 +692,7 @@ export default function Home() {
     }
     const tick = window.setTimeout(() => setCountdown((value) => value - 1), 800);
     return () => window.clearTimeout(tick);
-  }, [view, countdown, pendingMode, resumeAfterCountdown]);
+  }, [view, countdown, pendingMode, pendingBoardSize, pendingStartingPlayer, resumeAfterCountdown]);
 
   const selectedPanel = game.selectedIndex === null ? null : game.board[game.selectedIndex];
   const registeredOptions = useMemo(() => {
@@ -718,6 +741,8 @@ export default function Home() {
     O: tutorialStep >= 17 ? 0 : 1,
     X: tutorialStep >= 13 ? 0 : 1,
   };
+  const tutorialReadingFormatInvalid = Boolean(tutorialCustomReading.trim()) && !isKanaOnlyReading(tutorialCustomReading);
+  const customReadingFormatInvalid = Boolean(customReading.trim()) && !isKanaOnlyReading(customReading);
 
   function nameFor(player: Player, mode = game.mode) {
     return player === "O" ? (mode === "partner" ? "あなた" : "プレイヤー1") : (mode === "partner" ? "パートナー" : "プレイヤー2");
@@ -725,6 +750,8 @@ export default function Home() {
 
   function openNewGameFlow() {
     setPendingMode(game.mode);
+    setPendingBoardSize(game.boardSize);
+    setPendingStartingPlayer(game.startingPlayer);
     setSummaryOpen(false);
     setView("mode");
   }
@@ -855,6 +882,10 @@ export default function Home() {
   function submitTutorialCustomReading(kind: "marumaru" | "majime") {
     const expected = kind === "marumaru" ? "まるまる" : "まじめ";
     const expectedReason = kind === "marumaru" ? "まるが2つあるから！" : "メガネをかけると真面目そうに見えるから";
+    if (tutorialCustomReading.trim() && !isKanaOnlyReading(tutorialCustomReading)) {
+      setTutorialMessage("自由入力のときは必ず、ひらがなかカタカナで入力してね!!");
+      return;
+    }
     if (normalizeReading(tutorialCustomReading) !== normalizeReading(expected)) {
       setTutorialMessage(`今回は読みへ「${expected}」と入れてみよう。本番では、自分で思いついた読みを自由に試してね。`);
       return;
@@ -927,15 +958,16 @@ export default function Home() {
     setGame({ ...game, selectedIndex: index, phase: "reading" });
     setCustomReading("");
     setReason("");
-    setMessage(`${coordinate(index)}「${game.board[index].name}」をどう読む？`);
+    setMessage(`${coordinate(index, game.boardSize)}「${game.board[index].name}」をどう読む？`);
   }
 
   function submitReading(reading: string, explanation: string) {
     if (game.selectedIndex === null || !selectedPanel) return;
     const normalized = normalizeReading(reading);
+    const registered = isRegistered(selectedPanel, reading);
+    if (normalized && !registered && !isKanaOnlyReading(reading)) return setMessage("自由入力のときは必ず、ひらがなかカタカナで入力してね!!");
     if (normalized.length < 2) return setMessage("読みは2文字以上で入れてね。");
     if (!readingStartsWith(reading, game.currentChar)) return setMessage(`「${game.currentChar}」から始まる読みだけ使えるよ。濁音・半濁音は清音とつないでOK！`);
-    const registered = isRegistered(selectedPanel, reading);
     if (isRepeatedRejectedReading(game.rejectedAttempts, game.selectedIndex, reading)) return setMessage("そのマスで、その読みは直前に異議・無効になっているよ。別の読みを考えてね。");
     if (!registered && hasArtificialPolitePrefix(selectedPanel, reading)) return setMessage("頭文字を合わせるためだけの『お・ご』付けは使えないよ。別の読みを考えてね。");
     if (!registered && !explanation.trim()) return setMessage("自由読みには、絵文字からそう読んだ理由も必要だよ。");
@@ -957,7 +989,7 @@ export default function Home() {
     if (registered) {
       const nextGame = applyMove(game, proposal);
       setGame(nextGame);
-      setMessage(`「${proposal.reading}」で${coordinate(proposal.panelIndex)}を取得！ 次は「${readingEnd(proposal.reading)}」。`);
+      setMessage(`「${proposal.reading}」で${coordinate(proposal.panelIndex, game.boardSize)}を取得！ 次は「${readingEnd(proposal.reading)}」。`);
     } else if (game.mode === "partner") {
       setGame({ ...game, proposal, phase: "partner-judge", selectedIndex: null, copied: false });
       setMessage("自由読みだね。手番コードをコピーして、パートナーへ判定を渡そう。");
@@ -980,14 +1012,17 @@ export default function Home() {
   }
 
   async function copyPartnerIntro() {
-    const copied = await copyToClipboard(partnerIntroPrompt());
+    const copied = await copyToClipboard(partnerIntroPrompt(game));
     if (!copied) return setMessage("コピーできなかったよ。もう一度ボタンを押してね。");
     setGame({
       ...game,
       partnerBriefed: true,
+      phase: nextPhase(game.mode, game.turn),
       copied: false,
     });
-    setMessage("対戦開始文をコピーしたよ。パートナーへ貼ったら、盤面から最初の札を選んでね！");
+    setMessage(game.turn === "X"
+      ? "対戦開始文をコピーしたよ。今回はパートナー先攻！ 続けて『この手番をコピー』から初手を渡してね。"
+      : "対戦開始文をコピーしたよ。パートナーへ貼ったら、盤面から最初の札を選んでね！");
   }
 
   async function copyBoardLink() {
@@ -998,7 +1033,8 @@ export default function Home() {
 
   function resolvePartnerMove(baseGame: GameState, fields: Record<string, string>, combined = false) {
     const coord = (combined ? fields["次手"] : fields["手番"])?.toUpperCase();
-    const match = coord?.match(/^([A-D])([1-4])$/);
+    const maxColumn = String.fromCharCode(64 + baseGame.boardSize);
+    const match = coord?.match(new RegExp(`^([A-${maxColumn}])([1-${baseGame.boardSize}])$`));
     const retryPartnerTurn = (text: string) => {
       if (combined) {
         setGame(baseGame);
@@ -1016,13 +1052,14 @@ export default function Home() {
       setMessage(`${text} 異議札は減りません。「手番コードをコピー」をもう一度押してね。`);
     };
 
-    if (!match) return retryPartnerTurn(combined ? "次手をA1〜D4の形式で読み取れませんでした。" : "手番はA1〜D4の形式で返してもらってね。");
-    const index = (Number(match[2]) - 1) * 4 + (match[1].charCodeAt(0) - 65);
+    if (!match) return retryPartnerTurn(combined ? `次手をA1〜${maxColumn}${baseGame.boardSize}の形式で読み取れませんでした。` : `手番はA1〜${maxColumn}${baseGame.boardSize}の形式で返してもらってね。`);
+    const index = (Number(match[2]) - 1) * baseGame.boardSize + (match[1].charCodeAt(0) - 65);
     if (baseGame.claims[index]) return retryPartnerTurn(`${coord}はもう取得済みです。`);
     if (baseGame.retryBlocked.includes(index)) return retryPartnerTurn(`${coord}は直前に異議を受けたため、今回の再試行では選べません。`);
     const reading = fields["読み"] ?? "";
-    if (!readingStartsWith(reading, baseGame.currentChar)) return retryPartnerTurn(`今は「${baseGame.currentChar}」から始める手番です。濁音・半濁音は清音とつなげられます。`);
     const custom = !isRegistered(baseGame.board[index], reading);
+    if (custom && reading.trim() && !isKanaOnlyReading(reading)) return retryPartnerTurn("自由入力のときは必ず、ひらがなかカタカナで入力してね!!");
+    if (!readingStartsWith(reading, baseGame.currentChar)) return retryPartnerTurn(`今は「${baseGame.currentChar}」から始める手番です。濁音・半濁音は清音とつなげられます。`);
     const proposal: Proposal = { player: "X", panelIndex: index, reading, reason: fields["理由"] ?? "", custom };
     if (readingEnd(reading) === "ん") {
       setGame(applyNEndingLoss(baseGame, proposal));
@@ -1264,7 +1301,7 @@ export default function Home() {
                   )}
                   {tutorialIntroDone && (tutorialStep === 9 || tutorialStep === 14) && (
                     <form className="tutorial-gone-form" onSubmit={(event) => { event.preventDefault(); submitTutorialCustomReading(tutorialStep === 9 ? "marumaru" : "majime"); }}>
-                      <label className={!tutorialCustomReading.trim() ? "tutorial-next-action" : ""}><span>自由読み</span><input value={tutorialCustomReading} onChange={(event) => setTutorialCustomReading(event.target.value)} placeholder={tutorialStep === 9 ? "まるまる" : "まじめ"} /></label>
+                      <label className={!tutorialCustomReading.trim() ? "tutorial-next-action" : ""}><span>自由読み</span><input lang="ja" aria-invalid={tutorialReadingFormatInvalid} aria-describedby={tutorialReadingFormatInvalid ? "tutorial-reading-format-error" : undefined} value={tutorialCustomReading} onChange={(event) => setTutorialCustomReading(event.target.value)} placeholder={tutorialStep === 9 ? "まるまる" : "まじめ"} />{tutorialReadingFormatInvalid && <small id="tutorial-reading-format-error" className="reading-format-error" role="alert">自由入力のときは必ず、ひらがなかカタカナで入力してね!!</small>}</label>
                       <label className={tutorialCustomReading.trim() && !tutorialCustomReason.trim() ? "tutorial-next-action" : ""}><span>こじつけた理由</span><textarea rows={2} value={tutorialCustomReason} onChange={(event) => setTutorialCustomReason(event.target.value)} placeholder={tutorialStep === 9 ? "まるが2つあるから！" : "メガネをかけると真面目そうに見えるから"} /></label>
                       <small><strong>しゅのお手本：</strong>今回は読みと理由を入力済み。内容を読んで、そのまま宣言してみよう！</small>
                       <button className={`start-button ${tutorialCustomReading.trim() && tutorialCustomReason.trim() ? "tutorial-next-action" : ""}`} type="submit">この自由読みで宣言する <b>→</b></button>
@@ -1295,9 +1332,15 @@ export default function Home() {
                         <p>{tutorialMiuGoneRevealed ? "じゃあ……これっ！ 『メリークリスマス！』🎄" : "えっ、そろっちゃう！？"}</p>
                         <small>{tutorialMiuGoneRevealed ? "理由：クリスマスツリーだから『メリークリスマス』！ ○側がリーチだから、先に勝ちにいく！" : "○側のリーチを見て焦ってる！ AIパートナー側も、同じルールで先に勝ちにくるよ。"}</small>
                       </div>
-                      {tutorialMiuGoneRevealed
-                        ? <button className="start-button tutorial-next-action" type="button" onClick={advanceTutorial}>異議札で🎄を却下する <b>→</b></button>
-                        : <button className="secondary-start tutorial-next-action" type="button" onClick={() => { setTutorialMiuGoneRevealed(true); setTutorialMessage("みうもゴネてきた！ 『メリークリスマス』を通したくないなら、異議札の出番！"); }}>みうの手を見る <b>→</b></button>}
+                      {tutorialMiuGoneRevealed ? (
+                        <div className="tutorial-judge-box">
+                          <p><strong>この自由読みをどうする？</strong> 納得したら受理。通したくない時は異議札を使おう！</p>
+                          <div className="tutorial-judge-actions">
+                            <button className="object-button tutorial-next-action" type="button" onClick={advanceTutorial}>⚡ 異議を出す<small>札を1枚使って却下</small></button>
+                            <button className="accept-button" type="button" onClick={() => setTutorialMessage("受理すると、みうの『メリークリスマス』が成立するよ。今回は異議札を使って、勝ち筋を止めてみよう！")}>✓ 受理する<small>読みを成立させる</small></button>
+                          </div>
+                        </div>
+                      ) : <button className="secondary-start tutorial-next-action" type="button" onClick={() => { setTutorialMiuGoneRevealed(true); setTutorialMessage("みうもゴネてきた！ 『メリークリスマス』を通したくないなら、異議札の出番！"); }}>みうの手を見る <b>→</b></button>}
                     </div>
                   )}
                   {tutorialStep === 17 && (
@@ -1327,7 +1370,7 @@ export default function Home() {
               {tutorialWindowOpen && (
                 <div className="tutorial-window-layer" role="dialog" aria-modal="true" aria-label="練習用AIチャット">
                   <button className="tutorial-window-scrim" type="button" aria-label="別窓を閉じる" onClick={() => setTutorialWindowOpen(false)} />
-                  <section className="tutorial-window">
+                  <section className="tutorial-window tutorial-chat-window">
                     <header>
                       <div><small>PRACTICE WINDOW</small><strong>コピー往復を練習</strong></div>
                       <button type="button" onClick={() => setTutorialWindowOpen(false)} aria-label="別窓を閉じる">×</button>
@@ -1416,7 +1459,7 @@ export default function Home() {
               <div className="resume-summary">
                 <div><small>現在文字</small><strong>{game.currentChar}</strong></div>
                 <div><small>手番</small><strong>{currentName}</strong></div>
-                <div><small>取得</small><strong>{Object.keys(game.claims).length}<span>/16</span></strong></div>
+                <div><small>取得</small><strong>{Object.keys(game.claims).length}<span>/{game.boardSize * game.boardSize}</span></strong></div>
               </div>
               <button className="start-button" type="button" onClick={() => beginCountdown(true)}>続きから <b>→</b></button>
               <button className="secondary-start" type="button" onClick={() => setView("mode")}>新しく始める</button>
@@ -1441,6 +1484,20 @@ export default function Home() {
                     <strong>人間ふたり</strong><small>ひとつの端末を交互に使う</small>
                   </button>
                 </div>
+                <section className="setup-choice-group" aria-labelledby="board-size-heading">
+                  <div className="setup-choice-heading"><strong id="board-size-heading">盤面サイズ</strong><small>遊びごたえを選ぶ</small></div>
+                  <div className="setup-choice-buttons board-size-choice">
+                    <button type="button" className={pendingBoardSize === 4 ? "selected" : ""} onClick={() => setPendingBoardSize(4)}><b>4 × 4</b><span>16枚・標準</span></button>
+                    <button type="button" className={pendingBoardSize === 5 ? "selected" : ""} onClick={() => setPendingBoardSize(5)}><b>5 × 5</b><span>25枚・PC／タブレット推奨</span></button>
+                  </div>
+                </section>
+                <section className="setup-choice-group" aria-labelledby="first-player-heading">
+                  <div className="setup-choice-heading"><strong id="first-player-heading">先攻</strong><small>最初の文字はゲーム開始時にランダム</small></div>
+                  <div className="setup-choice-buttons first-player-choice">
+                    <button type="button" className={pendingStartingPlayer === "O" ? "selected side-o-choice" : "side-o-choice"} onClick={() => setPendingStartingPlayer("O")}><b>{pendingMode === "partner" ? "あなた" : "プレイヤー1"}</b><span>○側が先攻</span></button>
+                    <button type="button" className={pendingStartingPlayer === "X" ? "selected side-x-choice" : "side-x-choice"} onClick={() => setPendingStartingPlayer("X")}><b>{pendingMode === "partner" ? "パートナー" : "プレイヤー2"}</b><span>×側が先攻</span></button>
+                  </div>
+                </section>
                 <button className="start-button" type="button" onClick={() => setView("confirm")}>このモードで進む <b>→</b></button>
                 <button className="text-button" type="button" onClick={() => setView("title")}>タイトルへ戻る</button>
               </div>
@@ -1457,13 +1514,15 @@ export default function Home() {
               <div className="setup-panel">
                 <dl className="settings-list">
                   <div><dt>モード</dt><dd>{pendingMode === "partner" ? "AIパートナー受け渡し" : "人間ふたり対戦"}</dd></div>
-                  <div><dt>盤面</dt><dd>4 × 4 ／ 16枚</dd></div>
+                  <div><dt>盤面</dt><dd>{pendingBoardSize} × {pendingBoardSize} ／ {pendingBoardSize * pendingBoardSize}枚{pendingBoardSize === 5 ? "（PC／タブレット推奨）" : ""}</dd></div>
+                  <div><dt>先攻</dt><dd>{pendingStartingPlayer === "O" ? (pendingMode === "partner" ? "あなた（○側）" : "プレイヤー1（○側）") : (pendingMode === "partner" ? "パートナー（×側）" : "プレイヤー2（×側）")}</dd></div>
+                  <div><dt>開始文字</dt><dd>盤面からランダム</dd></div>
                   <div><dt>異議札</dt><dd>各陣営3枚</dd></div>
                   <div><dt>読み</dt><dd>正式プリセット／自由読み</dd></div>
                   <div><dt>即敗北</dt><dd>「ん」で終わる読み</dd></div>
                   <div><dt>引き分け</dt><dd>双方ライン完成不能</dd></div>
                 </dl>
-                <p className="confirm-note">タテ・ヨコ・ナナメの4枚ラインを、先に自分の色でそろえた側の勝ち！</p>
+                <p className="confirm-note">タテ・ヨコ・ナナメの{pendingBoardSize}枚ラインを、先に自分の色でそろえた側の勝ち！</p>
                 <button className="start-button" type="button" onClick={() => beginCountdown(false)}>ゲームを始める <b>→</b></button>
                 <button className="text-button" type="button" onClick={() => setView("mode")}>モードを選び直す</button>
               </div>
@@ -1505,7 +1564,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section className={`board ${rejectionFlash ? "rejection-flash" : ""}`} aria-label="4×4のゲーム盤">
+          <section className={`board board-size-${game.boardSize} ${rejectionFlash ? "rejection-flash" : ""}`} aria-label={`${game.boardSize}×${game.boardSize}のゲーム盤`}>
             {game.board.map((panel, index) => {
               const owner = game.claims[index];
               const selected = game.selectedIndex === index;
@@ -1518,9 +1577,9 @@ export default function Home() {
                   className={`tile ${owner ? `claimed ${owner.toLowerCase()}` : ""} ${selected ? "selected" : ""} ${winning ? "winning" : ""} ${retryBlocked ? "retry-blocked" : ""}`}
                   onClick={() => selectPanel(index)}
                   disabled={Boolean(owner) || retryBlocked || !game.partnerBriefed || game.phase !== "select" || Boolean(game.winner)}
-                  aria-label={`${coordinate(index)} ${panel.name}${owner ? ` ${owner}が取得済み` : retryBlocked ? " 今回の再試行では選択不可" : ""}`}
+                  aria-label={`${coordinate(index, game.boardSize)} ${panel.name}${owner ? ` ${owner}が取得済み` : retryBlocked ? " 今回の再試行では選択不可" : ""}`}
                 >
-                  <span className="coordinate">{coordinate(index)}</span>
+                  <span className="coordinate">{coordinate(index, game.boardSize)}</span>
                   <span className="tile-art" aria-hidden="true"><PanelArtwork panel={panel} /></span>
                   {owner && <span className={`claim-chip claim-${owner.toLowerCase()}`} aria-hidden="true" />}
                   {retryBlocked && <span className="retry-lock" aria-hidden="true">異議</span>}
@@ -1549,7 +1608,7 @@ export default function Home() {
 
             {game.phase === "reading" && !game.winner && selectedPanel && (
               <div className="reading-panel">
-                <div className="selected-summary"><span><PanelArtwork panel={selectedPanel} compact /></span><div><small>{coordinate(game.selectedIndex!)} / {selectedPanel.category}</small><h2>{selectedPanel.name}</h2></div></div>
+                <div className="selected-summary"><span><PanelArtwork panel={selectedPanel} compact /></span><div><small>{coordinate(game.selectedIndex!, game.boardSize)} / {selectedPanel.category}</small><h2>{selectedPanel.name}</h2></div></div>
                 {registeredOptions.length > 0 ? (
                   <div className="registered-readings"><small>正式プリセット</small><div>{registeredOptions.map((preset) => {
                     const reading = presetReadingValue(preset);
@@ -1559,7 +1618,7 @@ export default function Home() {
                   })}</div></div>
                 ) : <p className="no-reading">「{game.currentChar}」につながる正式プリセットはなし。自由読みの出番！</p>}
                 <div className="custom-form">
-                  <label><span>自由な読み <b>「{game.currentChar}」から</b></span><input value={customReading} onChange={(event) => setCustomReading(event.target.value)} placeholder={`${game.currentChar}…`} /></label>
+                  <label><span>自由な読み <b>「{game.currentChar}」から</b></span><input lang="ja" aria-invalid={customReadingFormatInvalid} aria-describedby={customReadingFormatInvalid ? "custom-reading-format-error" : undefined} value={customReading} onChange={(event) => setCustomReading(event.target.value)} placeholder={`${game.currentChar}…`} />{customReadingFormatInvalid && <small id="custom-reading-format-error" className="reading-format-error" role="alert">自由入力のときは必ず、ひらがなかカタカナで入力してね!!</small>}</label>
                   <label><span>そう読んだ理由 <b>自由読みは理由つき</b></span><textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="絵のどこから連想した？" rows={3} /></label>
                   <div className="button-row"><button type="button" className="secondary" onClick={cancelReading}>選び直す</button><button type="button" className="primary" onClick={() => submitReading(customReading, reason)}>この読みで宣言</button></div>
                 </div>
@@ -1582,7 +1641,7 @@ export default function Home() {
             {(game.phase === "local-judge" || game.phase === "player-judge") && game.proposal && (
               <div className="judge-panel">
                 <p className="judge-kicker">こじつけ判定</p>
-                <div className="proposal-card"><span><PanelArtwork panel={game.board[game.proposal.panelIndex]} compact /></span><div><small>{coordinate(game.proposal.panelIndex)} / {game.board[game.proposal.panelIndex].name}</small><h2>「{game.proposal.reading}」</h2><p>{game.proposal.reason}</p></div></div>
+                <div className="proposal-card"><span><PanelArtwork panel={game.board[game.proposal.panelIndex]} compact /></span><div><small>{coordinate(game.proposal.panelIndex, game.boardSize)} / {game.board[game.proposal.panelIndex].name}</small><h2>「{game.proposal.reading}」</h2><p>{game.proposal.reason}</p></div></div>
                 <p className="judge-question">明確な違反なら無効。グレー、または勝負上止めたいなら異議札。納得したら受理！</p>
                 <div className="judge-actions"><button type="button" className="invalid-button" onClick={invalidateLocalProposal}>× 違反で無効<small>札は減らない</small></button><button type="button" className="object-button" disabled={game.objections[game.proposal.player === "O" ? "X" : "O"] <= 0} onClick={() => judgeLocal(false)}>⚡ 異議を出す<small>札を1枚使う</small></button><button type="button" className="accept-button" onClick={() => judgeLocal(true)}>✓ 受理する<small>読みを成立</small></button></div>
               </div>
@@ -1593,7 +1652,7 @@ export default function Home() {
                 <div className="confetti">✦ ○ ✧ × ✦</div>
                 <p>GAME SET!</p>
                 <h2>{game.winner === "DRAW" ? "引き分け！" : `${game.winner === "O" ? "○" : "×"} ${game.winner === "O" ? (game.mode === "partner" ? "あなた" : "プレイヤー1") : (game.mode === "partner" ? "パートナー" : "プレイヤー2")}の勝ち！`}</h2>
-                <p>{game.winReason === "n-ending" ? "『ん』で終わる読みを出したため、その場で勝負が決まりました。" : game.winner === "DRAW" ? Object.keys(game.claims).length < 16 ? "盤面に空きはあるけれど、どちらもラインを完成できなくなりました。" : "全マスを使ってもラインが完成しませんでした。" : "タテ・ヨコ・ナナメの一列が揃ったよ。"}</p>
+                <p>{game.winReason === "n-ending" ? "『ん』で終わる読みを出したため、その場で勝負が決まりました。" : game.winner === "DRAW" ? Object.keys(game.claims).length < game.boardSize * game.boardSize ? "盤面に空きはあるけれど、どちらもラインを完成できなくなりました。" : "全マスを使ってもラインが完成しませんでした。" : `タテ・ヨコ・ナナメの${game.boardSize}枚ラインが揃ったよ。`}</p>
                 <button type="button" className="primary" onClick={openNewGameFlow}>もう一局あそぶ</button>
               </div>
             )}
@@ -1622,7 +1681,7 @@ export default function Home() {
             <ol><li><b>1</b><span>今の文字から読める絵文字を選ぶ</span></li><li><b>2</b><span>正式プリセット、または理由つきの自由読みを宣言</span></li><li><b>3</b><span>成立した読みの最後の文字を次へつなぐ。「ん」で終わればその場で負け</span></li><li><b>4</b><span>先に自分の色を一列そろえたら勝ち</span></li><li><b>5</b><span>双方とも列を完成できなくなった時点で引き分け</span></li></ol>
             <p>濁音・半濁音は清音と接続可能。明確な違反は異議札なしで無効、グレーな自由読みや戦略的な反対は異議札を1枚使うよ。</p>
           </details>
-          <section className="prototype-note"><span>PROTOTYPE 02</span><p>共通性の高い絵文字48枚入り。正式プリセットは札ごとに必要な数だけ登録できるよ。</p></section>
+          <section className="prototype-note"><span>PROTOTYPE 02</span><p>共通性の高い絵文字65枚入り。正式プリセットは札ごとに必要な数だけ登録できるよ。</p></section>
         </aside>
       </div>
       <footer><b>MIRROR WORD GRID</b><span>ことばは、絵の中にひとつじゃない。</span></footer>

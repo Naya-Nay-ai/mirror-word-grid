@@ -1,4 +1,5 @@
 export type Player = "O" | "X";
+export type BoardSize = 4 | 5;
 
 export type PresetReading = string | {
   display: string;
@@ -25,17 +26,27 @@ export const WIN_LINES_4 = [
   [0, 5, 10, 15], [3, 6, 9, 12],
 ] as const;
 
-export function hasCompletableLine(claims: Record<number, Player>, player: Player) {
-  const opponent: Player = player === "O" ? "X" : "O";
-  return WIN_LINES_4.some((line) => line.every((index) => claims[index] !== opponent));
+export const WIN_LINES_5 = [
+  [0, 1, 2, 3, 4], [5, 6, 7, 8, 9], [10, 11, 12, 13, 14], [15, 16, 17, 18, 19], [20, 21, 22, 23, 24],
+  [0, 5, 10, 15, 20], [1, 6, 11, 16, 21], [2, 7, 12, 17, 22], [3, 8, 13, 18, 23], [4, 9, 14, 19, 24],
+  [0, 6, 12, 18, 24], [4, 8, 12, 16, 20],
+] as const;
+
+export function winLinesFor(boardSize: BoardSize): readonly (readonly number[])[] {
+  return boardSize === 5 ? WIN_LINES_5 : WIN_LINES_4;
 }
 
-export function findWinner(claims: Record<number, Player>) {
-  for (const line of WIN_LINES_4) {
+export function hasCompletableLine(claims: Record<number, Player>, player: Player, boardSize: BoardSize = 4) {
+  const opponent: Player = player === "O" ? "X" : "O";
+  return winLinesFor(boardSize).some((line) => line.every((index) => claims[index] !== opponent));
+}
+
+export function findWinner(claims: Record<number, Player>, boardSize: BoardSize = 4) {
+  for (const line of winLinesFor(boardSize)) {
     const owner = claims[line[0]];
     if (owner && line.every((index) => claims[index] === owner)) return { winner: owner, line: [...line] };
   }
-  if (!hasCompletableLine(claims, "O") && !hasCompletableLine(claims, "X")) {
+  if (!hasCompletableLine(claims, "O", boardSize) && !hasCompletableLine(claims, "X", boardSize)) {
     return { winner: "DRAW" as const, line: [] };
   }
   return { winner: null, line: [] };
@@ -85,6 +96,11 @@ export function normalizeReading(value: string) {
     .toLowerCase();
 }
 
+export function isKanaOnlyReading(value: string) {
+  const compact = value.trim().replace(/[\s　・!！?？。、,.]/g, "");
+  return compact.length > 0 && /^[\u3040-\u30ff]+$/u.test(compact);
+}
+
 export function readingStart(value: string) {
   const normalized = normalizeReading(value);
   return SMALL_KANA[normalized[0]] ?? normalized[0] ?? "";
@@ -108,6 +124,22 @@ export function readingEnd(value: string) {
     if (chars.includes(before)) return vowel;
   }
   return before;
+}
+
+export function chooseRandomStart(board: Panel[], random: () => number) {
+  const matchingPanels = new Map<string, Set<string>>();
+  board.forEach((panel) => panel.readings.forEach((item) => {
+    const reading = presetReadingValue(item);
+    if (readingEnd(reading) === "ん") return;
+    const start = clearKana(readingStart(reading));
+    if (!start) return;
+    const ids = matchingPanels.get(start) ?? new Set<string>();
+    ids.add(panel.id);
+    matchingPanels.set(start, ids);
+  }));
+  const wellSupported = [...matchingPanels.entries()].filter(([, panels]) => panels.size >= 2).map(([start]) => start);
+  const candidates = wellSupported.length ? wellSupported : [...matchingPanels.keys()];
+  return candidates[Math.min(candidates.length - 1, Math.floor(random() * candidates.length))] ?? "か";
 }
 
 export function isRegistered(panel: Panel, reading: string) {
@@ -151,5 +183,3 @@ export function nextRetryBlocks(
     .some((index) => !claims[index] && !blocked.includes(index));
   return hasSelectableEmpty ? blocked : [];
 }
-
-

@@ -4,15 +4,18 @@ import test from "node:test";
 
 import {
   availablePresetReadings,
+  chooseRandomStart,
   findWinner,
   hasCompletableLine,
   hasArtificialPolitePrefix,
+  isKanaOnlyReading,
   isRepeatedRejectedReading,
   nextRetryBlocks,
   presetReadingDisplay,
   presetReadingValue,
   readingStartsWith,
   winnerAfterNEnding,
+  winLinesFor,
 } from "../app/game-rules.ts";
 import { decodeShareState, encodeShareState } from "../app/share-state.ts";
 import { PANELS } from "../app/panel-dictionary.ts";
@@ -28,6 +31,15 @@ const cat = {
 
 test("formal preset readings can have any array length", () => {
   assert.deepEqual(availablePresetReadings(cat, "ね", false), ["ねこ"]);
+});
+
+test("free readings accept kana and reject kanji, latin letters, and numbers", () => {
+  for (const reading of ["まるまる", "メリークリスマス", "すーぱー・ねこ", " ぐるぐる！ "]) {
+    assert.equal(isKanaOnlyReading(reading), true, reading);
+  }
+  for (const reading of ["真面目", "まる2つ", "loop", "めがね猫", ""]) {
+    assert.equal(isKanaOnlyReading(reading), false, reading);
+  }
 });
 
 test("panel dictionary keeps 65 unique, simple emoji cards with editable reading arrays", () => {
@@ -112,6 +124,20 @@ test("an n-ending declaration immediately awards the game to the opponent", () =
   assert.equal(winnerAfterNEnding("X"), "O");
 });
 
+test("the opening character is randomly chosen from starts supported by multiple board cards", () => {
+  const panel = (id, readings) => ({ id, icon: "◯", name: id, category: "test", readings, visualDescription: id });
+  const board = [
+    panel("cat", ["ねこ"]),
+    panel("sleep", ["ねむり"]),
+    panel("umbrella", ["かさ"]),
+    panel("frog", ["かえる"]),
+    panel("ring", ["ゆびわ"]),
+  ];
+  assert.equal(chooseRandomStart(board, () => 0), "ね");
+  assert.equal(chooseRandomStart(board, () => 0.999), "か");
+  assert.notEqual(chooseRandomStart(board, () => 0.5), "ゆ");
+});
+
 test("board share state round-trips without mutable game callbacks or chat text", () => {
   const panel = {
     id: "cat",
@@ -132,11 +158,49 @@ test("board share state round-trips without mutable game callbacks or chat text"
     winner: null,
     winningLine: [],
     retryBlocked: [4],
+    boardSize: 4,
   };
   const encoded = encodeShareState(state);
   assert.match(encoded, /^[A-Za-z0-9_-]+$/);
   assert.deepEqual(decodeShareState(encoded), state);
   assert.equal(encoded.includes("会話"), false);
+});
+
+test("a 5×5 game supports five-card rows, columns, and diagonals", () => {
+  assert.equal(winLinesFor(5).length, 12);
+  assert.deepEqual(findWinner({ 0: "X", 6: "X", 12: "X", 18: "X", 24: "X" }, 5), {
+    winner: "X",
+    line: [0, 6, 12, 18, 24],
+  });
+  assert.deepEqual(findWinner({ 4: "O", 9: "O", 14: "O", 19: "O", 24: "O" }, 5), {
+    winner: "O",
+    line: [4, 9, 14, 19, 24],
+  });
+});
+
+test("a 25-card share state round-trips as a 5×5 board", () => {
+  const panel = {
+    id: "cat",
+    icon: "🐱",
+    name: "ねこ",
+    category: "動物",
+    readings: ["ねこ"],
+    visualDescription: "猫の顔",
+  };
+  const state = {
+    v: 1,
+    board: Array.from({ length: 25 }, (_, index) => ({ ...panel, id: `cat-${index}` })),
+    claims: Array.from({ length: 25 }, () => ""),
+    currentChar: "ね",
+    turn: "X",
+    objections: [3, 3],
+    phase: "partner-turn",
+    winner: null,
+    winningLine: [],
+    retryBlocked: [],
+    boardSize: 5,
+  };
+  assert.deepEqual(decodeShareState(encodeShareState(state)), state);
 });
 
 test("a 4×4 game reaches line victory and a full non-line board reaches draw", () => {
@@ -198,6 +262,11 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
   ]) assert.match(page, new RegExp(label));
   assert.match(page, /読みの正式分類は「正式プリセット」と「自由読み」の2つ/);
   assert.match(page, /双方とも列を完成できなくなった時点で引き分け/);
+  assert.match(page, /5 × 5/);
+  assert.match(page, /PC／タブレット推奨/);
+  assert.match(page, /最初の文字はゲーム開始時にランダム/);
+  assert.match(page, /手番コードだけを淡々と返す進行にはしない/);
+  assert.match(page, /目の前で一緒に勝負している温度で返す/);
   assert.doesNotMatch(page, /ん返し|難易度|制限時間|時間無制限|時計停止|EASY|NORMAL|HARD|ゴねり/);
   assert.doesNotMatch(css, /difficulty-picker|\.timer\b/);
   assert.match(page, /id: "cloud", icon: "☁️", name: "くも"/);
@@ -212,12 +281,14 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
     "まるが2つあるから！",
     "メガネをかけると真面目そうに見えるから",
     "むむ……！ それなら分かる。今回は受理！",
-    "異議札で🎄を却下する",
+    "⚡ 異議を出す",
+    "✓ 受理する",
     "みうの「メール」を反映",
     "正式読み「ループ」で取る",
     "☔・♾️・👓の上段3マス",
     "しゅがお手本を入力しておいたよ",
     "○側のリーチを見て焦ってる",
+    "自由入力のときは必ず、ひらがなかカタカナで入力してね!!",
   ]) assert.match(page, new RegExp(tutorialHook));
   assert.doesNotMatch(page, /ナイト|なつのくだもの/);
   assert.doesNotMatch(page, /まきまき|渦が巻いて見えるから|id: "swirl"|icon: "🌀"/);
@@ -253,6 +324,8 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
   assert.match(page, /コードブロックの中には機械読取用の1行以外を書かない/);
   assert.doesNotMatch(page, /返答全体をMarkdownのコードブロック1つに入れる/);
   assert.match(css, /\.tutorial-window-layer/);
+  assert.match(css, /\.tutorial-chat-window \{ width: min\(760px, 100%\)/);
+  assert.match(css, /\.tutorial-judge-actions/);
   assert.match(css, /@media \(max-width: 480px\)/);
   assert.match(css, /\.start-shell \{ width: 100%; padding: 0; grid-template-columns: minmax\(0, 1fr\); \}/);
   assert.match(css, /\.start-card \{ width: 100%; min-width: 0;/);
