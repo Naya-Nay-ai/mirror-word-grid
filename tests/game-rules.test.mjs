@@ -171,11 +171,11 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
     "判定依頼をコピー",
     "返答を盤面へ反映",
     "コピーした文を貼り付ける",
-    "返答をコピーしてゲームへ戻る",
+    "【】の返答だけコピーしてゲームへ戻る",
     "対戦スタート文をコピー",
-    "準備OKを確認してゲームへ戻る",
+    "みうの返事を受け取ってゲームへ戻る",
     "ゴネを通して👓をGET",
-    "しゅの解説",
+    "AIパートナーを連れて、本番へ！",
     "盤面リンクをコピー",
     "みうの異議を反映",
     "「ん」で終わる読みを出したらその場で負け",
@@ -194,26 +194,43 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
     'id: "mail", icon: "✉️"',
     'id: "christmas-tree", icon: "🎄"',
     "この自由読みで宣言する",
-    "線がぐるぐる巻かれて見えるから",
-    "めがねをかけていて、まじめそうに見えるから",
-    "まじめ」は止められない",
+    "渦が巻いて見えるから！",
+    "メガネをかけると真面目そうに見えるから",
+    "むむ……！ それなら分かる。今回は受理！",
     "異議札で🎄を却下する",
-    "正式読み「メール」を反映",
+    "みうの「メール」を反映",
     "正式読み「ループ」で取る",
     "☔・🌀・👓の上段3マス",
   ]) assert.match(page, new RegExp(tutorialHook));
   assert.doesNotMatch(page, /ナイト|なつのくだもの/);
   assert.match(css, /\.tutorial-tile\.hint/);
   assert.match(css, /\.tutorial-next-action/);
-  assert.match(css, /\.tutorial-header-coach/);
+  for (const chapter of ["基本のしりとり", "ゴネに挑戦！", "異議札を使おう！", "勝ちにいこう！"]) {
+    assert.match(page, new RegExp(chapter));
+  }
+  assert.doesNotMatch(page, /STEP \$\{tutorialStep \+ 1\} \/ \$\{TUTORIAL_TITLES\.length\}/);
+  assert.match(page, /✨ ゴネ解禁！ ✨/);
+  assert.match(page, /却下されても失敗じゃないよ/);
+  assert.match(page, /えっ、そろっちゃう！？/);
+  assert.match(page, /負けたーー！ でも、いいゴネだった！/);
+  assert.match(page, /\/practice\/\$\{bear\}-\$\{motion\}\.gif/);
+  for (const motion of ["point", "explain", "surprise", "cheer", "gone", "ready", "thinking", "accept", "reject", "panic", "shock", "lose"]) {
+    assert.match(page, new RegExp(`(?:motion=|motion === |motion-)[^\\n]{0,40}${motion}`));
+  }
+  assert.match(css, /\.tutorial-coach-guide/);
+  assert.match(css, /\.practice-bear-gif/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(css, /min-height: 44px/);
   assert.match(css, /\.tutorial-gone-form/);
   assert.match(css, /\.tutorial-gone-result/);
   assert.match(css, /@keyframes tutorial-bear-bob/);
-  assert.match(page, /みうは「メリークリスマス」で🎄を取るよ！/);
+  assert.match(page, /じゃあ……これっ！ 『メリークリスマス！』🎄/);
   assert.match(page, /会話全体や説明文はコードブロックに入れない/);
   assert.match(page, /コードブロックの中には機械読取用の1行以外を書かない/);
   assert.doesNotMatch(page, /返答全体をMarkdownのコードブロック1つに入れる/);
   assert.match(css, /\.tutorial-window-layer/);
   assert.match(css, /@media \(max-width: 480px\)/);
+  assert.match(css, /\.start-shell \{ width: 100%; padding: 0; grid-template-columns: minmax\(0, 1fr\); \}/);
+  assert.match(css, /\.start-card \{ width: 100%; min-width: 0;/);
   assert.match(css, /@media \(min-width: 901px\)/);
 });
