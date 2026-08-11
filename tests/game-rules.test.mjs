@@ -62,17 +62,26 @@ test("kanji display text uses a separate kana reading for all shiritori checks",
   });
 });
 
-test("partner replies execute exactly one standalone machine line in a Markdown code block", () => {
-  assert.deepEqual(parseMachineReply("いい手だね！\n```\n【手番:A1｜読み:少々｜読み仮名:しょうしょう｜理由:ナッツを少々｜コード:MWG-ABCDE】\n```"), {
+test("partner replies accept either one copied machine line or exactly one standalone fenced line", () => {
+  const line = "【手番:A1｜読み:少々｜読み仮名:しょうしょう｜理由:ナッツを少々｜コード:MWG-ABCDE】";
+  const expected = {
     ok: true,
-    line: "【手番:A1｜読み:少々｜読み仮名:しょうしょう｜理由:ナッツを少々｜コード:MWG-ABCDE】",
+    line,
     fields: { 手番: "A1", 読み: "少々", 読み仮名: "しょうしょう", 理由: "ナッツを少々", コード: "MWG-ABCDE" },
-  });
+  };
+  assert.deepEqual(parseMachineReply(line), expected);
+  assert.deepEqual(parseMachineReply(`  ${line}\n`), expected);
+  assert.deepEqual(parseMachineReply(`いい手だね！\n\`\`\`\n${line}\n\`\`\``), expected);
+
+  // 本文中に形式らしい行があっても、入力全体がその1行だけでなければ実行しない。
+  assert.equal(parseMachineReply(`いい手だね！\n${line}`).ok, false);
   const pastedPrompt = "回答例:\n【判定:受理｜コード:MWG-ABCDE】\n【判定:無効｜理由:例｜コード:MWG-ABCDE】\n【判定:異議｜理由:例｜コード:MWG-ABCDE】";
   assert.equal(parseMachineReply(pastedPrompt).ok, false);
   const multiple = "```\n【判定:受理｜コード:MWG-ABCDE】\n```\n```\n【判定:異議｜理由:例｜コード:MWG-ABCDE】\n```";
   assert.equal(parseMachineReply(multiple).ok, false);
   assert.equal(parseMachineReply("```\n説明\n【判定:異議｜理由:例｜コード:MWG-ABCDE】\n```").ok, false);
+  assert.equal(parseMachineReply("【判定:受理｜コード:MWG-ABCDE】\n【判定:異議｜理由:例｜コード:MWG-ABCDE】").ok, false);
+  assert.equal(parseMachineReply("判定:受理｜コード:MWG-ABCDE").ok, false);
 });
 
 test("panel dictionary keeps 65 unique, simple emoji cards with editable reading arrays", () => {

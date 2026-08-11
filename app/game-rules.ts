@@ -119,24 +119,40 @@ export type MachineReplyParseResult =
   | { ok: true; fields: Record<string, string>; line: string }
   | { ok: false; error: string };
 
+const MACHINE_REPLY_ERROR = "パートナー返答を正しく読み取れませんでした。機械読取用の1行だけ、またはそのコードブロックを含むChatGPTの返答を貼り付けてください。";
+
+function isCompleteMachineLine(value: string) {
+  return /^【(?:手番|判定|準備)[:：][^【】\r\n]+】$/u.test(value);
+}
+
 export function parseMachineReply(text: string): MachineReplyParseResult {
+  const input = text.trim();
   const candidates: string[] = [];
-  for (const match of text.matchAll(/```[^\r\n]*\r?\n([\s\S]*?)```/g)) {
-    const content = match[1].trim();
-    if (/^【[^】\r\n]+】$/u.test(content)) candidates.push(content);
+
+  // ChatGPTのコードブロックにある「コピー」は、Markdownフェンスを除いた
+  // 中身だけを渡す。その正式操作では、入力全体が機械読取1行であることを必須にする。
+  if (isCompleteMachineLine(input)) {
+    candidates.push(input);
+  } else {
+    // 回答全文を貼った場合は、独立コードブロックの中身が機械読取1行だけの
+    // ブロックだけを候補にする。本文や回答例にある角括弧行は検索しない。
+    for (const match of input.matchAll(/```[^\r\n]*\r?\n([\s\S]*?)```/g)) {
+      const content = match[1].trim();
+      if (isCompleteMachineLine(content)) candidates.push(content);
+    }
   }
   if (candidates.length !== 1) {
-    return { ok: false, error: "パートナー返答を正しく読み取れませんでした。ChatGPTの返答に含まれる機械読取用コードブロックを貼り付けてください。" };
+    return { ok: false, error: MACHINE_REPLY_ERROR };
   }
 
   const line = candidates[0];
   const fields: Record<string, string> = {};
   for (const part of line.slice(1, -1).split(/[｜|]/)) {
     const splitAt = part.search(/[:：]/);
-    if (splitAt <= 0) return { ok: false, error: "パートナー返答を正しく読み取れませんでした。ChatGPTの返答に含まれる機械読取用コードブロックを貼り付けてください。" };
+    if (splitAt <= 0) return { ok: false, error: MACHINE_REPLY_ERROR };
     const key = part.slice(0, splitAt).trim();
     const value = part.slice(splitAt + 1).trim();
-    if (!key || !value || fields[key]) return { ok: false, error: "パートナー返答を正しく読み取れませんでした。ChatGPTの返答に含まれる機械読取用コードブロックを貼り付けてください。" };
+    if (!key || !value || fields[key]) return { ok: false, error: MACHINE_REPLY_ERROR };
     fields[key] = value;
   }
   return { ok: true, fields, line };

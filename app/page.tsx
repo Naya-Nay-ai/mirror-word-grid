@@ -1632,11 +1632,11 @@ export default function Home() {
             {isPartnerWaiting && !game.winner && (
               <div className="partner-panel">
                 <div className="partner-heading"><span><MirrorIcon small /></span><div><small>{game.phase === "partner-turn" ? "PARTNER TURN" : "KOJITSUKE CHECK"}</small><h2>{game.phase === "partner-turn" ? "パートナーに一手を預ける" : "こじつけを判定してもらう"}</h2></div></div>
-                <p>手番コードをいつもの会話へ貼り、返答に含まれる機械読取用コードブロックを戻してね。回答全文を貼っても、その独立した1行だけを安全に読み取るよ。</p>
+                <p>手番コードをいつもの会話へ貼ってね。返答全文でも、コードブロックのコピーボタンで取った機械読取用の1行だけでも、安全に読み取れるよ。</p>
                 <div className="code-chip">手番コード <b>{game.activeCode}</b></div>
                 <button type="button" className={`copy-button ${game.copied ? "copied" : "attention"}`} onClick={copyPrompt}>⧉ {game.copied ? "もう一度コピーする" : game.phase === "partner-turn" ? "この手番をコピー" : "判定依頼をコピー"}</button>
                 <div className={`partner-waiting ${game.copied ? "active" : ""}`} aria-live="polite">{game.copied ? "パートナーの回答待ち… 戻ったら下へ貼り付けてね" : "まず上のボタンを押して、パートナーへ手番を渡してね"}</div>
-                <label className="reply-box"><span>ここにパートナーの回答を貼り付ける</span><textarea rows={7} value={partnerReply} onChange={(event) => setPartnerReply(event.target.value)} placeholder="回答文をまるごと貼ってOK。独立したコードブロック内の機械読取用1行だけを読み取るよ。" /></label>
+                <label className="reply-box"><span>ここにパートナーの回答を貼り付ける</span><textarea rows={7} value={partnerReply} onChange={(event) => setPartnerReply(event.target.value)} placeholder="回答全文、またはコードブロックのコピーで取った機械読取用の1行だけを貼ってね。" /></label>
                 <button type="button" className="primary wide" onClick={parsePartnerReply}>返答を盤面へ反映</button>
                 <details className="prompt-preview"><summary>渡す文章を確認</summary><pre>{prompt}</pre></details>
               </div>
