@@ -5,6 +5,8 @@ import type { Panel } from "./game-rules";
  * readings は個数固定ではありません。作者が正式に認める読みを必要なだけ追加できます。
  * 表示と判定用の読みが異なる場合は { display, reading } を使います。
  * 盤面用 icon は、ZWJ合成を避けた認識しやすい絵文字1つを基本にしてください。
+ * visualDescription はOSやAIごとの描画差を避け、色・材質・細かな装飾へ依存しない共通説明を優先します。
+ * 共通説明にない表示差だけの特徴は説明へ固定せず、対戦中の理由つき自由読みとして扱います。
  *
  * 既存の保存データ・共有データとの互換性を守るため、レガシーIDは維持しています。
  */
@@ -75,4 +77,3 @@ export const PANELS: Panel[] = [
   { id: "ring", icon: "💍", name: "指輪", category: "装飾品", readings: ["リング", "エンゲージリング",{ display: "婚約指輪", reading: "こんやくゆびわ" },{ display: "指輪", reading: "ゆびわ" }], visualDescription: "宝石のついた指輪" },
   { id: "fire", icon: "🔥", name: "炎", category: "自然", readings: ["ファイア", "メラメラ",{ display: "燃える", reading: "もえる" },{ display: "炎", reading: "ほのお" },{ display: "焚き火", reading: "たきび" }], visualDescription: "燃える火の絵文字" },
 ];
-

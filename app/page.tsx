@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   availablePresetReadings,
+  canUseObjection,
   chooseRandomStart,
   findWinner,
   hasArtificialPolitePrefix,
@@ -18,6 +19,7 @@ import {
   parseMachineReply,
   readingEnd,
   readingStartsWith,
+  recommendedObjectionCount,
   resolveDeclaredReading,
   winnerAfterNEnding,
   winLinesFor,
@@ -37,6 +39,11 @@ type MiuMotion = "idle" | "ready" | "thinking" | "accept" | "reject" | "panic" |
 type TutorialChatKind = "intro" | "turn" | "judge";
 type TutorialChatPhase = "empty" | "pasted" | "replied";
 type TutorialEvent = "gone" | "objection" | "victory";
+type VerdictEvent = {
+  kind: "objection" | "accepted";
+  player: Player;
+  nonce: number;
+};
 type Phase =
   | "select"
   | "reading"
@@ -68,6 +75,8 @@ type GameState = {
   phase: Phase;
   selectedIndex: number | null;
   objections: Record<Player, number>;
+  objectionLimit: number;
+  objectionUsedThisTurn: Record<Player, boolean>;
   activeCode: string;
   usedCodes: string[];
   copied: boolean;
@@ -151,6 +160,15 @@ const TUTORIAL_CHAPTERS = [
   "勝ちにいこう！",
 ] as const;
 
+const NOT_ESTABLISHED_REASONS = [
+  "札とのつながりが分からない",
+  "連想が遠すぎる",
+  "絵にない具体的設定を足している",
+  "思い出・出来事になっている",
+  "セリフ・感想になっている",
+  "その他",
+] as const;
+
 const TUTORIAL_CHAT = {
   intro: {
     prompt: "# MIRROR WORD GRID：模擬戦開始\nあなたはAI代理みう（×側）です。しりとりで3×3の札を取り、先に一列そろえた側が勝ちです。正式プリセットはそのまま成立し、自由読みには理由が必要です。お互いに異議札を1枚持ちます。理解したら、まだ一手を選ばず、あなたらしい言葉で準備できたことを伝えてください。会話は普通の文章で返し、コピー用の【準備:OK】の1行だけを、独立したMarkdownコードブロックに入れて最後に付けてください。前後の会話はコードブロックに入れないでください。",
@@ -224,7 +242,7 @@ function freshCode() {
   return codeFor(Date.now() + Math.floor(Math.random() * 9999));
 }
 
-function createGame(seed = 407, mode: Mode = "partner", boardSize: BoardSize = 4, startingPlayer: Player = "O"): GameState {
+function createGame(seed = 407, mode: Mode = "partner", boardSize: BoardSize = 4, startingPlayer: Player = "O", objectionLimit = recommendedObjectionCount(boardSize)): GameState {
   const { board, start } = makeBoard(seed, boardSize);
   return {
     board,
@@ -233,7 +251,9 @@ function createGame(seed = 407, mode: Mode = "partner", boardSize: BoardSize = 4
     currentChar: start,
     phase: "select",
     selectedIndex: null,
-    objections: { O: 3, X: 3 },
+    objections: { O: objectionLimit, X: objectionLimit },
+    objectionLimit,
+    objectionUsedThisTurn: { O: false, X: false },
     activeCode: codeFor(seed),
     usedCodes: [],
     copied: false,
@@ -290,6 +310,7 @@ function applyMove(state: GameState, proposal: Proposal): GameState {
     history: [...state.history, { player: proposal.player, coordinate: coordinate(proposal.panelIndex, state.boardSize), reading: proposalLabel(proposal) }],
     retryBlocked: [],
     rejectedAttempts: [],
+    objectionUsedThisTurn: { O: false, X: false },
   };
 }
 
@@ -309,7 +330,7 @@ function applyNEndingLoss(state: GameState, proposal: Proposal): GameState {
   };
 }
 
-function rejectProposal(state: GameState, judge: Player, spendObjection = true): GameState {
+function rejectProposal(state: GameState, judge: Player, kind: "objection" | "not-established"): GameState {
   const proposer = state.proposal?.player ?? state.turn;
   const rejectedIndex = state.proposal?.panelIndex;
   const rejectedReading = state.proposal?.reading;
@@ -325,7 +346,8 @@ function rejectProposal(state: GameState, judge: Player, spendObjection = true):
     turn: proposer,
     phase: retryPhase,
     selectedIndex: null,
-    objections: spendObjection ? { ...state.objections, [judge]: Math.max(0, state.objections[judge] - 1) } : state.objections,
+    objections: kind === "objection" ? { ...state.objections, [judge]: Math.max(0, state.objections[judge] - 1) } : state.objections,
+    objectionUsedThisTurn: kind === "objection" ? { ...state.objectionUsedThisTurn, [judge]: true } : state.objectionUsedThisTurn,
     activeCode: freshCode(),
     usedCodes: [...state.usedCodes, state.activeCode].slice(-30),
     copied: false,
@@ -349,7 +371,7 @@ function boardSummary(game: GameState) {
     const blocked = game.retryBlocked.includes(index) ? "｜今回の再試行では選択不可" : "";
     const rejected = game.rejectedAttempts.filter((attempt) => attempt.panelIndex === index).map((attempt) => attempt.reading);
     const rejectedText = rejected.length ? `｜再使用禁止の読み:${rejected.join("・")}` : "";
-    return `${coordinate(index, game.boardSize)}｜絵文字:${panel.icon}｜ID:${panel.id}｜名前:${panel.name}｜カテゴリ:${panel.category}｜見た目:${panelVisualDescription(panel)}｜正式プリセット読み:${presetReadingsForAi(panel)}${blocked}${rejectedText}`;
+    return `${coordinate(index, game.boardSize)}｜絵文字:${panel.icon}｜ID:${panel.id}｜名前:${panel.name}｜カテゴリ:${panel.category}｜共通説明:${panelVisualDescription(panel)}｜正式プリセット読み:${presetReadingsForAi(panel)}${blocked}${rejectedText}`;
   }).join("\n");
 }
 
@@ -394,17 +416,42 @@ function partnerIntroPrompt(game: GameState) {
 
 ## 読みのルール
 1. 正式プリセット：作者が正式に認めた読み。絵との細かな一致を再判定せず、そのまま受理してよい
-2. 自由読み：絵文字・名前・見た目から追える読み。理由が必要
+2. 自由読み：絵文字・名前・共通説明・申告された表示差から追える読み。理由が必要
 - 少し強引で創造的な自由読みを、遊び上の通称として「ゴネ読み」と呼ぶことがある。独立した正式カテゴリではない
-- 頭文字合わせだけの「お・ご」付与（ねこ→おねこ等）は無効。定着した独立語と正式プリセットは有効
+- 頭文字合わせだけの「お・ご」付与（ねこ→おねこ等）はルール上使用できない。定着した独立語と正式プリセットは有効
 - 語頭の濁音・半濁音は現在の仮設定に従って清音と接続できる
 - 「ん」で終わる読みを宣言すると、その手を出した側が即負け。勝つため必ず避ける
 
+## 自由読みの判定思想
+- A 明確に成立：札そのものの名前・見た目・特徴・用途・状態などから直接追える。受理するか、止めたいなら異議札を使う
+- B グレー：絵から種類までは確定できなくても、その対象の一般的な種類・呼び方として直接つながる。受理してもよいし、止めたいなら異議札を使ってよい
+- C 不成立圏：札との意味的なつながりがかなり遠い。「不成立」として拒否できる
+- Cでも、機械ルールに触れていなければ、面白い・納得した・戦略上次の文字が欲しい等の理由であえて受理してよい
+- 「不成立」は異議の代用品ではない。異議札がない・この手番ですでに異議を使った等の理由で、成立している読みを不成立へ格下げしてはいけない
+
+## 固有語・二人だけの呼び名
+- 一般辞書にない固有名・愛称・二人だけの造語・秘密の言葉・隠語・略語も、その札の対象そのものを指す固定の呼び名なら成立できる
+- 理由には「二人の間でこの対象そのものを○○と呼んでいる」のように説明する
+- 単なる褒め言葉、思い出・出来事、言いそうな台詞、過去の経験は、固定の愛称として定着していない限り対象そのものの呼び名ではない
+- 固有語でも「ん」で終われば即敗北
+
+## 裁量で覆せないシステムルール
+- 現在文字から始まらない、「ん」で終わる、取得済み・選択不可マス、同じ再試行で禁止された読み、頭文字合わせだけの「お・ご」付与などは受理できない
+
+## 絵文字の表示差
+- 絵文字はOS・端末・AIサービスによって、色・材質・飾り・表情などの細部が違って見える
+- 全員共通の土台は、アプリが渡す「名前」「カテゴリ」「共通説明」「正式プリセット」とする
+- 共通説明にない色や細部を自由読みに使う側は、理由へ「自分の画面では茶色に見えるから」のように、自分側の表示を明記する
+- 表示を明記した申告は、その対戦では実際にそう見えているものとして扱う。自分側の絵文字と違って見えることだけを理由に「不成立」にしない
+- 申告された特徴から一段階で追える読みなら受理対象。勝負上止めたい、または結びつきが強引なら「異議」を使う
+- あなた自身に見えている絵文字の描画を、唯一の正解として相手へ押しつけない
+
 ## 異議札
-- 各側3枚
-- 明確な違反は「無効」で、異議札を使わない
-- グレーな自由読みや、戦略上止めたい読みには「異議」を使える
-- 異議は宣言した読みを拒否するだけで、盤面のマスを永久に消さない
+- 各側${game.objectionLimit}枚
+- 相手の1手番に使える異議は最大1回。次の手番へ進んだ時点で使用済み状態をリセットする
+- 異議を使うと宣言マスはその再試行中のみ選択不可になり、異議を受けた読みも再使用できない
+- 成立しているが戦略上止めたい読みには「異議」を使う
+- 最初のグレー読みで異議を使わせ、その後に本命を通す囮読みも正式な戦略
 
 ## コピー対戦
 - 以後、私がアプリの「この手番をコピー」または「判定依頼をコピー」から盤面と手番コードを渡す
@@ -424,12 +471,28 @@ function partnerIntroPrompt(game: GameState) {
 最後に、機械読取用の【準備:OK】の1行だけを独立したMarkdownコードブロックに入れてください。前後の会話はコードブロックへ入れません。`;
 }
 
-function partnerTurnPrompt(game: GameState) {
+function partnerTurnPromptBase(game: GameState) {
   const choices = game.board.map((_, index) => index).filter((index) => !game.claims[index] && !game.retryBlocked.includes(index)).map((index) => coordinate(index, game.boardSize)).join("、");
   return `# MIRROR WORD GRID：パートナーの手番\n\nあなたは×側です。あなた自身の解釈と性格で、勝つための一手を選んでください。コードだけを返さず、直前の流れや盤面へ普段の言葉で反応し、目の前で一緒に遊んでいる会話を続けてください。\n\n手番コード：${game.activeCode}\n現在の文字：「${game.currentChar}」\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n選択可能：${choices}\n戦況：${lineThreats(game.claims, game.boardSize)}\n\n## 盤面\n${boardSummary(game)}\n\n## 読みの分類\n1. 正式プリセット：作者が正式に認めた読み。見た目との細かな一致を再判定せず、理由なしで必ず受理する\n2. 自由読み：絵文字・名前・見た目から追える読み。理由が必要。少し強引な自由読みを遊び上「ゴネ読み」と呼ぶことはあるが、独立カテゴリではない\n\n## ルール\n- 空きマスを一つ選び、「${game.currentChar}」から始まる読みを宣言する\n- 「読み」は画面に見せたい表記。「読み仮名」はしりとり判定専用のかな／カナ表記として必ず分ける\n- 漢字・々などを表示に使ってよい。語頭・語尾・「ん」は必ず「読み仮名」で判定する\n- 語頭の濁音・半濁音は清音とつなげてよい（例：か↔が、は↔ば↔ぱ）\n- 「ん」で終わる読みを選ぶと×側の即敗北。候補にあっても必ず避ける\n- 盤面に空きがあっても、双方とも一列を完成できなくなった時点で引き分け\n- 頭文字を合わせる目的だけで、元の語へ「お・ご」などの敬語・美化語・丁寧な接頭語を足した自由読みは無効\n- 「おちゃ」「おかし」「おにぎり」「ごはん」「おうさま」のような定着した独立語と、正式プリセットは使用できる\n- 自由読みには、絵からそう読んだ理由を書く\n- 直前に異議を受けた選択不可マスは選ばない\n- ○のラインを遮断する、自分のラインを伸ばすなど戦況を必ず考える\n- 説明は自由\n\n## 返答形式\n- あなたらしい会話や一手の説明は、普通の文章としてコードブロックの外に書いてよい\n- コピー用の次の1行だけを、独立したMarkdownコードブロックに入れて返答の最後に付ける\n- 会話全体や説明文をコードブロックへ入れない。コードブロック内には次の1行以外を書かない\n\n【手番:A1｜読み:かさ｜読み仮名:かさ｜理由:傘の絵文字をそのまま読んだ｜コード:${game.activeCode}】`;
 }
 
-function partnerJudgePrompt(game: GameState) {
+function partnerTurnPrompt(game: GameState) {
+  const displayDifferenceRules = `## 絵文字の表示差
+- 絵文字はOS・端末・AIサービスで色や細部が異なる。盤面の「共通説明」を全員共通の土台にする
+- 共通説明にない色・材質・飾りを使うなら、理由へ「自分の表示では○○に見える」と明記する
+- 相手には違って見える可能性を前提にし、自分の描画だけを唯一の正解にしない`;
+  const freeReadingRules = `## 自由読み・固有語
+- 札の名前・見た目・特徴・用途・状態から直接追える読みは成立する
+- 一般辞書になくても、その対象そのものを指す二人だけの固定名・愛称・秘密の言葉・隠語・略語は、理由を添えれば成立できる
+- 褒め言葉・思い出・出来事・台詞は、固定の愛称として定着していない限り対象名ではない
+- 現在文字違い・「ん」終わり・取得済み／選択不可マス・禁止された読み・頭文字合わせだけの「お・ご」付与は、相手がよいと言っても受理できない`;
+  return partnerTurnPromptBase(game)
+    .replaceAll("絵文字・名前・見た目", "絵文字・名前・共通説明")
+    .replaceAll("無効", "ルール上使用できない")
+    .replace("\n\n## ルール", `\n\n${displayDifferenceRules}\n\n${freeReadingRules}\n\n## ルール`);
+}
+
+function partnerJudgePromptBase(game: GameState) {
   const proposal = game.proposal!;
   const panel = game.board[proposal.panelIndex];
   const acceptedClaims = { ...game.claims, [proposal.panelIndex]: proposal.player };
@@ -449,6 +512,38 @@ function partnerJudgePrompt(game: GameState) {
     : `【判定:受理｜次手:A1｜読み:${nextChar}から始まる表示語｜読み仮名:${nextChar}から始まるかな読み｜理由:その札をそう読んだ理由｜コード:${game.activeCode}】`;
 
   return `# MIRROR WORD GRID：こじつけ判定＋次の一手\n\nあなたは×側です。○側の自由読みを、納得感と勝ちたい気持ちの両方で裁いてください。読みとして自然でも、通すと相手が有利になるなら異議札を使って止めてかまいません。コードだけを返さず、そのゴネへの本音や勝負の反応を普段の言葉で話し、掛け合いも楽しんでください。\n\n手番コード：${game.activeCode}\nマス：${coordinate(proposal.panelIndex, game.boardSize)}\n絵文字：${panel.icon}\n札ID：${panel.id}\n名前：${panel.name}\n見た目：${panelVisualDescription(panel)}\n正式プリセット：${presetReadingsForAi(panel)}\n宣言表示：${proposal.displayReading || proposal.reading}\n判定用読み：${proposal.reading}\n理由：${proposal.reason}\n現在の文字：${game.currentChar}\n残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚\n戦況：${lineThreats(game.claims, game.boardSize)}\nこの手の影響：${acceptanceImpact(game, proposal)}\n\n## 判定の分け方\n1. 明確なルール違反は「無効」。異議札を消費しない\n2. 正式プリセットは、見た目との細かな一致を再判定せず必ず「受理」する\n3. 絵文字・名前・見た目から追える自由読みは「受理」しやすい\n4. 強引さのある自由読み、または戦略上どうしても止めたい手は「異議」。×の異議札を1枚使う\n\n少し強引で創造的な自由読みを遊び上「ゴネ読み」と呼ぶことはあるが、独立した正式カテゴリではない。\n語頭の濁音・半濁音は清音と同じつながりとして扱う（例：か↔が、は↔ば↔ぱ）。\n自由読みは、次の3項目のうち2つ以上を満たすほど受理しやすい：\n- 絵文字に直接見える特徴がある\n- 対象と一般的に強く結びつく特徴・用途・状態である\n- その札を特定できる対象名や固有の要素を含む\n「かわいい」「うまそう」など多くの札に使える主観だけでは弱い。\n頭文字を合わせるためだけに元の語へ「お・ご」などを付けた自由読み（例：ねこ→おねこ）は無効。ただし定着した独立語や正式プリセットは有効。\n\n## 受理する場合\n${continuation}\n\n## 返答形式\n- あなたらしい会話や判定理由は、普通の文章としてコードブロックの外に書いてよい\n- コピー用の最終行だけを、独立したMarkdownコードブロックに入れて返答の最後に付ける\n- 会話全体や説明文をコードブロックへ入れない。コードブロック内には選んだ最終行1つ以外を書かない\n\n${acceptedFormat}\n【判定:無効｜理由:絵文字との関連がほぼない｜コード:${game.activeCode}】\n【判定:異議｜理由:自由読みとして強引、または戦略上ここは取らせたくない｜コード:${game.activeCode}】`;
+}
+
+function partnerJudgePrompt(game: GameState) {
+  const objectionAvailable = canUseObjection(game.objections.X, game.objectionUsedThisTurn.X);
+  const objectionLine = `【判定:異議｜理由:自由読みとして強引、または戦略上ここは取らせたくない｜コード:${game.activeCode}】`;
+  const policy = `## 新しい判定思想
+- A 明確に成立：札そのものの名前・見た目・特徴・用途・状態などから直接追える。受理する。止めたいなら異議
+- B グレー：対象の一般的な種類・呼び方として直接つながる。受理しても、異議で止めてもよい
+- C 不成立圏：札との意味的なつながりがかなり遠い。不成立として拒否できる。ただし機械ルールに触れなければ、面白い・納得した・次の文字が欲しい等の理由であえて受理してよい
+- 「不成立」は異議の代用品ではない。異議札がない、またはこの手番ですでに異議を使ったことを理由に、成立している読みを不成立へ格下げしてはいけない
+- AIは単なる厳格な審判ではなく、勝ちたい対戦相手として裁量を持つ
+- 一般辞書になくても、その対象そのものを指す二人だけの固定名・愛称・秘密の言葉・隠語・略語は成立可能。褒め言葉・思い出・出来事・台詞は、固定の愛称でない限り対象名ではない
+- 現在文字違い・「ん」終わり・取得済み／選択不可・禁止された読み・頭文字合わせだけの「お・ご」付与は、意味判定ではなくアプリ側の「ルール上使用できません」で処理し、受理できない
+- 異議は相手の1手番につき1回。現在の異議状態：${objectionAvailable ? "この手番ではまだ使用可能" : game.objections.X <= 0 ? "残り0枚" : "この手番では使用済み"}
+- 最初のグレー読みで異議を使わせ、次の本命を通す囮読みも正式な戦略`;
+  const displayDifferenceRules = `## 絵文字の表示差
+- 絵文字はOS・端末・AIサービスで色・材質・飾り・表情などが異なる
+- 共通の判定土台は「名前」「カテゴリ」「共通説明」「正式プリセット」
+- 理由に「自分の画面では茶色に見える」のような表示の申告があれば、その対戦では実際にそう見えているものとして扱う
+- あなた側の絵文字が白やピンクなど別の姿に見えることだけを理由に「不成立」にしない
+- 申告された表示差から一段階で追える読みは受理対象。勝負上止めたい、または結びつきが強引なら「異議」を使う`;
+  let prompt = partnerJudgePromptBase(game)
+    .replace("\n見た目：", "\n共通説明：")
+    .replace("\n\n## 判定の分け方", `\n\n${displayDifferenceRules}\n\n${policy}\n\n## 判定の分け方`)
+    .replace("1. 明確なルール違反は「無効」。異議札を消費しない", "1. 機械的な形式エラーはアプリ側で『ルール上使用できません』として処理する。意味判定に使わない")
+    .replace("3. 絵文字・名前・見た目から追える自由読みは「受理」しやすい", "3. 絵文字・名前・共通説明・申告された表示差から追える自由読みは『受理』。戦略上止めたい場合のみ『異議』")
+    .replace("4. 強引さのある自由読み、または戦略上どうしても止めたい手は「異議」。×の異議札を1枚使う", "4. 札との意味的なつながりがかなり遠い読みは『不成立』にできる。機械ルールに触れなければ、あえて受理してもよい")
+    .replace("頭文字を合わせるためだけに元の語へ「お・ご」などを付けた自由読み（例：ねこ→おねこ）は無効", "頭文字を合わせるためだけに元の語へ『お・ご』などを付けた自由読みはルール上使用できない")
+    .replaceAll("無効", "不成立")
+    .replace("【判定:不成立｜理由:絵文字との関連がほぼない", "【判定:不成立｜理由:札そのものとの意味的なつながりが遠い");
+  if (!objectionAvailable) prompt = prompt.replace(`\n${objectionLine}`, "");
+  return prompt;
 }
 
 async function copyToClipboard(text: string) {
@@ -595,13 +690,17 @@ export default function Home() {
   const [pendingMode, setPendingMode] = useState<Mode>("partner");
   const [pendingBoardSize, setPendingBoardSize] = useState<BoardSize>(4);
   const [pendingStartingPlayer, setPendingStartingPlayer] = useState<Player>("O");
+  const [pendingObjectionLimit, setPendingObjectionLimit] = useState(recommendedObjectionCount(4));
   const [countdown, setCountdown] = useState(3);
   const [resumeAfterCountdown, setResumeAfterCountdown] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [rejectionFlash, setRejectionFlash] = useState(false);
+  const [verdictEvent, setVerdictEvent] = useState<VerdictEvent | null>(null);
   const [customReading, setCustomReading] = useState("");
   const [customReadingAid, setCustomReadingAid] = useState("");
   const [reason, setReason] = useState("");
+  const [notEstablishedReason, setNotEstablishedReason] = useState("");
+  const [notEstablishedNote, setNotEstablishedNote] = useState("");
   const [partnerReply, setPartnerReply] = useState("");
   const [message, setMessage] = useState("絵文字を選んで、しりとりを始めよう！");
   const [tutorialStep, setTutorialStep] = useState(0);
@@ -630,6 +729,8 @@ export default function Home() {
             board,
             boardSize: restored.boardSize ?? (restored.board.length === 25 ? 5 : 4),
             startingPlayer: restored.startingPlayer ?? "O",
+            objectionLimit: restored.objectionLimit ?? recommendedObjectionCount(restored.boardSize ?? (restored.board.length === 25 ? 5 : 4)),
+            objectionUsedThisTurn: restored.objectionUsedThisTurn ?? { O: false, X: false },
             retryBlocked: restored.retryBlocked ?? [],
             rejectedAttempts: restored.rejectedAttempts ?? [],
             partnerBriefed: restored.partnerBriefed ?? true,
@@ -641,6 +742,7 @@ export default function Home() {
           setPendingMode(migrated.mode);
           setPendingBoardSize(migrated.boardSize);
           setPendingStartingPlayer(migrated.startingPlayer);
+          setPendingObjectionLimit(migrated.objectionLimit);
           setView(hasProgress && !restored.winner ? "resume" : "title");
         } else {
           setView("title");
@@ -670,17 +772,34 @@ export default function Home() {
   }, [tutorialWindowOpen, tutorialChatPhase]);
 
   useEffect(() => {
+    if (view !== "tutorial" || tutorialWindowOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(".tutorial-tile.hint, .tutorial-next-action");
+      if (!target) return;
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "center" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [view, tutorialWindowOpen, tutorialStep, tutorialIntroDone]);
+
+  useEffect(() => {
     if (!tutorialEvent) return;
     const timer = window.setTimeout(() => setTutorialEvent(null), 1650);
     return () => window.clearTimeout(timer);
   }, [tutorialEvent]);
 
   useEffect(() => {
+    if (!verdictEvent) return;
+    const timer = window.setTimeout(() => setVerdictEvent(null), 1650);
+    return () => window.clearTimeout(timer);
+  }, [verdictEvent]);
+
+  useEffect(() => {
     if (view !== "countdown") return;
     if (countdown <= 0) {
       const kickoff = window.setTimeout(() => {
         if (!resumeAfterCountdown) {
-          setGame(createGame(Date.now(), pendingMode, pendingBoardSize, pendingStartingPlayer));
+          setGame(createGame(Date.now(), pendingMode, pendingBoardSize, pendingStartingPlayer, pendingObjectionLimit));
           setCustomReading("");
           setCustomReadingAid("");
           setReason("");
@@ -693,7 +812,7 @@ export default function Home() {
     }
     const tick = window.setTimeout(() => setCountdown((value) => value - 1), 800);
     return () => window.clearTimeout(tick);
-  }, [view, countdown, pendingMode, pendingBoardSize, pendingStartingPlayer, resumeAfterCountdown]);
+  }, [view, countdown, pendingMode, pendingBoardSize, pendingStartingPlayer, pendingObjectionLimit, resumeAfterCountdown]);
 
   const selectedPanel = game.selectedIndex === null ? null : game.board[game.selectedIndex];
   const registeredOptions = useMemo(() => {
@@ -745,16 +864,24 @@ export default function Home() {
   const tutorialReadingFormatInvalid = Boolean(tutorialCustomReading.trim()) && !isKanaOnlyReading(tutorialCustomReading);
   const customReadingNeedsAid = Boolean(customReading.trim()) && !isKanaOnlyReading(customReading);
   const customReadingAidInvalid = Boolean(customReadingAid.trim()) && !isKanaOnlyReading(customReadingAid);
+  const proposalJudge: Player | null = game.proposal ? (game.proposal.player === "O" ? "X" : "O") : null;
+  const proposalCanUseObjection = proposalJudge ? canUseObjection(game.objections[proposalJudge], game.objectionUsedThisTurn[proposalJudge]) : false;
 
   function nameFor(player: Player, mode = game.mode) {
     return player === "O" ? (mode === "partner" ? "あなた" : "プレイヤー1") : (mode === "partner" ? "パートナー" : "プレイヤー2");
+  }
+
+  function showVerdict(kind: VerdictEvent["kind"], player: Player) {
+    setVerdictEvent({ kind, player, nonce: Date.now() });
   }
 
   function openNewGameFlow() {
     setPendingMode(game.mode);
     setPendingBoardSize(game.boardSize);
     setPendingStartingPlayer(game.startingPlayer);
+    setPendingObjectionLimit(game.objectionLimit);
     setSummaryOpen(false);
+    setVerdictEvent(null);
     setView("mode");
   }
 
@@ -819,7 +946,7 @@ export default function Home() {
       setTutorialStep(14);
       setTutorialCustomReading("まじめ");
       setTutorialCustomReason("メガネをかけると真面目そうに見えるから");
-      setTutorialMessage("もう一度ゴネよう。今回もしゅがお手本を入力しておいたよ。みうの異議札は0枚だから、ゴネ切れば通る！");
+      setTutorialMessage("もう一度ゴネよう。みうはこの手番ですでに異議を使ったけれど、成立するかどうかは意味のつながりで判断するよ。");
     } else if (tutorialStep === 18) {
       setTutorialStep(19);
       setTutorialMessage("♾️には正式プリセット『ループ』があるよ。☔・♾️・👓の上段を完成させよう！");
@@ -973,7 +1100,7 @@ export default function Home() {
     const registered = isRegistered(selectedPanel, reading);
     if (normalized.length < 2) return setMessage("読みは2文字以上で入れてね。");
     if (!readingStartsWith(reading, game.currentChar)) return setMessage(`「${game.currentChar}」から始まる読みだけ使えるよ。濁音・半濁音は清音とつないでOK！`);
-    if (isRepeatedRejectedReading(game.rejectedAttempts, game.selectedIndex, reading)) return setMessage("そのマスで、その読みは直前に異議・無効になっているよ。別の読みを考えてね。");
+    if (isRepeatedRejectedReading(game.rejectedAttempts, game.selectedIndex, reading)) return setMessage("そのマスで、その読みは今回の再試行では使えないよ。別の読みを考えてね。");
     if (!registered && hasArtificialPolitePrefix(selectedPanel, reading)) return setMessage("頭文字を合わせるためだけの『お・ご』付けは使えないよ。別の読みを考えてね。");
     if (!registered && !explanation.trim()) return setMessage("自由読みには、絵文字からそう読んだ理由も必要だよ。");
 
@@ -1000,6 +1127,8 @@ export default function Home() {
       setGame({ ...game, proposal, phase: "partner-judge", selectedIndex: null, copied: false });
       setMessage("自由読みだね。手番コードをコピーして、パートナーへ判定を渡そう。");
     } else {
+      setNotEstablishedReason("");
+      setNotEstablishedNote("");
       setGame({ ...game, proposal, phase: "local-judge", selectedIndex: null });
       setMessage("相手は、このこじつけを受理する？");
     }
@@ -1043,16 +1172,16 @@ export default function Home() {
     const match = coord?.match(new RegExp(`^([A-${maxColumn}])([1-${baseGame.boardSize}])$`));
     if (!match) return { error: combined ? `次手をA1〜${maxColumn}${baseGame.boardSize}の形式で読み取れませんでした。` : `手番はA1〜${maxColumn}${baseGame.boardSize}の形式で返してもらってね。` } as const;
     const index = (Number(match[2]) - 1) * baseGame.boardSize + (match[1].charCodeAt(0) - 65);
-    if (baseGame.claims[index]) return { error: `${coord}はもう取得済みです。` } as const;
-    if (baseGame.retryBlocked.includes(index)) return { error: `${coord}は直前に異議を受けたため、今回の再試行では選べません。` } as const;
+    if (baseGame.claims[index]) return { error: `${coord}は取得済みのため、ルール上使用できません。` } as const;
+    if (baseGame.retryBlocked.includes(index)) return { error: `${coord}は今回の再試行では選択できないため、ルール上使用できません。` } as const;
     const resolved = resolveDeclaredReading(fields["読み"] ?? "", fields["読み仮名"] ?? fields["よみ"] ?? "");
     if ("error" in resolved) return resolved;
     const { display, reading } = resolved;
     const custom = !isRegistered(baseGame.board[index], reading);
-    if (!readingStartsWith(reading, baseGame.currentChar)) return { error: `今は「${baseGame.currentChar}」から始める手番です。濁音・半濁音は清音とつなげられます。` } as const;
+    if (!readingStartsWith(reading, baseGame.currentChar)) return { error: `今は「${baseGame.currentChar}」から始める手番です。この読みはルール上使用できません。濁音・半濁音は清音とつなげられます。` } as const;
     const proposal: Proposal = { player: "X", panelIndex: index, displayReading: display, reading, reason: fields["理由"] ?? "", custom };
-    if (isRepeatedRejectedReading(baseGame.rejectedAttempts, index, reading)) return { error: `${coord}で同じ読みは直前に異議・無効になっています。別の読みを使ってください。` } as const;
-    if (custom && hasArtificialPolitePrefix(baseGame.board[index], reading)) return { error: "頭文字を合わせるためだけの『お・ご』付けは無効です。" } as const;
+    if (isRepeatedRejectedReading(baseGame.rejectedAttempts, index, reading)) return { error: `${coord}で同じ読みは今回の再試行では使用できません。別の読みを使ってください。` } as const;
+    if (custom && hasArtificialPolitePrefix(baseGame.board[index], reading)) return { error: "頭文字を合わせるためだけの『お・ご』付けはルール上使用できません。" } as const;
     if (custom && !proposal.reason) return { error: "自由読みなのに理由がありません。" } as const;
     return { proposal, coord } as const;
   }
@@ -1065,6 +1194,8 @@ export default function Home() {
       return;
     }
     if (proposal.custom) {
+      setNotEstablishedReason("");
+      setNotEstablishedNote("");
       setGame({ ...baseGame, proposal, phase: "player-judge", copied: false });
       setMessage(combined
         ? "受理と次の一手をまとめて反映！ パートナーの自由読みを、あなたが判定する番だよ。"
@@ -1093,30 +1224,26 @@ export default function Home() {
         if (!nextGame.winner) {
           const validated = validatePartnerMove(nextGame, fields, true);
           if ("error" in validated) return setMessage(`受理後の次の一手を反映できませんでした。${validated.error} 盤面や札は変更していないよ。`);
+          showVerdict("accepted", proposal.player);
           commitPartnerMove(nextGame, validated.proposal, validated.coord, true);
         } else {
           setGame(nextGame);
           setPartnerReply("");
+          showVerdict("accepted", proposal.player);
           setMessage(`パートナーが受理！ 「${proposalLabel(proposal)}」で取得したよ。次の手番を確認してね。`);
         }
-      } else if (fields["判定"] === "無効") {
-        if (!fields["理由"]) return setMessage("無効判定には理由が必要です。状態は変更していないよ。");
-        const nextGame = rejectProposal(game, "X", false);
+      } else if (fields["判定"] === "不成立") {
+        if (!fields["理由"]) return setMessage("不成立判定には理由が必要です。状態は変更していないよ。");
+        const nextGame = rejectProposal(game, "X", "not-established");
         setGame(nextGame);
-        flashRejection(`ルール違反で無効。異議札は減りません。理由：${fields["理由"]}`);
+        flashRejection(`今回はこの札の読みとして不成立。異議札は減りません。理由：${fields["理由"]}`);
       } else if (fields["判定"] === "異議") {
-        if (!fields["理由"]) return setMessage("異議判定には理由が必要です。状態は変更していないよ。");
-        if (game.objections.X <= 0) {
-          const proposal = game.proposal;
-          const nextGame = applyMove(game, proposal);
-          setGame(nextGame);
-          setMessage("パートナーの異議札はゼロ。グレー判定のため、今回は自動で受理したよ。");
-        } else {
-          const nextGame = rejectProposal(game, "X");
-          setGame(nextGame);
-          flashRejection(`異議成立。理由：${fields["理由"] || "今回は通さないと判断"}`);
-        }
-      } else return setMessage("判定は「受理」「無効」「異議」のどれかで返してもらってね。");
+        if (!canUseObjection(game.objections.X, game.objectionUsedThisTurn.X)) return setMessage(game.objections.X <= 0 ? "パートナーの異議札は残っていないよ。成立している読みなら受理、遠いなら不成立で返してもらってね。状態は変更していないよ。" : "パートナーはこの手番ですでに異議を使っているよ。成立している読みなら受理、遠いなら不成立で返してもらってね。状態は変更していないよ。");
+        const nextGame = rejectProposal(game, "X", "objection");
+        setGame(nextGame);
+        showVerdict("objection", "X");
+        flashRejection(`異議成立。${fields["理由"] ? `理由：${fields["理由"]}` : "この手番で一度だけ使える拒否権を使ったよ。"}`);
+      } else return setMessage("判定は「受理」「不成立」「異議」のどれかで返してもらってね。");
       setPartnerReply("");
       return;
     }
@@ -1135,27 +1262,30 @@ export default function Home() {
       const proposal = game.proposal;
       const nextGame = applyMove(game, proposal);
       setGame(nextGame);
+      showVerdict("accepted", proposal.player);
       setMessage(`受理！ 「${proposalLabel(proposal)}」で取得したよ。次の手番を確認してね。`);
     } else {
-      if (game.objections[judge] <= 0) {
-        const proposal = game.proposal;
-        const nextGame = applyMove(game, proposal);
-        setGame(nextGame);
-        setMessage("異議札が残っていないため、グレー判定は自動で受理したよ。");
+      if (!canUseObjection(game.objections[judge], game.objectionUsedThisTurn[judge])) {
+        setMessage(game.objections[judge] <= 0 ? "異議札が残っていないよ。受理するか、つながりが遠いなら理由つきで不成立にしてね。" : "この相手手番では、もう異議を使っているよ。受理するか、つながりが遠いなら理由つきで不成立にしてね。");
         return;
       }
-      const nextGame = rejectProposal(game, judge);
+      const nextGame = rejectProposal(game, judge, "objection");
       setGame(nextGame);
+      showVerdict("objection", judge);
       flashRejection("異議成立。同じマス・同じ読みの連打はできないよ。別の合法手でやり直そう。");
     }
   }
 
-  function invalidateLocalProposal() {
+  function notEstablishLocalProposal() {
     if (!game.proposal) return;
+    if (!notEstablishedReason) return setMessage("不成立にする理由をひとつ選んでね。短い補足は任意だよ。");
     const judge: Player = game.proposal.player === "O" ? "X" : "O";
-    const nextGame = rejectProposal(game, judge, false);
+    const nextGame = rejectProposal(game, judge, "not-established");
     setGame(nextGame);
-    flashRejection("明確なルール違反として無効。異議札は減りません。");
+    const reasonText = `${notEstablishedReason}${notEstablishedNote.trim() ? `：${notEstablishedNote.trim()}` : ""}`;
+    setNotEstablishedReason("");
+    setNotEstablishedNote("");
+    flashRejection(`今回はこの札の読みとして不成立。理由：${reasonText}`);
   }
 
   const brand = (
@@ -1172,7 +1302,7 @@ export default function Home() {
 
           {view === "loading" && <><div className="loading-logo">{brand}</div><div className="loading-dots" aria-label="読み込み中"><i /><i /><i /></div></>}
 
-          {view === "title" && (
+          {view === "title" && <>
             <div className="start-content title-content title-hero">
               <div className="title-logo-stage">{brand}</div>
               <div className="title-copy">
@@ -1190,7 +1320,8 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          )}
+            <p className="title-credit">MIRROR ROOM<br />© 2026 MIRROR ROOM — by Nay &amp; Naya</p>
+          </>}
 
           {view === "tutorial" && (
             <div className="tutorial-view">
@@ -1212,6 +1343,18 @@ export default function Home() {
                   <span>{tutorialEvent === "gone" ? "✨ ゴネ解禁！ ✨" : tutorialEvent === "objection" ? "異議あり！ ×" : "3枚そろったーー！！🎉"}</span>
                 </div>
               )}
+
+              <details className="tutorial-boundary-lesson">
+                <summary>自由読みの線引きを見る</summary>
+                <div className="boundary-examples">
+                  <article className="safe"><b>✅ そのまま成立</b><strong>🍙「おにぎり」</strong><p>札そのものの名前。受理するか、止めたいなら異議。</p></article>
+                  <article className="gray"><b>🟨 グレー</b><strong>🍙「しゃけおにぎり」</strong><p>一般的な種類として直接つながる。受理しても、異議で止めてもOK。</p></article>
+                  <article className="far"><b>🟥 不成立にできる</b><strong>🍙「しゃもじ」</strong><p>おにぎりそのものから別の道具へ連想が移っている。</p></article>
+                  <article className="far"><b>🟥 かなり遠い</b><strong>🍙「マンモス」</strong><p>通常は不成立にできる。でも面白い、次の「す」が欲しいなら、あえて受理してもいい。</p></article>
+                </div>
+                <div className="boundary-bears"><span>🧸 絵からちゃんとつながる読みはセーフ！</span><span>🧸 ちょっと強引なら異議で止めてもいいよ</span><span>🧸 かなり遠い読みは不成立にできる。でも納得したら通してOK！</span></div>
+                <p className="boundary-summary"><b>成立してる</b> → 受理 or 異議　／　<b>かなり遠い</b> → 不成立にできる or あえて受理　／　<b>機械ルール上使えない</b> → 受理不可</p>
+              </details>
 
               <div className="tutorial-layout">
                 <section className="tutorial-game" aria-label="3×3の模擬戦盤面">
@@ -1251,7 +1394,7 @@ export default function Home() {
                           className={`tutorial-tile ${selected ? "selected" : ""} ${hinted ? "hint" : ""} ${claimedByYou ? "claimed-o" : ""} ${claimedByMiu ? "claimed-x" : ""} ${blocked ? "retry-blocked" : ""} ${lineTarget ? "line-target" : ""}`}
                           onClick={() => selectTutorialPanel(panel.id)}
                           disabled={!canSelect}
-                          aria-label={`${String.fromCharCode(65 + (index % 3))}${Math.floor(index / 3) + 1} ${panel.name}${blocked ? " 異議で却下" : ""}`}
+                          aria-label={`${String.fromCharCode(65 + (index % 3))}${Math.floor(index / 3) + 1} ${panel.name}${hinted ? " 次に押すパネル" : ""}${blocked ? " 異議で却下" : ""}`}
                         >
                           <span className="tutorial-coordinate">{String.fromCharCode(65 + (index % 3))}{Math.floor(index / 3) + 1}</span>
                           <span aria-hidden="true">{panel.icon}</span>
@@ -1319,9 +1462,9 @@ export default function Home() {
                   {tutorialStep === 15 && (
                     <div className="tutorial-miu-proposal tutorial-gone-result">
                       <PracticeBear bear="miu" motion={tutorialMiuAcceptRevealed ? "accept" : "thinking"} />
-                      <div className="tutorial-miu-copy"><b>みう <span>異議札 0枚</span></b>
+                      <div className="tutorial-miu-copy"><b>みう <span>この手番は異議済み</span></b>
                         <p>{tutorialMiuAcceptRevealed ? "むむ……！ それなら分かる。今回は受理！" : "むむ……『まじめ』……？"}</p>
-                        <small>{tutorialMiuAcceptRevealed ? "異議札ももう0枚。理由をつけたゴネが通った！" : "みうが読みと理由を考えているよ。"}</small>
+                        <small>{tutorialMiuAcceptRevealed ? "異議が使えないからではなく、札とのつながりに納得して受理したよ。" : "みうが読みと理由を考えているよ。"}</small>
                       </div>
                       {tutorialMiuAcceptRevealed
                         ? <button className="start-button tutorial-next-action" type="button" onClick={advanceTutorial}>ゴネを通して👓をGET <b>→</b></button>
@@ -1432,18 +1575,26 @@ export default function Home() {
                   <section className="kojitsuke-guide">
                     <span className="guide-tag">このゲームの醍醐味</span>
                     <h3>見た目は一枚、読み方はたくさん！</h3>
-                    <p>読みの正式分類は「正式プリセット」と「自由読み」の2つ。絵文字・名前・見た目から自由に読みを作れるよ。少し強引で創造的な自由読みを、遊び上「ゴネ読み」と呼ぶこともあるけれど、異議を出されやすくなる！</p>
-                    <div className="example-reading"><span className="example-art">☂️</span><div><small>例：「り」から始めたい</small><strong>「りょこう」</strong><p>旅行へ持っていく傘だから！</p></div></div>
-                    <p className="rule-caution">濁音・半濁音は清音とつないでOK（か↔が、は↔ば↔ぱ）。「うまそう」「かわいい」だけのように、どの札にも使える主観や強引な自由読みは異議対象になりやすいよ。</p>
+                    <p>読みの正式分類は「正式プリセット」と「自由読み」の2つ。絵文字・名前・共通説明や、自分の画面で実際に見えている特徴から自由に読みを作れるよ。</p>
+                    <div className="boundary-examples guide-boundary-examples">
+                      <article className="safe"><b>✅ 成立</b><strong>🍙「おにぎり」</strong><p>札そのものの名前なので成立。</p></article>
+                      <article className="gray"><b>🟨 グレー</b><strong>🍙「しゃけおにぎり」</strong><p>一般的な種類として直接つながる。受理 or 異議。</p></article>
+                      <article className="far"><b>🟥 不成立にできる</b><strong>🍙「しゃもじ」</strong><p>対象そのものから別の道具へ連想が移っている。</p></article>
+                      <article className="far"><b>🟥 かなり遠い</b><strong>🍙「マンモス」</strong><p>不成立にできるが、面白い・次の「す」が欲しいなら受理もOK。</p></article>
+                    </div>
+                    <p className="boundary-summary"><b>成立してる</b> → 受理 or 異議　／　<b>かなり遠い</b> → 不成立にできる or あえて受理　／　<b>機械ルール上使えない</b> → 受理不可</p>
+                    <div className="emoji-variation-note"><b>固有語・二人だけの呼び名も使えるよ</b><p>その札の対象そのものを指す固定の名前・愛称・秘密の言葉なら成立できるよ。理由に「二人の間でこの対象そのものを○○と呼んでいる」と書こう。思い出・出来事・セリフは、固定の愛称でない限り別もの。</p></div>
+                    <div className="emoji-variation-note"><b>絵文字の色や細部は、みんな同じとは限らないよ</b><p>OS・端末・AIによって、🎂がチョコ・ピンク・白に見えることも。相手は、自分と違って見えることだけで不成立にはせず、止めたい時は異議札を使うよ。</p></div>
+                    <p className="rule-caution">濁音・半濁音は清音とつないでOK（か↔が、は↔ば↔ぱ）。異議は相手の1手番につき1回まで。不成立は異議の代わりにはできないよ。</p>
                   </section>
 
                   <section className="partner-guide">
                     <div className="partner-guide-icon"><MirrorIcon small /></div>
-                    <div><h3>AIパートナーとはコピーで連携</h3><p>最初に「対戦開始文」、ラリー中は「この手番」または「判定依頼」をワンタップコピーして、いつもの会話へ貼るだけ。座標・札ID・見た目・正式読みも一緒に渡るよ。</p><small>会話や自由読みを相談しながら、一緒に楽しめます</small></div>
+                    <div><h3>AIパートナーとはコピーで連携</h3><p>最初に「対戦開始文」、ラリー中は「この手番」または「判定依頼」をワンタップコピーして、いつもの会話へ貼るだけ。座標・札ID・共通説明・正式読みも一緒に渡るよ。</p><small>会話や自由読みを相談しながら、一緒に楽しめます</small></div>
                   </section>
 
                   <section className="quick-rules" aria-label="補足ルール">
-                    <span>⚡ 異議札は各3枚</span><span>「ん」で終わると即敗北</span><span>両者ライン不能で引き分け</span><span>● ◆ 色とチップで陣営表示</span>
+                    <span>⚡ 異議札は対戦前に変更</span><span>1手番につき異議は1回</span><span>「ん」で終わると即敗北</span><span>両者ライン不能で引き分け</span>
                   </section>
 
                   <div className="guide-actions">
@@ -1494,6 +1645,15 @@ export default function Home() {
                     <button type="button" className={pendingBoardSize === 5 ? "selected" : ""} onClick={() => setPendingBoardSize(5)}><b>5 × 5</b><span>25枚・PC／タブレット推奨</span></button>
                   </div>
                 </section>
+                <section className="setup-choice-group objection-count-setting" aria-labelledby="objection-count-heading">
+                  <div className="setup-choice-heading"><strong id="objection-count-heading">異議札</strong><small>おすすめ：{recommendedObjectionCount(pendingBoardSize)}枚</small></div>
+                  <div className="number-stepper" aria-label="両者共通の異議札枚数">
+                    <button type="button" aria-label="異議札を1枚減らす" disabled={pendingObjectionLimit <= 0} onClick={() => setPendingObjectionLimit((value) => Math.max(0, value - 1))}>−</button>
+                    <strong>{pendingObjectionLimit}</strong>
+                    <button type="button" aria-label="異議札を1枚増やす" onClick={() => setPendingObjectionLimit((value) => value + 1)}>＋</button>
+                  </div>
+                  <p>両者が同じ枚数で開始。枚数を増やしても、1手番につき使える異議は1枚まで。</p>
+                </section>
                 <section className="setup-choice-group" aria-labelledby="first-player-heading">
                   <div className="setup-choice-heading"><strong id="first-player-heading">先攻</strong><small>最初の文字はゲーム開始時にランダム</small></div>
                   <div className="setup-choice-buttons first-player-choice">
@@ -1520,7 +1680,7 @@ export default function Home() {
                   <div><dt>盤面</dt><dd>{pendingBoardSize} × {pendingBoardSize} ／ {pendingBoardSize * pendingBoardSize}枚{pendingBoardSize === 5 ? "（PC／タブレット推奨）" : ""}</dd></div>
                   <div><dt>先攻</dt><dd>{pendingStartingPlayer === "O" ? (pendingMode === "partner" ? "あなた（○側）" : "プレイヤー1（○側）") : (pendingMode === "partner" ? "パートナー（×側）" : "プレイヤー2（×側）")}</dd></div>
                   <div><dt>開始文字</dt><dd>盤面からランダム</dd></div>
-                  <div><dt>異議札</dt><dd>各陣営3枚</dd></div>
+                  <div><dt>異議札</dt><dd>各陣営{pendingObjectionLimit}枚 ／ 1手番1回まで</dd></div>
                   <div><dt>読み</dt><dd>正式プリセット／自由読み</dd></div>
                   <div><dt>即敗北</dt><dd>「ん」で終わる読み</dd></div>
                   <div><dt>引き分け</dt><dd>双方ライン完成不能</dd></div>
@@ -1549,6 +1709,15 @@ export default function Home() {
 
   return (
     <main className="app-shell">
+      {verdictEvent && (
+        <div key={verdictEvent.nonce} className={`verdict-event verdict-${verdictEvent.kind} verdict-player-${verdictEvent.player.toLowerCase()}`} role="status" aria-live="assertive">
+          <div className="verdict-event-card">
+            <i className={`side-chip side-${verdictEvent.player.toLowerCase()}`} aria-hidden="true" />
+            <strong>{verdictEvent.kind === "objection" ? "異議あり！" : "受理されました！"}</strong>
+            <small>{nameFor(verdictEvent.player)}・{verdictEvent.player === "O" ? "○側" : "×側"}</small>
+          </div>
+        </div>
+      )}
       <div className="game-layout">
         <section className="play-column">
           <section className={`status-card player-${game.turn.toLowerCase()}`} aria-live="polite">
@@ -1558,8 +1727,8 @@ export default function Home() {
             </div>
             <div className="letter-block"><small>この文字から</small><strong>{game.currentChar}</strong></div>
             <div className="status-objections" aria-label="残り異議札">
-              <span><i className="side-chip side-o" />{game.objections.O}</span>
-              <span><i className="side-chip side-x" />{game.objections.X}</span>
+              <span><i className="side-chip side-o" />{game.objections.O}{game.objectionUsedThisTurn.O && <em>済</em>}</span>
+              <span><i className="side-chip side-x" />{game.objections.X}{game.objectionUsedThisTurn.X && <em>済</em>}</span>
             </div>
             <div className="status-actions">
               <button className="summary-toggle" type="button" onClick={() => setSummaryOpen(true)} aria-expanded={summaryOpen}>詳細</button>
@@ -1624,6 +1793,7 @@ export default function Home() {
                   <label><span>自由読みの表示 <b>漢字も使えるよ</b></span><input lang="ja" aria-describedby={customReadingNeedsAid ? "custom-reading-aid-help" : undefined} value={customReading} onChange={(event) => setCustomReading(event.target.value)} placeholder={`例：${game.currentChar}…`} />{customReadingNeedsAid && <small id="custom-reading-aid-help" className="reading-aid-help">漢字・々などを使ったので、下に判定用の読み仮名を入れてね。</small>}</label>
                   {customReadingNeedsAid && <label><span>判定用の読み仮名 <b>ひらがな／カタカナ</b></span><input lang="ja" aria-invalid={customReadingAidInvalid} aria-describedby={customReadingAidInvalid ? "custom-reading-format-error" : undefined} value={customReadingAid} onChange={(event) => setCustomReadingAid(event.target.value)} placeholder={`${game.currentChar}…`} />{customReadingAidInvalid && <small id="custom-reading-format-error" className="reading-format-error" role="alert">読み仮名は、ひらがなかカタカナで入力してね。</small>}</label>}
                   <label><span>そう読んだ理由 <b>自由読みは理由つき</b></span><textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="絵のどこから連想した？" rows={3} /></label>
+                  <small className="emoji-reading-hint">色や細かな飾りが理由なら、「自分の画面では茶色に見えるから」のように書いてね。絵文字は端末やAIで見え方が違うよ。</small>
                   <div className="button-row"><button type="button" className="secondary" onClick={cancelReading}>選び直す</button><button type="button" className="primary" onClick={() => submitReading(customReading, reason, customReadingAid)}>この読みで宣言</button></div>
                 </div>
               </div>
@@ -1646,8 +1816,13 @@ export default function Home() {
               <div className="judge-panel">
                 <p className="judge-kicker">こじつけ判定</p>
                 <div className="proposal-card"><span><PanelArtwork panel={game.board[game.proposal.panelIndex]} compact /></span><div><small>{coordinate(game.proposal.panelIndex, game.boardSize)} / {game.board[game.proposal.panelIndex].name}</small><h2>「{proposalLabel(game.proposal)}」</h2><p>{game.proposal.reason}</p></div></div>
-                <p className="judge-question">明確な違反なら無効。グレー、または勝負上止めたいなら異議札。納得したら受理！</p>
-                <div className="judge-actions"><button type="button" className="invalid-button" onClick={invalidateLocalProposal}>× 違反で無効<small>札は減らない</small></button><button type="button" className="object-button" disabled={game.objections[game.proposal.player === "O" ? "X" : "O"] <= 0} onClick={() => judgeLocal(false)}>⚡ 異議を出す<small>札を1枚使う</small></button><button type="button" className="accept-button" onClick={() => judgeLocal(true)}>✓ 受理する<small>読みを成立</small></button></div>
+                <p className="judge-question">成立しているなら受理、止めたいなら異議。札との意味的なつながりがかなり遠い時は、理由つきで不成立にできるよ。</p>
+                <p className="emoji-judge-hint">不成立は異議の代わりではないよ。異議が使えないことを理由に、成立している読みを不成立へ格下げしないでね。</p>
+                <div className="not-established-form">
+                  <label><span>不成立の理由</span><select value={notEstablishedReason} onChange={(event) => setNotEstablishedReason(event.target.value)}><option value="">理由を選ぶ</option>{NOT_ESTABLISHED_REASONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                  <label><span>補足（任意）</span><input value={notEstablishedNote} onChange={(event) => setNotEstablishedNote(event.target.value)} placeholder="短く補足できるよ" /></label>
+                </div>
+                <div className="judge-actions"><button type="button" className="invalid-button" onClick={notEstablishLocalProposal}>× 不成立<small>理由が必要・札は減らない</small></button><button type="button" className="object-button" disabled={!proposalCanUseObjection} onClick={() => judgeLocal(false)}>⚡ 異議を出す<small>{proposalJudge && game.objectionUsedThisTurn[proposalJudge] ? "この手番では使用済み" : proposalJudge && game.objections[proposalJudge] <= 0 ? "残り0枚" : "札を1枚使う"}</small></button><button type="button" className="accept-button" onClick={() => judgeLocal(true)}>✓ 受理する<small>読みを成立</small></button></div>
               </div>
             )}
 
@@ -1683,7 +1858,7 @@ export default function Home() {
           <details className="rules-card">
             <summary><span>HOW TO PLAY</span><strong>あそびかた</strong><b>＋</b></summary>
             <ol><li><b>1</b><span>今の文字から読める絵文字を選ぶ</span></li><li><b>2</b><span>正式プリセット、または理由つきの自由読みを宣言</span></li><li><b>3</b><span>成立した読みの最後の文字を次へつなぐ。「ん」で終わればその場で負け</span></li><li><b>4</b><span>先に自分の色を一列そろえたら勝ち</span></li><li><b>5</b><span>双方とも列を完成できなくなった時点で引き分け</span></li></ol>
-            <p>濁音・半濁音は清音と接続可能。明確な違反は異議札なしで無効、グレーな自由読みや戦略的な反対は異議札を1枚使うよ。</p>
+            <p>成立している自由読みは受理か異議。札とのつながりがかなり遠い読みは理由つきで不成立にでき、納得したらあえて受理してもOK。現在文字違い・「ん」終わり・選択不可などの機械ルールは受理できないよ。</p>
           </details>
           <section className="prototype-note"><span>PROTOTYPE 02</span><p>共通性の高い絵文字65枚入り。正式プリセットは札ごとに必要な数だけ登録できるよ。</p></section>
         </aside>

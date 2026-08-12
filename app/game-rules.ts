@@ -1,6 +1,14 @@
 export type Player = "O" | "X";
 export type BoardSize = 4 | 5;
 
+export function recommendedObjectionCount(boardSize: 3 | BoardSize) {
+  return boardSize === 3 ? 2 : 3;
+}
+
+export function canUseObjection(remaining: number, usedThisTurn: boolean) {
+  return remaining > 0 && !usedThisTurn;
+}
+
 export type PresetReading = string | {
   display: string;
   reading: string;
@@ -119,7 +127,7 @@ export type MachineReplyParseResult =
   | { ok: true; fields: Record<string, string>; line: string }
   | { ok: false; error: string };
 
-const MACHINE_REPLY_ERROR = "パートナー返答を正しく読み取れませんでした。機械読取用の1行だけ、またはそのコードブロックを含むChatGPTの返答を貼り付けてください。";
+const MACHINE_REPLY_ERROR = "パートナー返答を正しく読み取れませんでした。機械読取用の1行だけ、またはそのコードブロックを含むAIの返答を貼り付けてください。";
 
 function isCompleteMachineLine(value: string) {
   return /^【(?:手番|判定|準備)[:：][^【】\r\n]+】$/u.test(value);
@@ -129,7 +137,7 @@ export function parseMachineReply(text: string): MachineReplyParseResult {
   const input = text.trim();
   const candidates: string[] = [];
 
-  // ChatGPTのコードブロックにある「コピー」は、Markdownフェンスを除いた
+  // AIのコードブロックにある「コピー」は、Markdownフェンスを除いた
   // 中身だけを渡す。その正式操作では、入力全体が機械読取1行であることを必須にする。
   if (isCompleteMachineLine(input)) {
     candidates.push(input);

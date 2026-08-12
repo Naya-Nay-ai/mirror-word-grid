@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   availablePresetReadings,
+  canUseObjection,
   chooseRandomStart,
   findWinner,
   hasCompletableLine,
@@ -16,6 +17,7 @@ import {
   presetReadingValue,
   readingEnd,
   readingStartsWith,
+  recommendedObjectionCount,
   resolveDeclaredReading,
   winnerAfterNEnding,
   winLinesFor,
@@ -31,6 +33,18 @@ const cat = {
   readings: ["ねこ", "おうちねこ"],
   visualDescription: "猫の顔",
 };
+
+test("recommended objection counts follow each board size", () => {
+  assert.equal(recommendedObjectionCount(3), 2);
+  assert.equal(recommendedObjectionCount(4), 3);
+  assert.equal(recommendedObjectionCount(5), 3);
+});
+
+test("an objection can be used only once in the opponent's turn", () => {
+  assert.equal(canUseObjection(3, false), true);
+  assert.equal(canUseObjection(3, true), false);
+  assert.equal(canUseObjection(0, false), false);
+});
 
 test("formal preset readings can have any array length", () => {
   assert.deepEqual(availablePresetReadings(cat, "ね", false), ["ねこ"]);
@@ -75,7 +89,7 @@ test("partner replies accept either one copied machine line or exactly one stand
 
   // 本文中に形式らしい行があっても、入力全体がその1行だけでなければ実行しない。
   assert.equal(parseMachineReply(`いい手だね！\n${line}`).ok, false);
-  const pastedPrompt = "回答例:\n【判定:受理｜コード:MWG-ABCDE】\n【判定:無効｜理由:例｜コード:MWG-ABCDE】\n【判定:異議｜理由:例｜コード:MWG-ABCDE】";
+  const pastedPrompt = "回答例:\n【判定:受理｜コード:MWG-ABCDE】\n【判定:不成立｜理由:例｜コード:MWG-ABCDE】\n【判定:異議｜理由:例｜コード:MWG-ABCDE】";
   assert.equal(parseMachineReply(pastedPrompt).ok, false);
   const multiple = "```\n【判定:受理｜コード:MWG-ABCDE】\n```\n```\n【判定:異議｜理由:例｜コード:MWG-ABCDE】\n```";
   assert.equal(parseMachineReply(multiple).ok, false);
@@ -118,6 +132,13 @@ test("legacy IDs remain stable while the watermelon card safely becomes onigiri"
 
 test("the reviewed plush card uses the teddy bear emoji", () => {
   assert.equal(PANELS.find((panel) => panel.id === "plush")?.icon, "🧸");
+});
+
+test("the birthday cake keeps a platform-neutral shared description", () => {
+  const birthdayCake = PANELS.find((panel) => panel.id === "birthday-cake");
+  assert.equal(birthdayCake?.icon, "🎂");
+  assert.equal(birthdayCake?.visualDescription, "飾り付けされたホールケーキ");
+  assert.doesNotMatch(birthdayCake?.visualDescription ?? "", /チョコ|ピンク|白(?:い|色)?|茶色/);
 });
 
 test("the reviewed infinity card and eleven additional cards are present without changing legacy IDs", () => {
@@ -282,9 +303,10 @@ test("line victory takes priority over the draw check", () => {
 });
 
 test("critical copy, tutorial, and responsive UI hooks remain present", async () => {
-  const [page, css] = await Promise.all([
+  const [page, css, rules] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/game-rules.ts", import.meta.url), "utf8"),
   ]);
   for (const label of [
     "対戦開始文をコピーして始める",
@@ -309,6 +331,21 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
   assert.match(page, /最初の文字はゲーム開始時にランダム/);
   assert.match(page, /手番コードだけを淡々と返す進行にはしない/);
   assert.match(page, /目の前で一緒に勝負している温度で返す/);
+  assert.match(page, /絵文字はOS・端末・AIサービスによって、色・材質・飾り・表情などの細部が違って見える/);
+  assert.match(page, /自分側の絵文字と違って見えることだけを理由に「不成立」にしない/);
+  assert.match(page, /🎂がチョコ・ピンク・白に見えることも/);
+  assert.match(page, /受理されました！/);
+  assert.match(page, /showVerdict\("objection", "X"\)/);
+  assert.match(page, /showVerdict\("objection", judge\)/);
+  assert.match(page, /© 2026 MIRROR ROOM/);
+  assert.match(page, /by Nay &amp; Naya/);
+  assert.match(page, /1手番につき使える異議は1枚まで/);
+  assert.match(page, /🍙「マンモス」/);
+  assert.match(css, /\.title-credit/);
+  assert.match(css, /\.view-tutorial > \.start-brand \{ display: none; \}/);
+  assert.match(css, /\.tutorial-tile\.hint::after/);
+  assert.match(rules, /そのコードブロックを含むAIの返答を貼り付けてください。/);
+  assert.doesNotMatch(rules, /ChatGPT/);
   assert.doesNotMatch(page, /ん返し|難易度|制限時間|時間無制限|時計停止|EASY|NORMAL|HARD|ゴねり/);
   assert.doesNotMatch(css, /difficulty-picker|\.timer\b/);
   assert.match(page, /id: "cloud", icon: "☁️", name: "くも"/);
@@ -366,6 +403,11 @@ test("critical copy, tutorial, and responsive UI hooks remain present", async ()
   assert.match(page, /コードブロックの中には機械読取用の1行以外を書かない/);
   assert.doesNotMatch(page, /返答全体をMarkdownのコードブロック1つに入れる/);
   assert.match(css, /\.tutorial-window-layer/);
+  assert.match(css, /\.verdict-event/);
+  assert.match(css, /\.verdict-player-o/);
+  assert.match(css, /\.verdict-player-x/);
+  assert.match(css, /@keyframes verdict-card-pop/);
+  assert.match(css, /\.emoji-variation-note/);
   assert.match(css, /\.tutorial-chat-window \{ width: min\(760px, 100%\)/);
   assert.match(css, /\.tutorial-judge-actions/);
   assert.match(css, /@media \(max-width: 480px\)/);
