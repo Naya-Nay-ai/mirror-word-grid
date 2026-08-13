@@ -532,6 +532,40 @@ function partnerJudgePrompt(game: GameState) {
 }
 
 async function copyToClipboard(text: string) {
+  const legacyCopy = () => {
+    const area = document.createElement("textarea");
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.left = "-9999px";
+    area.style.top = "0";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.focus();
+    area.select();
+    area.setSelectionRange(0, area.value.length);
+    const copied = document.execCommand("copy");
+    area.remove();
+    previousFocus?.focus();
+    return copied;
+  };
+
+  const isAppleWebKit = /AppleWebKit/i.test(navigator.userAgent)
+    && !/(Chrome|Chromium|Edg|OPR|Android)/i.test(navigator.userAgent);
+
+  // Safari系はクリック直後のユーザー操作権限が短いため、同期コピーを先に試す。
+  if (isAppleWebKit) {
+    if (legacyCopy()) return true;
+    try {
+      if (!navigator.clipboard?.writeText) return false;
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   try {
     await Promise.race([
       navigator.clipboard.writeText(text),
@@ -539,15 +573,7 @@ async function copyToClipboard(text: string) {
     ]);
     return true;
   } catch {
-    const area = document.createElement("textarea");
-    area.value = text;
-    area.style.position = "fixed";
-    area.style.opacity = "0";
-    document.body.appendChild(area);
-    area.select();
-    const copied = document.execCommand("copy");
-    area.remove();
-    return copied;
+    return legacyCopy();
   }
 }
 
