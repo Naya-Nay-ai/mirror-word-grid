@@ -395,7 +395,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
               </section>
             )}
             <section className={styles.roomInfoCard}>
-              <small>ROOM INFO</small><h2>使い捨て部屋</h2>
+              <small>ROOM INFO</small><h2>対戦ルーム</h2>
               <dl><div><dt>部屋ID</dt><dd>{room.id}</dd></div><div><dt>盤面</dt><dd>{game.boardSize}×{game.boardSize}</dd></div><div><dt>先攻</dt><dd>{profileLabel(room.players[game.startingPlayer]?.profile)}</dd></div><div><dt>自動消去</dt><dd>{formatExpiry(room.expiresAt)}</dd></div></dl>
               <p>有効な操作のたびに期限が24時間延長されます。見るだけでは延長されません。</p>
             </section>
