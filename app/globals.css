@@ -258,6 +258,11 @@ footer b { color: var(--purple); }
 .title-actions { display: grid; gap: 10px; justify-items: center; }
 .title-start-button { display: grid; grid-template-columns: 1fr auto; align-items: center; }
 .title-start-button > span { justify-self: center; padding-left: 22px; line-height: 1.2; }
+.online-title-button { display: grid; grid-template-columns: 1fr auto; align-items: center; width: min(100%, 330px); min-height: 62px; padding: 7px 17px; border: 3px solid var(--line); border-radius: 16px; background: var(--mint); color: var(--ink); box-shadow: 0 5px 0 var(--line); font-weight: 900; text-decoration: none; }
+.online-title-button > span { display: grid; justify-self: center; gap: 1px; padding-left: 22px; text-align: center; }
+.online-title-button strong { font-size: 15px; }.online-title-button small { color: #316b61; font-size: 8px; letter-spacing: .04em; }
+.online-title-button > b { font-size: 22px; }
+.online-title-button:active { transform: translateY(5px); box-shadow: none; }
 .title-start-button > b { float: none; justify-self: end; line-height: 1; }
 .guide-button { width: min(100%,330px); min-height: 50px; border: 2px solid var(--line); border-radius: 15px; background: white; box-shadow: 0 3px 0 var(--line); font-size: 13px; font-weight: 900; cursor: pointer; }
 .guide-button span { display: inline-grid; place-items: center; width: 23px; height: 23px; margin-right: 7px; border: 2px solid var(--line); border-radius: 50%; background: var(--mint-soft); }
@@ -618,6 +623,11 @@ footer b { color: var(--purple); }
 .setup-choice-buttons button.selected { border-color: var(--line); background: #fff7cf; box-shadow: 0 3px 0 var(--line); transform: translateY(-1px); }
 .setup-choice-buttons .side-o-choice.selected { background: var(--pink-soft); }
 .setup-choice-buttons .side-x-choice.selected { background: var(--purple-soft); }
+.player-name-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.player-name-inputs label { display: block; text-align: left; }
+.player-name-inputs label > span { margin-bottom: 4px; font-size: 9px; }
+.player-name-inputs input { height: 42px; font-size: 12px; }
+.player-name-setting > p { margin: 8px 1px 0; color: #766e80; font-size: 9px; line-height: 1.5; text-align: left; }
 .objection-count-setting { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; padding: 10px 12px; border: 2px solid rgba(47,41,70,.13); border-radius: 14px; background: rgba(255,255,255,.76); }
 .objection-count-setting .setup-choice-heading { margin: 0; }.objection-count-setting > p { grid-column: 1 / -1; margin: 2px 0 0; color: #71697a; font-size: 10px; line-height: 1.45; }
 .number-stepper { display: grid; grid-template-columns: 36px 42px 36px; align-items: center; gap: 3px; }.number-stepper button { width: 36px; height: 36px; border: 2px solid var(--line); border-radius: 10px; background: white; box-shadow: 0 2px 0 var(--line); color: var(--ink); font-size: 20px; font-weight: 900; cursor: pointer; }.number-stepper button:active { translate: 0 2px; box-shadow: none; }.number-stepper button:disabled { opacity: .35; cursor: not-allowed; }.number-stepper strong { text-align: center; font-size: 21px; }
@@ -967,6 +977,7 @@ label > span,
 }
 
 @media (max-width: 480px) {
+  .player-name-inputs { grid-template-columns: 1fr; }
   .topbar .eyebrow { font-size: 11px; }
   .tile-name,
   .play-column .tile-name { font-size: 11px; }

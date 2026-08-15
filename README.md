@@ -1,108 +1,70 @@
-# vinext-starter
+# MIRROR WORD GRID
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+絵文字の読みをしりとりでつなぎ、○×のラインを作る対戦ゲームです。
 
-## Prerequisites
+## 遊び方
 
-- Node.js `>=22.13.0`
-- Linux with `flock`, `curl`, and GNU `timeout`
+- `/` — ひとつの端末で遊ぶ。人間同士、または自分のホームAIへ手番をコピーして遊べます。
+- `/online` — 使い捨ての対戦部屋を作る。招待URLをDiscordやXのDMで送り、別端末から同じ盤面を共有します。
+- `/share` — 通常対戦の読み取り専用盤面リンクです。
 
-## Sites Lifecycle
+オンライン対戦でもAI APIは使いません。それぞれのユーザーが自分のホームAIへ手番文をコピーし、AIの返答を共有盤面へ貼り戻します。両側とも、人間操作とAI操作を自由に選べます。
 
-The Sites lifecycle CLI runs the locked dependency install before returning this checkout. Edit the source under `app/`, then checkpoint when a coherent milestone is ready to inspect or share. The remote Sites builder runs `npm run build` against the pushed commit. Do not repeat install or build as a normal pre-checkpoint step.
+## オンライン部屋
 
-This starter does not use `wrangler.jsonc`.
+- ホストは○側、招待された相手は×側です。
+- 招待用アクセストークンはURLフラグメントへ入るため、通常のHTTPリクエストやサーバーログへ送信されません。
+- サーバーはアクセストークンのSHA-256ハッシュだけを保存します。
+- すべての更新にrevisionを要求し、古い盤面からの上書きは`409 Conflict`で拒否します。
+- 有効な操作ごとに期限が延長され、最後の操作から24時間でRedisから自動消去されます。閲覧・ポーリングだけでは延長されません。
+- 同じ端末では参加情報を`localStorage`へ保存し、部屋へ戻れます。
 
-`install:ci` is intentionally a single, non-retrying `npm ci`. It refuses a concurrent install for the same project, consumes a matching image-seeded npm cache with `--prefer-offline` while retaining registry fallback for a missing cache object, otherwise downloads and verifies the complete vinext tarball recorded in `package-lock.json`, limits npm to one socket, and terminates a stalled install. `build` applies a short timeout and then validates the Sites artifact. These helpers target Linux and use GNU `timeout`; they are not native macOS scripts.
+## 開発
 
-Scripts that need writable project-scoped home, npm, XDG, and temporary paths use `scripts/sites-env.sh`. The `dev` and `start` scripts honor the caller's runtime environment and keep Wrangler logs inside the checkout. The generated `.sites-runtime/` directory is disposable and ignored by Git.
+Node.js 22.13以上が必要です。
 
-## Included Shape
-
-- edit site code under `app/`
-- `app/chatgpt-auth.ts` provides optional dispatch-owned ChatGPT sign-in helpers
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```bash
+npm ci
+npm run test:rules
+npm run test:online
+npm run lint
+npm run build
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+APIまで含むローカル通し試験は、Next.js開発サーバーを起動してから実行します。
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+```bash
+npx next dev
+npm run test:online-api
+```
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+開発環境では共有ストレージの環境変数がない場合だけ、プロセス内メモリを使います。本番相当のビルドではメモリへフォールバックせず、未接続ならAPIが`503 storage_unavailable`を返します。
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+## 共有ストレージ
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+Vercel MarketplaceのUpstash Redisをプロジェクトへ接続してください。統合が自動設定する次のどちらかの組を利用できます。
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+```text
+UPSTASH_REDIS_REST_URL
+UPSTASH_REDIS_REST_TOKEN
+```
 
-## Diagnostic Commands
+または既存のVercel KV互換名:
 
-- `npm run install:ci`: perform the one bounded lockfile install
-- `npm run dev`: start the Vite/Vinext development server
-- `npm run build`: build and validate the deployable Sites artifact
-- `npm run start`: start the built Vinext application
-- `npm test`: build, validate, and verify the rendered development-preview metadata
-- `npm run validate:artifact`: recheck an existing artifact's manifest and ESM `default.fetch` export
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+```text
+KV_REST_API_URL
+KV_REST_API_TOKEN
+```
 
-Use build and validation commands for targeted diagnosis after a remote failure, not as part of the normal checkpoint path.
+値をソースコードや`NEXT_PUBLIC_*`変数へ入れないでください。
 
-The timeout defaults can be overridden for a controlled canary with `SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT`, and `SITES_BUILD_KILL_AFTER`. A timeout fails the command; the helpers never retry an unchanged install or build.
+## 主な構成
 
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+- `app/online-engine.ts` — 盤面生成、宣言、判定、勝敗を扱う純粋ゲームエンジン
+- `app/room-service.ts` — 認証済みの部屋作成・更新とrevision制御
+- `app/room-store.ts` — Upstash Redisの24時間TTL・原子的compare-and-set
+- `app/api/rooms/**` — 部屋作成、取得、更新API
+- `app/online/**` — オンラインロビー
+- `app/room/[roomId]/**` — 自動同期する共有対戦盤面
+- `tests/online-engine.test.mjs` — オンラインルールの単体テスト
+- `tests/online-api-e2e.mjs` — ホスト／ゲストのAPI通し試験

@@ -1,0 +1,78 @@
+.lobbyShell { width: min(1120px, 100%); min-height: 100svh; margin: 0 auto; padding: 22px 20px 60px; }
+.lobbyHeader { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.logoLink { display: block; width: 180px; }
+.logoLink img { display: block; width: 100%; height: auto; }
+.liveBadge { display: flex; align-items: center; gap: 7px; padding: 8px 12px; border: 2px solid var(--line); border-radius: 999px; background: white; box-shadow: 0 3px 0 rgba(47,41,70,.18); color: var(--purple); font-size: 10px; font-weight: 900; letter-spacing: .1em; }
+.liveBadge i { width: 9px; height: 9px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 4px rgba(56,200,174,.2); }
+.lobbyHero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr); gap: 30px; align-items: end; padding: 48px 0 32px; }
+.kicker { margin: 0 0 9px; color: var(--purple); font-size: 10px; font-weight: 900; letter-spacing: .16em; }
+.lobbyHero h1 { margin: 0; font-size: clamp(38px, 7vw, 67px); line-height: 1.03; letter-spacing: -.065em; }
+.lobbyHero h1 span { display: inline; color: var(--pink); }
+.lobbyHero > div > p:last-child { max-width: 630px; margin: 20px 0 0; color: #625b70; font-size: 14px; line-height: 1.8; }
+.courierCard { display: grid; grid-template-columns: 1fr auto 1fr; gap: 9px; align-items: center; padding: 20px; border: 3px solid var(--line); border-radius: 22px; background: linear-gradient(135deg, #fff, var(--purple-soft)); box-shadow: var(--shadow); text-align: center; }
+.courierCard span { display: grid; place-items: center; min-height: 65px; padding: 8px; border: 2px solid rgba(47,41,70,.18); border-radius: 14px; background: rgba(255,255,255,.82); font-size: 12px; font-weight: 900; }
+.courierCard b { color: var(--purple); font-size: 9px; line-height: 1.4; }
+.courierCard small { grid-column: 1 / -1; color: #686079; font-size: 9px; line-height: 1.55; }
+.lobbyGrid { display: grid; grid-template-columns: minmax(0, 680px) minmax(270px, 1fr); gap: 20px; align-items: start; }
+.setupCard, .flowCard, .combinationsCard, .resumeCard { border: 3px solid var(--line); border-radius: 24px; background: rgba(255,255,255,.96); box-shadow: var(--shadow); }
+.setupCard { padding: clamp(18px, 4vw, 30px); }
+.sectionHeading { display: flex; align-items: center; gap: 11px; margin: 23px 0 13px; }
+.sectionHeading:first-child { margin-top: 0; }
+.sectionHeading > span { display: grid; place-items: center; width: 36px; height: 36px; border: 2px solid var(--line); border-radius: 11px; background: var(--yellow); font-size: 11px; font-weight: 900; }
+.sectionHeading small, .guideColumn section > small { color: var(--purple); font-size: 8px; font-weight: 900; letter-spacing: .14em; }
+.sectionHeading h2, .guideColumn h2 { margin: 1px 0 0; font-size: 18px; }
+.field { display: block; margin-top: 11px; }
+.field > span { font-size: 11px; }
+.field input { height: 48px; }
+.namePreview { margin: 10px 0 0; padding: 9px 11px; border-radius: 10px; background: var(--mint-soft); color: #3f6f65; font-size: 10px; }
+.namePreview strong { color: var(--ink); font-size: 12px; }
+.choiceGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.choiceGrid button { display: grid; gap: 3px; min-height: 72px; padding: 12px; border: 2px solid #bab2c6; border-radius: 14px; background: #fffdf9; cursor: pointer; text-align: left; }
+.choiceGrid button b { font-size: 13px; }
+.choiceGrid button small { color: #766f80; font-size: 9px; }
+.choiceGrid button.selectedChoice { border-color: var(--line); background: var(--yellow); box-shadow: 0 3px 0 var(--line); transform: translateY(-2px); }
+.settingRow { display: grid; grid-template-columns: 70px 1fr; gap: 10px; align-items: center; margin-top: 10px; }
+.settingRow > span { font-size: 11px; font-weight: 900; }
+.segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 5px; padding: 4px; border: 2px solid #c5bece; border-radius: 13px; background: #f4f0f7; }
+.segmented button { min-height: 36px; padding: 4px 8px; border: 0; border-radius: 8px; background: transparent; color: #746d80; font-size: 10px; font-weight: 900; cursor: pointer; }
+.segmented button.activeSegment { background: white; color: var(--ink); box-shadow: 0 2px 0 rgba(47,41,70,.16); }
+.error { margin: 16px 0 0; padding: 11px 13px; border: 2px solid #b94839; border-radius: 12px; background: #fff0eb; color: #922f22; font-size: 11px; font-weight: 800; line-height: 1.5; }
+.createButton { display: grid; grid-template-columns: 1fr auto; align-items: center; width: 100%; min-height: 58px; margin-top: 23px; padding: 0 18px; border: 3px solid var(--line); border-radius: 16px; background: var(--mint); box-shadow: 0 5px 0 var(--line); cursor: pointer; font-size: 15px; font-weight: 900; }
+.createButton span { justify-self: center; padding-left: 22px; }
+.createButton b { font-size: 22px; }
+.createButton:active:not(:disabled) { transform: translateY(5px); box-shadow: none; }
+.createButton:disabled { opacity: .65; cursor: wait; }
+.ttlNote { margin: 13px 0 0; color: #7c7486; font-size: 9px; line-height: 1.5; text-align: center; }
+.guideColumn { display: grid; gap: 14px; position: sticky; top: 18px; }
+.flowCard, .combinationsCard, .resumeCard { padding: 19px; }
+.flowCard ol { display: grid; gap: 12px; margin: 16px 0 0; padding: 0; list-style: none; }
+.flowCard li { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: center; }
+.flowCard li > b { display: grid; place-items: center; width: 34px; height: 34px; border: 2px solid var(--line); border-radius: 10px; background: var(--yellow); }
+.flowCard li div { display: grid; gap: 2px; }
+.flowCard li strong { font-size: 12px; }
+.flowCard li span { color: #746c7e; font-size: 9px; line-height: 1.4; }
+.combinationsCard { background: linear-gradient(145deg, white, var(--purple-soft)); }
+.combinationsCard > div { display: grid; grid-template-columns: 1fr 36px 1fr; align-items: center; gap: 7px; margin-top: 8px; text-align: center; }
+.combinationsCard div span { padding: 8px; border: 2px solid rgba(47,41,70,.18); border-radius: 10px; background: rgba(255,255,255,.8); font-size: 11px; font-weight: 900; }
+.combinationsCard div b { color: var(--purple); font-size: 9px; }
+.resumeCard { background: var(--mint-soft); }
+.resumeCard p { color: #4d716a; font-size: 10px; }
+.resumeCard a { display: flex; justify-content: space-between; margin-top: 12px; padding: 11px 13px; border: 2px solid var(--line); border-radius: 11px; background: white; color: var(--ink); box-shadow: 0 3px 0 var(--line); font-size: 11px; font-weight: 900; text-decoration: none; }
+.backLink { justify-self: center; color: #6e667a; font-size: 10px; font-weight: 800; text-underline-offset: 4px; }
+@media (max-width: 820px) {
+  .lobbyHero, .lobbyGrid { grid-template-columns: 1fr; }
+  .lobbyHero { padding-top: 34px; }
+  .guideColumn { position: static; }
+}
+@media (max-width: 520px) {
+  .lobbyShell { padding: 14px 11px 42px; }
+  .logoLink { width: 142px; }
+  .liveBadge { padding: 7px 9px; font-size: 8px; }
+  .lobbyHero { gap: 20px; }
+  .lobbyHero h1 { font-size: 39px; }
+  .courierCard { grid-template-columns: 1fr; }
+  .courierCard b { transform: rotate(90deg); }
+  .courierCard small { grid-column: auto; }
+  .choiceGrid { grid-template-columns: 1fr; }
+  .settingRow { grid-template-columns: 1fr; }
+}

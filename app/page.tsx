@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -92,6 +93,7 @@ type GameState = {
   seed: number;
   boardSize: BoardSize;
   startingPlayer: Player;
+  playerNames: Record<Player, string>;
 };
 
 const SPINES = [
@@ -245,8 +247,24 @@ function freshCode() {
   return codeFor(Date.now() + Math.floor(Math.random() * 9999));
 }
 
-function createGame(seed = 407, mode: Mode = "partner", boardSize: BoardSize = 4, startingPlayer: Player = "O", objectionLimit = recommendedObjectionCount(boardSize)): GameState {
+function defaultPlayerNames(mode: Mode): Record<Player, string> {
+  return mode === "partner" ? { O: "あなた", X: "パートナー" } : { O: "プレイヤー1", X: "プレイヤー2" };
+}
+
+function createGame(
+  seed = 407,
+  mode: Mode = "partner",
+  boardSize: BoardSize = 4,
+  startingPlayer: Player = "O",
+  objectionLimit = recommendedObjectionCount(boardSize),
+  playerNames = defaultPlayerNames(mode),
+): GameState {
   const { board, start } = makeBoard(seed, boardSize);
+  const defaults = defaultPlayerNames(mode);
+  const safePlayerNames = {
+    O: playerNames.O.trim().replace(/[\r\n]/g, "").slice(0, 12) || defaults.O,
+    X: playerNames.X.trim().replace(/[\r\n]/g, "").slice(0, 12) || defaults.X,
+  };
   return {
     board,
     claims: {},
@@ -272,6 +290,7 @@ function createGame(seed = 407, mode: Mode = "partner", boardSize: BoardSize = 4
     seed,
     boardSize,
     startingPlayer,
+    playerNames: safePlayerNames,
   };
 }
 
@@ -403,10 +422,10 @@ function acceptanceImpact(game: GameState, proposal: Proposal) {
 }
 
 function partnerIntroPrompt(game: GameState) {
-  const firstPlayer = game.startingPlayer === "O" ? "私（○側）" : "あなた（×側）";
+  const firstPlayer = game.startingPlayer === "O" ? `${game.playerNames.O}（○側）` : `${game.playerNames.X}（×側）`;
   return `# MIRROR WORD GRID：対戦開始
 
-これから、あなたと一緒に${game.boardSize}×${game.boardSize}のラインゲームを遊びます。あなたは×側、私は○側です。
+これから、あなたと一緒に${game.boardSize}×${game.boardSize}のラインゲームを遊びます。あなたは${game.playerNames.X}として×側、私は${game.playerNames.O}として○側です。
 今回の先攻：${firstPlayer}
 ランダムで決まった開始文字：「${game.currentChar}」
 
@@ -702,6 +721,7 @@ export default function Home() {
   const [pendingBoardSize, setPendingBoardSize] = useState<BoardSize>(4);
   const [pendingStartingPlayer, setPendingStartingPlayer] = useState<Player>("O");
   const [pendingObjectionLimit, setPendingObjectionLimit] = useState(recommendedObjectionCount(4));
+  const [pendingPlayerNames, setPendingPlayerNames] = useState<Record<Player, string>>(() => defaultPlayerNames("partner"));
   const [countdown, setCountdown] = useState(3);
   const [resumeAfterCountdown, setResumeAfterCountdown] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -746,6 +766,7 @@ export default function Home() {
             rejectedAttempts: restored.rejectedAttempts ?? [],
             partnerBriefed: restored.partnerBriefed ?? true,
             winReason: restored.winReason ?? (restored.winner === "DRAW" ? "draw" : restored.winner ? "line" : null),
+            playerNames: restored.playerNames ?? defaultPlayerNames(restored.mode),
             copied: false,
           };
           const hasProgress = migrated.history.length > 0 || Object.keys(migrated.claims).length > 0 || migrated.phase !== "select";
@@ -754,6 +775,7 @@ export default function Home() {
           setPendingBoardSize(migrated.boardSize);
           setPendingStartingPlayer(migrated.startingPlayer);
           setPendingObjectionLimit(migrated.objectionLimit);
+          setPendingPlayerNames(migrated.playerNames);
           setView(hasProgress && !restored.winner ? "resume" : "title");
         } else {
           setView("title");
@@ -810,7 +832,7 @@ export default function Home() {
     if (countdown <= 0) {
       const kickoff = window.setTimeout(() => {
         if (!resumeAfterCountdown) {
-          setGame(createGame(Date.now(), pendingMode, pendingBoardSize, pendingStartingPlayer, pendingObjectionLimit));
+          setGame(createGame(Date.now(), pendingMode, pendingBoardSize, pendingStartingPlayer, pendingObjectionLimit, pendingPlayerNames));
           setCustomReading("");
           setCustomReadingAid("");
           setReason("");
@@ -823,7 +845,7 @@ export default function Home() {
     }
     const tick = window.setTimeout(() => setCountdown((value) => value - 1), 800);
     return () => window.clearTimeout(tick);
-  }, [view, countdown, pendingMode, pendingBoardSize, pendingStartingPlayer, pendingObjectionLimit, resumeAfterCountdown]);
+  }, [view, countdown, pendingMode, pendingBoardSize, pendingStartingPlayer, pendingObjectionLimit, pendingPlayerNames, resumeAfterCountdown]);
 
   const selectedPanel = game.selectedIndex === null ? null : game.board[game.selectedIndex];
   const registeredOptions = useMemo(() => {
@@ -833,7 +855,7 @@ export default function Home() {
 
   const prompt = game.phase === "partner-judge" && game.proposal ? partnerJudgePrompt(game) : partnerTurnPrompt(game);
   const isPartnerWaiting = game.phase === "partner-turn" || game.phase === "partner-judge";
-  const currentName = game.turn === "O" ? (game.mode === "partner" ? "あなた" : "プレイヤー1") : (game.mode === "partner" ? "パートナー" : "プレイヤー2");
+  const currentName = game.playerNames?.[game.turn] ?? defaultPlayerNames(game.mode)[game.turn];
   const tutorialMiuSteps = [2, 3, 4, 7, 10, 11, 12, 15, 16, 17];
   const tutorialMiuIsSpeaking = tutorialMiuSteps.includes(tutorialStep);
   const tutorialChapterIndex = !tutorialIntroDone || tutorialStep < 8 ? 0 : tutorialStep < 16 ? 1 : tutorialStep < 18 ? 2 : 3;
@@ -879,7 +901,15 @@ export default function Home() {
   const proposalCanUseObjection = proposalJudge ? canUseObjection(game.objections[proposalJudge], game.objectionUsedThisTurn[proposalJudge]) : false;
 
   function nameFor(player: Player, mode = game.mode) {
-    return player === "O" ? (mode === "partner" ? "あなた" : "プレイヤー1") : (mode === "partner" ? "パートナー" : "プレイヤー2");
+    return game.playerNames?.[player] ?? defaultPlayerNames(mode)[player];
+  }
+
+  function choosePendingMode(nextMode: Mode) {
+    const previousDefaults = defaultPlayerNames(pendingMode);
+    setPendingPlayerNames((names) => (
+      names.O === previousDefaults.O && names.X === previousDefaults.X ? defaultPlayerNames(nextMode) : names
+    ));
+    setPendingMode(nextMode);
   }
 
   function showVerdict(kind: VerdictEvent["kind"], player: Player) {
@@ -891,6 +921,7 @@ export default function Home() {
     setPendingBoardSize(game.boardSize);
     setPendingStartingPlayer(game.startingPlayer);
     setPendingObjectionLimit(game.objectionLimit);
+    setPendingPlayerNames(game.playerNames ?? defaultPlayerNames(game.mode));
     setSummaryOpen(false);
     setVerdictEvent(null);
     setView("mode");
@@ -1325,6 +1356,7 @@ export default function Home() {
                 <h2>絵の読み方は、<br /><span>ひとつじゃない。</span></h2>
                 <p>絵からことばを見つけて、しりとりで陣地をつなごう。先に一列そろえた側の勝ち！</p>
                 <div className="title-actions">
+                  <Link className="online-title-button" href="/online"><span><strong>ふたりでオンライン対戦</strong><small>招待URLで同じ盤面へ</small></span><b>↗</b></Link>
                   <button className="start-button title-start-button" type="button" onClick={() => setView("mode")}><span>ゲームをはじめる</span><b>→</b></button>
                   <button className="tutorial-button" type="button" onClick={openTutorial}><span>🧸</span> しゅ＆みうと練習する</button>
                   <button className="text-button" type="button" onClick={() => setView("guide")}>詳しいルールを読む</button>
@@ -1640,15 +1672,23 @@ export default function Home() {
               </div>
               <div className="setup-panel">
                 <div className="mode-cards">
-                  <button type="button" className={pendingMode === "partner" ? "selected" : ""} onClick={() => setPendingMode("partner")}>
+                  <button type="button" className={pendingMode === "partner" ? "selected" : ""} onClick={() => choosePendingMode("partner")}>
                     <span className="mode-icon mirror-mode" aria-hidden="true">✦</span>
                     <strong>AIパートナー</strong><small>いつもの会話へ手番を渡す</small>
                   </button>
-                  <button type="button" className={pendingMode === "local" ? "selected" : ""} onClick={() => setPendingMode("local")}>
+                  <button type="button" className={pendingMode === "local" ? "selected" : ""} onClick={() => choosePendingMode("local")}>
                     <span className="mode-icon" aria-hidden="true">● ◆</span>
                     <strong>人間ふたり</strong><small>ひとつの端末を交互に使う</small>
                   </button>
                 </div>
+                <section className="setup-choice-group player-name-setting" aria-labelledby="player-name-heading">
+                  <div className="setup-choice-heading"><strong id="player-name-heading">表示する名前</strong><small>各12文字まで</small></div>
+                  <div className="player-name-inputs">
+                    <label><span>○側 / {pendingMode === "partner" ? "あなた" : "プレイヤー1"}</span><input value={pendingPlayerNames.O} maxLength={12} onChange={(event) => setPendingPlayerNames((names) => ({ ...names, O: event.target.value.replace(/[\r\n]/g, "") }))} /></label>
+                    <label><span>×側 / {pendingMode === "partner" ? "AIパートナー" : "プレイヤー2"}</span><input value={pendingPlayerNames.X} maxLength={12} onChange={(event) => setPendingPlayerNames((names) => ({ ...names, X: event.target.value.replace(/[\r\n]/g, "") }))} /></label>
+                  </div>
+                  <p>AIとの会話で使っている呼び名も、そのまま盤面へ表示できるよ。</p>
+                </section>
                 <section className="setup-choice-group" aria-labelledby="board-size-heading">
                   <div className="setup-choice-heading"><strong id="board-size-heading">盤面サイズ</strong><small>遊びごたえを選ぶ</small></div>
                   <div className="setup-choice-buttons board-size-choice">
@@ -1668,8 +1708,8 @@ export default function Home() {
                 <section className="setup-choice-group" aria-labelledby="first-player-heading">
                   <div className="setup-choice-heading"><strong id="first-player-heading">先攻</strong><small>最初の文字はゲーム開始時にランダム</small></div>
                   <div className="setup-choice-buttons first-player-choice">
-                    <button type="button" className={pendingStartingPlayer === "O" ? "selected side-o-choice" : "side-o-choice"} onClick={() => setPendingStartingPlayer("O")}><b>{pendingMode === "partner" ? "あなた" : "プレイヤー1"}</b><span>○側が先攻</span></button>
-                    <button type="button" className={pendingStartingPlayer === "X" ? "selected side-x-choice" : "side-x-choice"} onClick={() => setPendingStartingPlayer("X")}><b>{pendingMode === "partner" ? "パートナー" : "プレイヤー2"}</b><span>×側が先攻</span></button>
+                    <button type="button" className={pendingStartingPlayer === "O" ? "selected side-o-choice" : "side-o-choice"} onClick={() => setPendingStartingPlayer("O")}><b>{pendingPlayerNames.O || "○側"}</b><span>○側が先攻</span></button>
+                    <button type="button" className={pendingStartingPlayer === "X" ? "selected side-x-choice" : "side-x-choice"} onClick={() => setPendingStartingPlayer("X")}><b>{pendingPlayerNames.X || "×側"}</b><span>×側が先攻</span></button>
                   </div>
                 </section>
                 <button className="start-button" type="button" onClick={() => setView("confirm")}>このモードで進む <b>→</b></button>
@@ -1689,7 +1729,8 @@ export default function Home() {
                 <dl className="settings-list">
                   <div><dt>モード</dt><dd>{pendingMode === "partner" ? "AIパートナー受け渡し" : "人間ふたり対戦"}</dd></div>
                   <div><dt>盤面</dt><dd>{pendingBoardSize} × {pendingBoardSize} ／ {pendingBoardSize * pendingBoardSize}枚{pendingBoardSize === 5 ? "（PC／タブレット推奨）" : ""}</dd></div>
-                  <div><dt>先攻</dt><dd>{pendingStartingPlayer === "O" ? (pendingMode === "partner" ? "あなた（○側）" : "プレイヤー1（○側）") : (pendingMode === "partner" ? "パートナー（×側）" : "プレイヤー2（×側）")}</dd></div>
+                  <div><dt>対戦名</dt><dd>{pendingPlayerNames.O || "○側"} vs {pendingPlayerNames.X || "×側"}</dd></div>
+                  <div><dt>先攻</dt><dd>{pendingStartingPlayer === "O" ? `${pendingPlayerNames.O || "○側"}（○側）` : `${pendingPlayerNames.X || "×側"}（×側）`}</dd></div>
                   <div><dt>開始文字</dt><dd>盤面からランダム</dd></div>
                   <div><dt>異議札</dt><dd>各陣営{pendingObjectionLimit}枚 ／ 1手番1回まで</dd></div>
                   <div><dt>読み</dt><dd>正式プリセット／自由読み</dd></div>
@@ -1841,7 +1882,7 @@ export default function Home() {
               <div className="winner-panel">
                 <div className="confetti">✦ ○ ✧ × ✦</div>
                 <p>GAME SET!</p>
-                <h2>{game.winner === "DRAW" ? "引き分け！" : `${game.winner === "O" ? "○" : "×"} ${game.winner === "O" ? (game.mode === "partner" ? "あなた" : "プレイヤー1") : (game.mode === "partner" ? "パートナー" : "プレイヤー2")}の勝ち！`}</h2>
+                <h2>{game.winner === "DRAW" ? "引き分け！" : `${game.winner === "O" ? "○" : "×"} ${game.playerNames?.[game.winner] ?? defaultPlayerNames(game.mode)[game.winner]}の勝ち！`}</h2>
                 <p>{game.winReason === "n-ending" ? "『ん』で終わる読みを出したため、その場で勝負が決まりました。" : game.winner === "DRAW" ? Object.keys(game.claims).length < game.boardSize * game.boardSize ? "盤面に空きはあるけれど、どちらもラインを完成できなくなりました。" : "全マスを使ってもラインが完成しませんでした。" : `タテ・ヨコ・ナナメの${game.boardSize}枚ラインが揃ったよ。`}</p>
                 <button type="button" className="primary" onClick={openNewGameFlow}>もう一局あそぶ</button>
               </div>
