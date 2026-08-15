@@ -40,8 +40,12 @@ export function credentialForRoom(roomId: string) {
   return readAll().find((item) => item.roomId === roomId) ?? null;
 }
 
-export function latestRoomCredential() {
-  return readAll().sort((left, right) => Date.parse(right.savedAt) - Date.parse(left.savedAt))[0] ?? null;
+export function savedRoomCredentials() {
+  return readAll().sort((left, right) => Date.parse(right.savedAt) - Date.parse(left.savedAt));
+}
+
+export function removeRoomCredential(roomId: string) {
+  writeAll(readAll().filter((item) => item.roomId !== roomId));
 }
 
 export async function copyText(text: string) {

@@ -5,12 +5,25 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import type { BoardSize, Player } from "../game-rules";
-import type { ControllerKind, CreateRoomResponse } from "../online-types";
-import { latestRoomCredential, saveRoomCredential, type SavedRoomCredential } from "../room-client-storage";
+import type { ControllerKind, CreateRoomResponse, RoomView } from "../online-types";
+import {
+  removeRoomCredential,
+  savedRoomCredentials,
+  saveRoomCredential,
+  type SavedRoomCredential,
+} from "../room-client-storage";
 import styles from "./online.module.css";
 
 type ApiFailure = { error?: { message?: string } };
 type SetupStep = 1 | 2 | 3;
+type ResumeRoom = { credential: SavedRoomCredential; remainingLabel: string };
+
+function remainingTimeLabel(expiresAt: string, now: number) {
+  const remainingMinutes = Math.max(1, Math.ceil((Date.parse(expiresAt) - now) / 60_000));
+  const hours = Math.floor(remainingMinutes / 60);
+  const minutes = remainingMinutes % 60;
+  return hours > 0 ? `${hours}時間${minutes}分` : `${minutes}分`;
+}
 
 export default function OnlineLobby() {
   const [playerName, setPlayerName] = useState("");
@@ -22,21 +35,54 @@ export default function OnlineLobby() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [latest, setLatest] = useState<SavedRoomCredential | null>(null);
+  const [resumeRoom, setResumeRoom] = useState<ResumeRoom | null>(null);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setLatest(latestRoomCredential()), 0);
-    return () => window.clearTimeout(timer);
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      for (const credential of savedRoomCredentials()) {
+        try {
+          const response = await fetch(`/api/rooms/${credential.roomId}`, {
+            headers: { Authorization: `Bearer ${credential.accessToken}` },
+            cache: "no-store",
+          });
+          const body = await response.json() as { view?: RoomView };
+          if (!response.ok || !body.view) {
+            if (response.status === 401 || response.status === 404 || response.status === 410) {
+              removeRoomCredential(credential.roomId);
+              continue;
+            }
+            return;
+          }
+          const checkedAt = Date.now();
+          if (!Number.isFinite(Date.parse(body.view.room.expiresAt)) || Date.parse(body.view.room.expiresAt) <= checkedAt) {
+            removeRoomCredential(credential.roomId);
+            continue;
+          }
+          if (!cancelled) setResumeRoom({
+            credential,
+            remainingLabel: remainingTimeLabel(body.view.room.expiresAt, checkedAt),
+          });
+          return;
+        } catch {
+          return;
+        }
+      }
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, []);
 
   function moveToStep(nextStep: SetupStep) {
-    if (nextStep > 1 && !playerName.trim()) {
-      setError("プレイヤー名を入力してね。");
-      setSetupStep(1);
+    if (nextStep > 2 && !playerName.trim()) {
+      setError(controller === "ai" ? "ユーザー名を入力してね。" : "プレイヤー名を入力してね。");
+      setSetupStep(2);
       return;
     }
     if (nextStep > 2 && controller === "ai" && !partnerName.trim()) {
-      setError("ホームAIで遊ぶときは、AI・相棒名も入力してね。");
+      setError("AI同士で遊ぶときは、パートナーAI名も入力してね。");
       setSetupStep(2);
       return;
     }
@@ -48,12 +94,12 @@ export default function OnlineLobby() {
     event.preventDefault();
     if (busy) return;
     if (!playerName.trim()) {
-      setError("プレイヤー名を入力してね。");
-      setSetupStep(1);
+      setError(controller === "ai" ? "ユーザー名を入力してね。" : "プレイヤー名を入力してね。");
+      setSetupStep(2);
       return;
     }
     if (controller === "ai" && !partnerName.trim()) {
-      setError("ホームAIで遊ぶときは、AI・相棒名も入力してね。");
+      setError("AI同士で遊ぶときは、パートナーAI名も入力してね。");
       setSetupStep(2);
       return;
     }
@@ -65,7 +111,7 @@ export default function OnlineLobby() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          profile: { playerName, partnerName, controller },
+          profile: { playerName, partnerName: controller === "ai" ? partnerName : "", controller },
           boardSize,
           startingPlayer,
         }),
@@ -97,14 +143,20 @@ export default function OnlineLobby() {
             <div className={styles.onlineBadge}><i /> ONLINE MATCH</div>
           </div>
           <h1>離れていても、<span>同じ盤面で遊べる。</span></h1>
-          <p>招待URLをDiscordやXのDMで送るだけ。プレイヤー同士でも、お互いのホームAIを連れてきても対戦できます。</p>
         </div>
 
-        <div className={styles.courierCard} aria-label="AIホームと共有ゲーム盤の間で、プレイヤーが手番を運びます">
-          <span><b aria-hidden="true">🏠</b><strong>AIホーム</strong></span>
-          <b className={styles.exchangeMark}>⇄<small>手番</small></b>
-          <span><strong>共有ゲーム盤</strong><b aria-hidden="true">🎮</b></span>
-          <p>AI APIは使いません。会話は各社AIのホームに残ります。</p>
+        <div className={styles.courierCard}>
+          <div className={styles.courierFlow} aria-label="AIホームと共有ゲーム盤の間で、プレイヤーが手番を運びます">
+            <span><b aria-hidden="true">🏠</b><strong>AIホーム</strong></span>
+            <b className={styles.exchangeMark}>⇄<small>手番</small></b>
+            <span><strong>共有ゲーム盤</strong><b aria-hidden="true">🎮</b></span>
+          </div>
+          <ul className={styles.featureList}>
+            <li>招待URLをDiscordやXのDMで送るだけ</li>
+            <li><strong>AI同士でも、人間同士でもオンライン対戦できます</strong></li>
+            <li>AI対戦でもAI APIは使いません</li>
+            <li>会話はそれぞれのAIのホームに残ります</li>
+          </ul>
         </div>
       </section>
 
@@ -120,29 +172,31 @@ export default function OnlineLobby() {
           </ol>
 
           <section className={styles.setupSection} data-active={setupStep === 1}>
-            <div className={styles.sectionHeading}><span>01</span><div><small>YOUR TEAM</small><h2>あなた側の名前</h2></div></div>
-            <label className={styles.field}>
-              <span>プレイヤー名 <b>必須</b></span>
-              <input value={playerName} onChange={(event) => setPlayerName(event.target.value)} maxLength={12} placeholder="例：なや" autoComplete="nickname" required />
-            </label>
+            <div className={styles.sectionHeading}><span>01</span><div><small>CHOOSE MODE</small><h2>どちらのモードで遊ぶ？</h2></div></div>
+            <div className={styles.choiceGrid}>
+              <button type="button" aria-pressed={controller === "ai"} className={controller === "ai" ? styles.selectedChoice : ""} onClick={() => setController("ai")}>
+                <b>✦ AI同士で対戦</b><small>お互いのホームAIに手番を渡して遊ぶ</small>
+              </button>
+              <button type="button" aria-pressed={controller === "human"} className={controller === "human" ? styles.selectedChoice : ""} onClick={() => setController("human")}>
+                <b>● 人間同士で対戦</b><small>離れた相手と同じ盤面で直接遊ぶ</small>
+              </button>
+            </div>
             <button className={styles.nextButton} type="button" onClick={() => moveToStep(2)}>次へ <b>→</b></button>
           </section>
 
           <section className={styles.setupSection} data-active={setupStep === 2}>
-            <div className={styles.sectionHeading}><span>02</span><div><small>WHO DECIDES?</small><h2>手を決める担当</h2></div></div>
-            <div className={styles.choiceGrid}>
-              <button type="button" className={controller === "ai" ? styles.selectedChoice : ""} onClick={() => setController("ai")}>
-                <b>✦ ホームAI</b><small>手番をコピーして相談</small>
-              </button>
-              <button type="button" className={controller === "human" ? styles.selectedChoice : ""} onClick={() => setController("human")}>
-                <b>● プレイヤー</b><small>盤面で直接選ぶ</small>
-              </button>
-            </div>
+            <div className={styles.sectionHeading}><span>02</span><div><small>YOUR NAME</small><h2>名前を入力</h2></div></div>
             <label className={styles.field}>
-              <span>AI・相棒名 <b>{controller === "ai" ? "必須" : "任意"}</b></span>
-              <input value={partnerName} onChange={(event) => setPartnerName(event.target.value)} maxLength={12} placeholder="例：Nay" aria-required={controller === "ai"} />
+              <span>{controller === "ai" ? "ユーザー名" : "プレイヤー名"} <b>必須</b></span>
+              <input value={playerName} onChange={(event) => setPlayerName(event.target.value)} maxLength={12} placeholder="名前を入力" autoComplete="nickname" required />
             </label>
-            <p className={styles.namePreview}>盤面表示：<strong>{playerName || "あなた"}{partnerName ? `＆${partnerName}` : ""}</strong></p>
+            {controller === "ai" && (
+              <label className={styles.field}>
+                <span>パートナーAI名 <b>必須</b></span>
+                <input value={partnerName} onChange={(event) => setPartnerName(event.target.value)} maxLength={12} placeholder="AI名を入力" required />
+              </label>
+            )}
+            <p className={styles.namePreview}>盤面表示：<strong>{playerName || (controller === "ai" ? "ユーザー" : "プレイヤー")}{controller === "ai" && partnerName ? ` ＆ ${partnerName}` : ""}</strong></p>
             <div className={styles.stepActions}>
               <button className={styles.previousButton} type="button" onClick={() => moveToStep(1)}>← 前へ</button>
               <button className={styles.nextButton} type="button" onClick={() => moveToStep(3)}>次へ <b>→</b></button>
@@ -186,20 +240,22 @@ export default function OnlineLobby() {
             </button>
             <div className={styles.guideContent} data-open={guideOpen}>
               <ol>
-                <li><b>1</b><div><strong>対戦ルームを作る</strong><span>名前と操作担当を決める</span></div></li>
-                <li><b>2</b><div><strong>URLをDMで送る</strong><span>相手はリンクから参加</span></div></li>
-                <li><b>3</b><div><strong>同じ盤面で遊ぶ</strong><span>盤面は自動同期。AIの返答だけ各ユーザーが運ぶ</span></div></li>
+                <li><b>1</b><div><strong>対戦ルームを作る</strong><span>モードと名前を決める</span></div></li>
+                <li><b>2</b><div><strong>招待URLを送る</strong><span>DiscordやXのDMで相手へ</span></div></li>
+                <li><b>3</b><div><strong>同じ盤面で対戦</strong><span>離れた場所から盤面を共有</span></div></li>
               </ol>
-              <div className={styles.combinationsLine} aria-label="対応する対戦の組み合わせ">
-                <span>人間 VS 人間</span><span>人間 VS AI</span><span>AI VS AI</span>
-              </div>
             </div>
           </section>
 
-          {latest && (
+          {resumeRoom && (
             <section className={styles.resumeCard}>
-              <div><small>SAVED ON THIS DEVICE</small><h2>前の部屋へ戻る</h2></div>
-              <Link href={`/room/${latest.roomId}`}>部屋を開く <b>→</b></Link>
+              <div>
+                <small>SAVED ON THIS DEVICE</small>
+                <h2>前の部屋へ戻る</h2>
+                <p>対戦ルームが残っています</p>
+                <strong>🕒 自動消去まで {resumeRoom.remainingLabel}</strong>
+              </div>
+              <Link href={`/room/${resumeRoom.credential.roomId}`}>部屋を開く <b>→</b></Link>
             </section>
           )}
           <Link href="/" className={styles.backLink}>← ひとつの端末で遊ぶ</Link>

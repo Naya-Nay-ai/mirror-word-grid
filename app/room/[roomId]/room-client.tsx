@@ -205,6 +205,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
   const you = view.you;
   const participant = room.players[you];
   const controller = participant?.profile.controller ?? "human";
+  const roomMode = room.players.O?.profile.controller ?? "human";
   const yourTurn = room.status === "active" && game.phase === "select" && game.turn === you;
   const yourJudgement = room.status === "active" && game.phase === "judge" && game.proposal?.player !== you;
   const selectedStillValid = selectedIndex !== null && yourTurn && controller === "human" && !game.claims[selectedIndex] && !game.retryBlocked.includes(selectedIndex);
@@ -272,7 +273,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
       {(notice || error) && <div className={error ? styles.errorNotice : styles.notice} role={error ? "alert" : "status"}>{error || notice}</div>}
 
       {you === "X" && !room.players.X ? (
-        <JoinCard busy={busy} onJoin={joinRoom} />
+        <JoinCard busy={busy} mode={roomMode} onJoin={joinRoom} />
       ) : (
         <div className={styles.roomLayout}>
           <div className={styles.playColumn}>
@@ -411,18 +412,18 @@ export default function RoomClient({ roomId }: { roomId: string }) {
   );
 }
 
-function JoinCard({ busy, onJoin }: { busy: boolean; onJoin: (profile: PlayerProfile) => Promise<void> }) {
+function JoinCard({ busy, mode, onJoin }: { busy: boolean; mode: ControllerKind; onJoin: (profile: PlayerProfile) => Promise<void> }) {
   const [playerName, setPlayerName] = useState("");
   const [partnerName, setPartnerName] = useState("");
-  const [controller, setController] = useState<ControllerKind>("ai");
+  const aiMatch = mode === "ai";
   return (
     <section className={styles.joinCard}>
-      <p className={styles.joinKicker}>YOU ARE INVITED!</p><h1>対戦部屋へようこそ。</h1><p>相手側の名前と、手を決める担当を選んだら参加できるよ。</p>
-      <form onSubmit={(event) => { event.preventDefault(); void onJoin({ playerName, partnerName, controller }); }}>
-        <label><span>プレイヤー名 <b>必須</b></span><input value={playerName} onChange={(event) => setPlayerName(event.target.value)} maxLength={12} placeholder="例：相手の名前" required /></label>
-        <label><span>AI・相棒名 <b>{controller === "ai" ? "必須" : "任意"}</b></span><input value={partnerName} onChange={(event) => setPartnerName(event.target.value)} maxLength={12} placeholder="例：Claude" required={controller === "ai"} /></label>
-        <div className={styles.joinChoices}><button type="button" className={controller === "ai" ? styles.activeJoinChoice : ""} onClick={() => setController("ai")}>✦ ホームAIが決める</button><button type="button" className={controller === "human" ? styles.activeJoinChoice : ""} onClick={() => setController("human")}>● 自分で決める</button></div>
-        <p>盤面表示：<strong>{playerName || "あなた"}{partnerName ? `＆${partnerName}` : ""}</strong></p>
+      <p className={styles.joinKicker}>YOU ARE INVITED!</p><h1>対戦ルームへようこそ。</h1>
+      <p>{aiMatch ? "✦ AI同士のオンライン対戦です。ユーザー名とパートナーAI名を入力してね。" : "● 人間同士のオンライン対戦です。プレイヤー名を入力してね。"}</p>
+      <form onSubmit={(event) => { event.preventDefault(); void onJoin({ playerName, partnerName: aiMatch ? partnerName : "", controller: mode }); }}>
+        <label><span>{aiMatch ? "ユーザー名" : "プレイヤー名"} <b>必須</b></span><input value={playerName} onChange={(event) => setPlayerName(event.target.value)} maxLength={12} placeholder="名前を入力" required /></label>
+        {aiMatch && <label><span>パートナーAI名 <b>必須</b></span><input value={partnerName} onChange={(event) => setPartnerName(event.target.value)} maxLength={12} placeholder="AI名を入力" required /></label>}
+        <p>盤面表示：<strong>{playerName || (aiMatch ? "ユーザー" : "プレイヤー")}{aiMatch && partnerName ? ` ＆ ${partnerName}` : ""}</strong></p>
         <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "参加中…" : "この名前で参加する →"}</button>
       </form>
     </section>

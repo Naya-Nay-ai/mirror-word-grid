@@ -50,6 +50,28 @@ test("player profiles are compact, bounded, and form the match label", () => {
   );
 });
 
+test("the host mode is authoritative when the invited player joins", () => {
+  const aiRoom = roomWith({
+    status: "waiting",
+    players: {
+      O: { side: "O", profile: { playerName: "ホスト", partnerName: "ホームAI", controller: "ai" }, joinedAt: "2026-01-01T00:00:00.000Z" },
+      X: null,
+    },
+  });
+  const aiJoined = applyRoomAction(aiRoom, "X", {
+    type: "join",
+    profile: { playerName: "ゲスト", partnerName: "相棒AI", controller: "human" },
+  }, "2026-01-01T00:01:00.000Z", "MWG-NEXT");
+  assert.deepEqual(aiJoined.players.X?.profile, { playerName: "ゲスト", partnerName: "相棒AI", controller: "ai" });
+
+  const humanRoom = roomWith({ status: "waiting", players: { ...roomWith().players, X: null } });
+  const humanJoined = applyRoomAction(humanRoom, "X", {
+    type: "join",
+    profile: { playerName: "ゲスト", partnerName: "送信されても消えるAI名", controller: "ai" },
+  }, "2026-01-01T00:01:00.000Z", "MWG-NEXT");
+  assert.deepEqual(humanJoined.players.X?.profile, { playerName: "ゲスト", partnerName: "", controller: "human" });
+});
+
 test("online board generation is deterministic and coordinate parsing respects board size", () => {
   const first = createOnlineGame(99, 5, "X", 3, "A");
   const second = createOnlineGame(99, 5, "X", 3, "B");

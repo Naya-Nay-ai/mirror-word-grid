@@ -127,6 +127,17 @@ export function normalizeProfile(input: unknown): PlayerProfile {
   return { playerName, partnerName, controller: source.controller };
 }
 
+function normalizeProfileForRoomMode(room: StoredRoom, input: unknown) {
+  const mode = room.players.O?.profile.controller;
+  if (!mode) throw new OnlineGameError("invalid_room", "対戦モードを確認できませんでした。", 409);
+  const source = input && typeof input === "object" ? input as Partial<PlayerProfile> : {};
+  return normalizeProfile({
+    ...source,
+    controller: mode,
+    partnerName: mode === "ai" ? source.partnerName : "",
+  });
+}
+
 export function normalizeBoardSize(value: unknown): BoardSize {
   if (value !== 4 && value !== 5) throw new OnlineGameError("invalid_board_size", "盤面は4×4か5×5を選んでね。");
   return value;
@@ -312,7 +323,7 @@ export function applyRoomAction(
 
   if (action.type === "join") {
     if (actor !== "X") throw new OnlineGameError("host_cannot_join", "ホストはすでに参加しています。", 409);
-    const profile = normalizeProfile(action.profile);
+    const profile = normalizeProfileForRoomMode(room, action.profile);
     const existing = room.players.X;
     if (existing) {
       if (JSON.stringify(existing.profile) === JSON.stringify(profile)) return room;
@@ -326,7 +337,7 @@ export function applyRoomAction(
   if (!participant) throw new OnlineGameError("not_joined", "先に対戦部屋へ参加してね。", 409);
 
   if (action.type === "update-profile") {
-    const profile = normalizeProfile(action.profile);
+    const profile = normalizeProfileForRoomMode(room, action.profile);
     return { ...room, players: { ...room.players, [actor]: { ...participant, profile } } };
   }
 
