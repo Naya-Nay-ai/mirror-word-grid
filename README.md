@@ -42,7 +42,14 @@ npm run test:online-api
 
 ## 共有ストレージ
 
-Vercel MarketplaceのUpstash Redisをプロジェクトへ接続してください。統合が自動設定する次のどちらかの組を利用できます。
+Vercel MarketplaceのUpstash Redisをプロジェクトへ接続してください。Custom Prefixが`UPSTASH_REDIS_REST`の場合は、統合が自動設定する次の組を最優先で利用します。
+
+```text
+UPSTASH_REDIS_REST_KV_REST_API_URL
+UPSTASH_REDIS_REST_KV_REST_API_TOKEN
+```
+
+Custom Prefixなしの標準名:
 
 ```text
 UPSTASH_REDIS_REST_URL
@@ -63,8 +70,10 @@ KV_REST_API_TOKEN
 - `app/online-engine.ts` — 盤面生成、宣言、判定、勝敗を扱う純粋ゲームエンジン
 - `app/room-service.ts` — 認証済みの部屋作成・更新とrevision制御
 - `app/room-store.ts` — Upstash Redisの24時間TTL・原子的compare-and-set
+- `app/room-store-credentials.ts` — Redis環境変数の優先順位と完全なペア選択
 - `app/api/rooms/**` — 部屋作成、取得、更新API
 - `app/online/**` — オンラインロビー
 - `app/room/[roomId]/**` — 自動同期する共有対戦盤面
 - `tests/online-engine.test.mjs` — オンラインルールの単体テスト
+- `tests/room-store.test.mjs` — Redis環境変数の優先順位とペア選択テスト
 - `tests/online-api-e2e.mjs` — ホスト／ゲストのAPI通し試験

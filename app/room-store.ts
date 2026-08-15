@@ -3,6 +3,7 @@ import "server-only";
 import { Redis } from "@upstash/redis";
 
 import type { StoredRoom } from "./online-types";
+import { resolveRoomStoreCredentials } from "./room-store-credentials";
 
 export const ROOM_TTL_SECONDS = 24 * 60 * 60;
 
@@ -125,10 +126,9 @@ let store: RoomStore | null = null;
 
 export function getRoomStore(): RoomStore {
   if (store) return store;
-  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-  if (url && token) {
-    store = new UpstashRoomStore(new Redis({ url, token }));
+  const credentials = resolveRoomStoreCredentials();
+  if (credentials) {
+    store = new UpstashRoomStore(new Redis(credentials));
     return store;
   }
   if (process.env.NODE_ENV !== "production" || process.env.MWG_ALLOW_MEMORY_STORE === "1") {
