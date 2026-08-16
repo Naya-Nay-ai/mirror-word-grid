@@ -31,6 +31,14 @@ export type OnlineHistoryItem = {
   reading: string;
 };
 
+export type OnlineVerdictEvent = {
+  code: string;
+  verdict: "accept" | "objection" | "not-established";
+  judge: Player;
+  proposalPlayer: Player;
+  reading: string;
+};
+
 export type OnlineGameState = {
   board: Panel[];
   claims: Record<number, Player>;
@@ -46,6 +54,8 @@ export type OnlineGameState = {
   winReason: "line" | "draw" | "n-ending" | null;
   winningLine: number[];
   history: OnlineHistoryItem[];
+  /** Optional so rooms created before this field was added remain readable. */
+  lastVerdict?: OnlineVerdictEvent | null;
   retryBlocked: number[];
   rejectedAttempts: RejectedAttempt[];
   seed: number;
@@ -100,6 +110,13 @@ export type JudgeAction = {
   verdict: "accept" | "objection" | "not-established";
   reason?: string;
   sourceCode?: string;
+  /** AI判定で受理した直後の一手を、通常戦と同じ1往復でまとめて反映する。 */
+  nextMove?: {
+    panelIndex: number;
+    display: string;
+    readingAid?: string;
+    reason?: string;
+  };
 };
 
 export type RoomAction =
