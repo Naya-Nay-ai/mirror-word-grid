@@ -261,7 +261,9 @@ footer b { color: var(--purple); }
 .title-actions .start-button, .title-actions .tutorial-button { width: 100%; min-height: 54px; }
 .online-title-button { display: grid; grid-column: 1 / -1; grid-template-columns: 1fr auto; align-items: center; width: 100%; min-height: 66px; padding: 8px 17px; border: 3px solid var(--line); border-radius: 16px; background: var(--mint); color: var(--ink); box-shadow: 0 5px 0 var(--line); font-weight: 900; text-decoration: none; }
 .online-title-button > span { display: grid; justify-self: start; gap: 2px; padding-left: 4px; text-align: left; }
-.online-title-button strong { font-size: 15px; }.online-title-button small { color: #316b61; font-size: 8px; letter-spacing: .04em; }
+.online-title-button strong { display: flex; align-items: center; gap: 7px; font-size: 15px; }
+.new-badge { display: inline-grid; place-items: center; min-width: 42px; height: 18px; padding: 0 6px; border: 2px solid var(--line); border-radius: 99px; background: #ff5f86; color: white; font-size: 8px; font-style: normal; font-weight: 1000; letter-spacing: .08em; line-height: 1; box-shadow: 0 2px 0 rgba(47,41,70,.28); }
+.online-title-button small { color: #316b61; font-size: 8px; letter-spacing: .04em; }
 .online-title-button > b { font-size: 22px; }
 .online-title-button:active { transform: translateY(5px); box-shadow: none; }
 .title-start-button > b { float: none; justify-self: end; line-height: 1; }

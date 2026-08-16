@@ -314,7 +314,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                         <small>{coordinateForIndex(index, game.boardSize)}</small>
                         <span aria-hidden="true">{panel.icon}</span>
                         <b>{panel.name}</b>
-                        {owner && <i aria-hidden="true">{owner === "O" ? "○" : "×"}</i>}
+                        {owner && <i aria-hidden="true">{owner === "O" ? "○" : "▲"}</i>}
                         {blocked && <em>異議</em>}
                       </button>
                     );

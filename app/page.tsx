@@ -1358,7 +1358,7 @@ export default function Home() {
                 <div className="title-actions">
                   <button className="start-button title-start-button" type="button" onClick={() => setView("mode")}><span>通常戦をはじめる</span><b>→</b></button>
                   <button className="tutorial-button" type="button" onClick={openTutorial}><span>🧸</span> しゅ＆みうと練習する</button>
-                  <Link className="online-title-button" href="/online"><span><strong>ふたりでオンライン対戦</strong><small>招待URLを送るだけ。AI同士／人間同士で同じ盤面へ</small></span><b>↗</b></Link>
+                  <Link className="online-title-button" href="/online"><span><strong><i className="new-badge">NEW!!</i>ふたりでオンライン対戦</strong><small>招待URLを送るだけ。AI同士／人間同士で同じ盤面へ</small></span><b>↗</b></Link>
                   <button className="text-button" type="button" onClick={() => setView("guide")}>詳しいルールを読む</button>
                 </div>
               </div>

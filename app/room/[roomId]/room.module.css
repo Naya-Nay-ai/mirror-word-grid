@@ -37,7 +37,7 @@
 .tile > small { position: absolute; top: 4px; left: 5px; z-index: 2; color: #81798d; font-size: 7px; font-weight: 900; }
 .tile > span { display: grid; place-items: center; width: 100%; font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; font-size: clamp(29px, 6.4vw, 47px); line-height: 1; filter: drop-shadow(0 2px 0 rgba(47,41,70,.12)); }
 .tile > b { width: 100%; margin-top: 5px; overflow: hidden; color: #514a5e; font-size: clamp(7px, 1.7vw, 10px); text-align: center; text-overflow: ellipsis; white-space: nowrap; }
-.tile > i { position: absolute; inset: 0; display: grid; place-items: center; z-index: 3; font: 900 clamp(50px, 13vw, 85px)/1 Arial, sans-serif; text-shadow: 0 3px 0 rgba(47,41,70,.25); }
+.tile > i { position: absolute; top: 5px; right: 5px; display: grid; place-items: center; z-index: 3; width: 21px; height: 21px; border: 2px solid white; border-radius: 50%; background: rgba(255,255,255,.92); box-shadow: 0 0 0 2px rgba(47,41,70,.42), 0 2px 3px rgba(47,41,70,.2); font: 900 16px/1 Arial, sans-serif; }
 .tile.claimedO { background: #ffc8d7; }.tile.claimedO > i { color: #ee4c78; }
 .tile.claimedX { background: #d7d0ff; }.tile.claimedX > i { color: #624ce6; }
 .tile.claimedO > span, .tile.claimedO > b, .tile.claimedX > span, .tile.claimedX > b { opacity: .47; }
@@ -124,7 +124,7 @@
   .matchBanner > div { grid-template-columns: 28px minmax(0, 1fr); min-height: 49px; padding: 6px; border-radius: 13px; }
   .matchBanner > div > i { width: 27px; height: 27px; font-size: 22px; }.matchBanner > div > small { display: none; }.matchBanner > div > span { font-size: 10px; }.matchBanner > strong { font-size: 8px; }
   .turnStatus { grid-template-columns: 1.25fr .65fr .75fr; padding: 6px; gap: 5px; }.turnStatus > div { min-height: 50px; padding: 6px; }.turnStatus small { font-size: 6px; }.turnStatus strong { font-size: 10px; }.turnStatus > div:nth-child(2) strong { font-size: 25px; }.turnStatus span { font-size: 11px; }
-  .board { gap: 5px; padding: 6px; border-radius: 17px; }.tile { padding: 5px 2px 3px; border-radius: 10px; }.tile > span { font-size: clamp(24px, 11vw, 39px); }.tile > b { font-size: 6px; }.tile > i { font-size: clamp(38px, 17vw, 63px); }
+  .board { gap: 5px; padding: 6px; border-radius: 17px; }.tile { padding: 5px 2px 3px; border-radius: 10px; }.tile > span { font-size: clamp(24px, 11vw, 39px); }.tile > b { font-size: 6px; }.tile > i { top: 4px; right: 4px; width: 17px; height: 17px; border-width: 1.5px; box-shadow: 0 0 0 1px rgba(47,41,70,.42); font-size: 13px; }
   .judgeButtons { grid-template-columns: 1fr; }.judgeButtons button { min-height: 46px; grid-template-columns: 1fr auto; }
   .sideColumn { grid-template-columns: 1fr; }.sideColumn > :last-child { grid-column: auto; }
   .readyPair { grid-template-columns: 1fr; }.readyPair b { transform: rotate(90deg); }
