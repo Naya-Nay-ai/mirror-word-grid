@@ -418,14 +418,17 @@ function JoinCard({ busy, mode, hostProfile, onJoin }: { busy: boolean; mode: Co
   const [playerName, setPlayerName] = useState("");
   const [partnerName, setPartnerName] = useState("");
   const aiMatch = mode === "ai";
+  const hostLabel = hostProfile
+    ? `${hostProfile.playerName}${hostProfile.partnerName ? ` ＆ ${hostProfile.partnerName}` : ""}`
+    : "招待した人";
   const guestLabel = playerName
     ? `${playerName}${aiMatch && partnerName ? ` ＆ ${partnerName}` : aiMatch ? " ＆ あなたのAI" : ""}`
     : aiMatch ? "あなた ＆ あなたのAI" : "あなた";
   return (
     <section className={styles.joinCard}>
       <p className={styles.joinKicker}>YOU ARE INVITED!</p><h1>MIRROR WORD GRIDへ<br />招待されました！</h1>
-      <div className={styles.invitedMatchup} aria-label={`${profileLabel(hostProfile)} 対 ${guestLabel}`}>
-        <span>{profileLabel(hostProfile)}</span><b>VS</b><span>{guestLabel}</span>
+      <div className={styles.invitedMatchup} aria-label={`${hostLabel} 対 ${guestLabel}`}>
+        <span>{hostLabel}</span><b>VS</b><span>{guestLabel}</span>
       </div>
       <section className={styles.joinGuide}>
         <h2>この対戦の遊び方</h2>
