@@ -174,6 +174,7 @@ export function createOnlineGame(
     winReason: null,
     winningLine: [],
     history: [],
+    lastVerdict: null,
     retryBlocked: [],
     rejectedAttempts: [],
     seed,
@@ -379,6 +380,14 @@ export function applyRoomAction(
     let game: OnlineGameState;
     if (action.verdict === "accept") {
       game = applyAcceptedMove(room.game, proposal, nextCode);
+      if (!game.winner && action.nextMove) {
+        const nextProposal = validateDeclaration(game, { type: "declare", ...action.nextMove });
+        game = readingEnd(nextProposal.reading) === "ん"
+          ? applyNEndingLoss(game, nextProposal, nextCode)
+          : nextProposal.custom
+            ? { ...game, phase: "judge" as const, actionCode: nextCode, proposal: nextProposal }
+            : applyAcceptedMove(game, nextProposal, nextCode);
+      }
     } else if (action.verdict === "objection") {
       if (!canUseObjection(room.game.objections[actor], room.game.objectionUsedThisTurn[actor])) {
         throw new OnlineGameError("objection_unavailable", "この相手手番では異議札を使えません。", 409);
@@ -389,6 +398,16 @@ export function applyRoomAction(
     } else {
       throw new OnlineGameError("invalid_verdict", "判定を選び直してね。");
     }
+    game = {
+      ...game,
+      lastVerdict: {
+        code: nextCode,
+        verdict: action.verdict,
+        judge: actor,
+        proposalPlayer: proposal.player,
+        reading: proposalLabel(proposal),
+      },
+    };
     return { ...room, game, status: game.winner ? "finished" : room.status };
   }
 
