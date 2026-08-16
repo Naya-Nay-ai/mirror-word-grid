@@ -264,16 +264,18 @@ export default function RoomClient({ roomId }: { roomId: string }) {
         <div className={`${styles.syncBadge} ${styles[syncState]}`}><i />{syncState === "online" ? "同期中" : syncState === "syncing" ? "更新中" : "再接続中"}</div>
       </header>
 
-      <section className={styles.matchBanner}>
-        <div className={styles.sideO}><i>○</i><span>{oLabel}</span>{you === "O" && <small>あなた側</small>}</div>
-        <strong>VS</strong>
-        <div className={styles.sideX}><i>×</i><span>{xLabel}</span>{you === "X" && <small>あなた側</small>}</div>
-      </section>
+      {!(you === "X" && !room.players.X) && (
+        <section className={styles.matchBanner}>
+          <div className={styles.sideO}><i>○</i><span>{oLabel}</span>{you === "O" && <small>あなた側</small>}</div>
+          <strong>VS</strong>
+          <div className={styles.sideX}><i>×</i><span>{xLabel}</span>{you === "X" && <small>あなた側</small>}</div>
+        </section>
+      )}
 
       {(notice || error) && <div className={error ? styles.errorNotice : styles.notice} role={error ? "alert" : "status"}>{error || notice}</div>}
 
       {you === "X" && !room.players.X ? (
-        <JoinCard busy={busy} mode={roomMode} onJoin={joinRoom} />
+        <JoinCard busy={busy} mode={roomMode} hostProfile={room.players.O?.profile ?? null} onJoin={joinRoom} />
       ) : (
         <div className={styles.roomLayout}>
           <div className={styles.playColumn}>
@@ -412,19 +414,45 @@ export default function RoomClient({ roomId }: { roomId: string }) {
   );
 }
 
-function JoinCard({ busy, mode, onJoin }: { busy: boolean; mode: ControllerKind; onJoin: (profile: PlayerProfile) => Promise<void> }) {
+function JoinCard({ busy, mode, hostProfile, onJoin }: { busy: boolean; mode: ControllerKind; hostProfile: PlayerProfile | null; onJoin: (profile: PlayerProfile) => Promise<void> }) {
   const [playerName, setPlayerName] = useState("");
   const [partnerName, setPartnerName] = useState("");
   const aiMatch = mode === "ai";
+  const guestLabel = playerName
+    ? `${playerName}${aiMatch && partnerName ? ` ＆ ${partnerName}` : aiMatch ? " ＆ あなたのAI" : ""}`
+    : aiMatch ? "あなた ＆ あなたのAI" : "あなた";
   return (
     <section className={styles.joinCard}>
-      <p className={styles.joinKicker}>YOU ARE INVITED!</p><h1>対戦ルームへようこそ。</h1>
-      <p>{aiMatch ? "✦ AI同士のオンライン対戦です。ユーザー名とパートナーAI名を入力してね。" : "● 人間同士のオンライン対戦です。プレイヤー名を入力してね。"}</p>
+      <p className={styles.joinKicker}>YOU ARE INVITED!</p><h1>MIRROR WORD GRIDへ<br />招待されました！</h1>
+      <div className={styles.invitedMatchup} aria-label={`${profileLabel(hostProfile)} 対 ${guestLabel}`}>
+        <span>{profileLabel(hostProfile)}</span><b>VS</b><span>{guestLabel}</span>
+      </div>
+      <section className={styles.joinGuide}>
+        <h2>この対戦の遊び方</h2>
+        {aiMatch ? (
+          <ol>
+            <li><b>1</b><span>この画面で、あなたとAIの名前を入力</span></li>
+            <li><b>2</b><span>ゲームから出る「手番」を、いつものAIとの会話へコピー</span></li>
+            <li><b>3</b><span>AIの返答を、この画面へ戻す</span></li>
+            <li><b>4</b><span>盤面は相手と自動で共有されます</span></li>
+          </ol>
+        ) : (
+          <p>この盤面は相手とリアルタイムで共有されます。<br />自分の番になったら、絵を選んで読みを決めてください。</p>
+        )}
+      </section>
+      <details className={styles.quickRules}>
+        <summary>ゲーム自体が初めて？ <b>30秒で遊び方を見る</b></summary>
+        <div>
+          <p><strong>絵から言葉を見つける</strong> → しりとりでつなぐ</p>
+          <p>自分の印を一列そろえたら勝ち！</p>
+          <p>自由読みもOK。相手が納得しなければ異議！</p>
+        </div>
+      </details>
       <form onSubmit={(event) => { event.preventDefault(); void onJoin({ playerName, partnerName: aiMatch ? partnerName : "", controller: mode }); }}>
         <label><span>{aiMatch ? "ユーザー名" : "プレイヤー名"} <b>必須</b></span><input value={playerName} onChange={(event) => setPlayerName(event.target.value)} maxLength={12} placeholder="名前を入力" required /></label>
         {aiMatch && <label><span>パートナーAI名 <b>必須</b></span><input value={partnerName} onChange={(event) => setPartnerName(event.target.value)} maxLength={12} placeholder="AI名を入力" required /></label>}
         <p>盤面表示：<strong>{playerName || (aiMatch ? "ユーザー" : "プレイヤー")}{aiMatch && partnerName ? ` ＆ ${partnerName}` : ""}</strong></p>
-        <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "参加中…" : "この名前で参加する →"}</button>
+        <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "参加中…" : "参加する →"}</button>
       </form>
     </section>
   );
