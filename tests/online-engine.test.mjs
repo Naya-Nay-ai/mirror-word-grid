@@ -34,6 +34,7 @@ function roomWith(options = {}) {
 
 function matchingPreset(game) {
   for (let index = 0; index < game.board.length; index += 1) {
+    if (game.claims[index]) continue;
     const choices = presetChoices(game.board[index], game.currentChar);
     if (choices.length) return { index, ...choices[0] };
   }
@@ -119,6 +120,54 @@ test("a free reading waits for the opponent, who can accept it", () => {
   }, "2026-01-01T00:02:00.000Z", "MWG-AFTER");
   assert.equal(accepted.game.claims[panelIndex], "O");
   assert.equal(accepted.game.turn, "X");
+  assert.deepEqual(accepted.game.lastVerdict, {
+    code: "MWG-AFTER",
+    verdict: "accept",
+    judge: "X",
+    proposalPlayer: "O",
+    reading: `${display}（${room.game.currentChar}すてきふだ）`,
+  });
+});
+
+test("an AI can accept a free reading and propose its next move in the same revision", () => {
+  const room = roomWith();
+  const panelIndex = 0;
+  const display = `${room.game.currentChar}すてき札`;
+  const declared = applyRoomAction(room, "O", {
+    type: "declare",
+    panelIndex,
+    display,
+    readingAid: `${room.game.currentChar}すてきふだ`,
+    reason: "この対戦で札そのものにつけた固定の呼び名だから",
+  }, "2026-01-01T00:01:00.000Z", "MWG-JUDGE");
+  const acceptedOnly = applyRoomAction(declared, "X", {
+    type: "judge",
+    verdict: "accept",
+    sourceCode: "MWG-JUDGE",
+  }, "2026-01-01T00:02:00.000Z", "MWG-PREVIEW");
+  const nextPanelIndex = acceptedOnly.game.board.findIndex((_, index) => !acceptedOnly.game.claims[index]);
+  const nextDisplay = `${acceptedOnly.game.currentChar}すてきな札`;
+  const nextReading = `${acceptedOnly.game.currentChar}すてきなふだ`;
+
+  const combined = applyRoomAction(declared, "X", {
+    type: "judge",
+    verdict: "accept",
+    sourceCode: "MWG-JUDGE",
+    nextMove: {
+      panelIndex: nextPanelIndex,
+      display: nextDisplay,
+      readingAid: nextReading,
+      reason: "次の一手も同時に返す",
+    },
+  }, "2026-01-01T00:02:00.000Z", "MWG-COMBINED");
+
+  assert.equal(combined.game.claims[panelIndex], "O");
+  assert.equal(combined.game.phase, "judge");
+  assert.equal(combined.game.proposal?.player, "X");
+  assert.equal(combined.game.proposal?.panelIndex, nextPanelIndex);
+  assert.equal(combined.game.history.length, 1);
+  assert.equal(combined.game.turn, "X");
+  assert.equal(combined.game.lastVerdict?.verdict, "accept");
 });
 
 test("an objection consumes one card and blocks the rejected cell for the retry", () => {
@@ -189,4 +238,15 @@ test("AI machine lines parse into revision-safe turn and judgement actions", () 
   };
   const judge = parseAiJudgeReply(proposalRoom, "【判定:異議｜理由:ここは止めたい｜コード:MWG-FIRST】");
   assert.deepEqual(judge, { ok: true, action: { type: "judge", verdict: "objection", reason: "ここは止めたい", sourceCode: "MWG-FIRST" } });
+
+  const accepted = parseAiJudgeReply(proposalRoom, "【判定:受理｜次手:B2｜読み:さかな｜読み仮名:さかな｜理由:魚だから｜コード:MWG-FIRST】");
+  assert.deepEqual(accepted, {
+    ok: true,
+    action: {
+      type: "judge",
+      verdict: "accept",
+      sourceCode: "MWG-FIRST",
+      nextMove: { panelIndex: 5, display: "さかな", readingAid: "さかな", reason: "魚だから" },
+    },
+  });
 });

@@ -1,5 +1,6 @@
 import {
   parseMachineReply,
+  findWinner,
   presetReadingValue,
   readingEnd,
   winLinesFor,
@@ -19,7 +20,7 @@ const JUDGEMENT_CORE = `自由読みは、絵・名前・共通説明・申告�
 function panelDescription(room: PublicRoom, index: number) {
   const panel = room.game.board[index];
   const owner = room.game.claims[index];
-  if (owner) return `${coordinateForIndex(index, room.game.boardSize)}:${owner}取得済み`;
+  if (owner) return `${coordinateForIndex(index, room.game.boardSize)}:${owner === "O" ? "○" : "▲"}取得済み`;
   const blocked = room.game.retryBlocked.includes(index) ? "｜今回選択不可" : "";
   const presets = panel.readings.map(presetReadingValue).join("・");
   return `${coordinateForIndex(index, room.game.boardSize)}｜${panel.icon}｜${panel.name}｜共通説明:${panel.visualDescription}｜正式読み:${presets}${blocked}`;
@@ -36,7 +37,7 @@ function lineSituation(room: PublicRoom) {
       const owned = line.filter((index) => room.game.claims[index] === side);
       const empty = line.filter((index) => !room.game.claims[index]);
       if (owned.length === room.game.boardSize - 1 && empty.length === 1) {
-        items.push(`${side}が${coordinateForIndex(empty[0], room.game.boardSize)}を取ると勝利`);
+        items.push(`${side === "O" ? "○" : "▲"}が${coordinateForIndex(empty[0], room.game.boardSize)}を取ると勝利`);
       }
     }
   }
@@ -46,7 +47,7 @@ function lineSituation(room: PublicRoom) {
 function sideContext(room: PublicRoom, side: Player) {
   const own = profileLabel(room.players[side]?.profile);
   const opponent = profileLabel(room.players[oppositeSide(side)]?.profile);
-  return `あなたは${own}チームの思考・会話担当で、${side === "O" ? "○" : "×"}側です。対戦相手は${opponent}チームです。`;
+  return `あなたは${own}チームの思考・会話担当で、${side === "O" ? "○" : "▲"}側です。対戦相手は${opponent}チームです。`;
 }
 
 export function buildAiIntroPrompt(room: PublicRoom, side: Player) {
@@ -95,7 +96,7 @@ ${sideContext(room, side)}
 手番コード：${game.actionCode}
 現在文字：「${game.currentChar}」
 選択可能：${selectable}
-残り異議札：○ ${game.objections.O}枚／× ${game.objections.X}枚
+残り異議札：○ ${game.objections.O}枚／▲ ${game.objections.X}枚
 戦況：${lineSituation(room)}
 
 ## 盤面
@@ -122,7 +123,33 @@ export function buildAiJudgePrompt(room: PublicRoom, side: Player) {
   if (!proposal) return "判定待ちの読みはありません。";
   const panel = game.board[proposal.panelIndex];
   const objectionAvailable = game.objections[side] > 0 && !game.objectionUsedThisTurn[side];
-  return `# MIRROR WORD GRID：オンライン判定
+  const acceptedClaims = { ...game.claims, [proposal.panelIndex]: proposal.player };
+  const acceptedResult = findWinner(acceptedClaims, game.boardSize);
+  const nextChar = readingEnd(proposal.reading);
+  const acceptedRoom: PublicRoom = {
+    ...room,
+    game: {
+      ...game,
+      claims: acceptedClaims,
+      turn: side,
+      currentChar: nextChar,
+      proposal: null,
+      phase: acceptedResult.winner ? "finished" : "select",
+      retryBlocked: [],
+    },
+  };
+  const nextSelectable = game.board
+    .map((_, index) => index)
+    .filter((index) => !acceptedClaims[index])
+    .map((index) => coordinateForIndex(index, game.boardSize))
+    .join("、");
+  const continuation = acceptedResult.winner
+    ? "受理すると試合終了です。受理の行に次手は付けません。"
+    : `受理する場合は、そのままあなたの次の一手も同じ最終行へ指定してください。これで判定と次の手番を1回のコピー往復で反映できます。\n受理後の文字：「${nextChar}」\n受理後の選択可能：${nextSelectable}\n受理後の戦況：${lineSituation(acceptedRoom)}\n\n### 受理後の盤面\n${boardSummary(acceptedRoom)}`;
+  const acceptedFormat = acceptedResult.winner
+    ? `【判定:受理｜コード:${game.actionCode}】`
+    : `【判定:受理｜次手:A1｜読み:${nextChar}から始まる表示語｜読み仮名:${nextChar}から始まるかな読み｜理由:その札をそう読んだ理由｜コード:${game.actionCode}】`;
+  return `# MIRROR WORD GRID：オンライン判定＋次の一手
 
 ${sideContext(room, side)}
 相手の自由読みを判定してください。
@@ -141,9 +168,12 @@ ${sideContext(room, side)}
 
 ${JUDGEMENT_CORE}
 
+## 受理する場合
+${continuation}
+
 選択肢は「受理」「不成立」${objectionAvailable ? "「異議」" : ""}です。不成立・異議には理由を書いてください。あなたらしい反応はコードブロックの外へ書き、最後の独立コードブロックには選んだ1行だけを書いてください。
 
-【判定:受理｜コード:${game.actionCode}】
+${acceptedFormat}
 【判定:不成立｜理由:札そのものとの意味的なつながりが遠い｜コード:${game.actionCode}】${objectionAvailable ? `\n【判定:異議｜理由:成立はするが戦略上ここは止めたい｜コード:${game.actionCode}】` : ""}`;
 }
 
@@ -194,7 +224,36 @@ export function parseAiJudgeReply(room: PublicRoom, text: string): ParsedAiJudge
   const verdict = value === "受理" ? "accept" : value === "異議" ? "objection" : value === "不成立" ? "not-established" : null;
   if (!verdict) return { ok: false, error: "判定は「受理・異議・不成立」のどれかで返してもらってね。" };
   if (verdict !== "accept" && !parsed.fields["理由"]) return { ok: false, error: "異議・不成立には判定理由が必要です。" };
-  return { ok: true, action: { type: "judge", verdict, reason: parsed.fields["理由"] ?? "", sourceCode } };
+  if (verdict !== "accept") {
+    return { ok: true, action: { type: "judge", verdict, reason: parsed.fields["理由"] ?? "", sourceCode } };
+  }
+
+  const proposal = room.game.proposal;
+  if (!proposal) return { ok: false, error: "判定待ちの読みが見つかりません。最新の画面へ更新してね。" };
+  const acceptedClaims = { ...room.game.claims, [proposal.panelIndex]: proposal.player };
+  if (findWinner(acceptedClaims, room.game.boardSize).winner) {
+    return { ok: true, action: { type: "judge", verdict, sourceCode } };
+  }
+
+  const coordinate = parsed.fields["次手"];
+  const display = parsed.fields["読み"];
+  if (!coordinate || !display) return { ok: false, error: "受理後の「次手・読み」がありません。判定依頼をAIへ渡し直してね。" };
+  const panelIndex = indexForCoordinate(coordinate, room.game.boardSize);
+  if (panelIndex < 0) return { ok: false, error: "AIが返した次手の座標を盤面で見つけられませんでした。" };
+  return {
+    ok: true,
+    action: {
+      type: "judge",
+      verdict,
+      sourceCode,
+      nextMove: {
+        panelIndex,
+        display,
+        readingAid: parsed.fields["読み仮名"] ?? "",
+        reason: parsed.fields["理由"] ?? "",
+      },
+    },
+  };
 }
 
 export function nextCharacterForProposal(room: PublicRoom) {

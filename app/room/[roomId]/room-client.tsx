@@ -19,7 +19,7 @@ import {
   parseAiJudgeReply,
   parseAiTurnReply,
 } from "../../online-prompts";
-import type { ControllerKind, PlayerProfile, RoomAction, RoomView } from "../../online-types";
+import type { ControllerKind, OnlineVerdictEvent, PlayerProfile, RoomAction, RoomView } from "../../online-types";
 import {
   copyText,
   credentialForRoom,
@@ -33,7 +33,7 @@ type ApiPayload = {
 };
 
 function sideName(side: Player) {
-  return side === "O" ? "○側" : "×側";
+  return side === "O" ? "○側" : "▲側";
 }
 
 function formatExpiry(value: string) {
@@ -58,8 +58,35 @@ export default function RoomClient({ roomId }: { roomId: string }) {
   const [aiReply, setAiReply] = useState("");
   const [judgeReason, setJudgeReason] = useState("");
   const [copiedKind, setCopiedKind] = useState<"invite" | "intro" | "turn" | "judge" | null>(null);
+  const [copiedActionCode, setCopiedActionCode] = useState("");
+  const [verdictEvent, setVerdictEvent] = useState<OnlineVerdictEvent | null>(null);
   const lastChangeAt = useRef(0);
   const revisionRef = useRef<number | null>(null);
+  const verdictReadyRef = useRef(false);
+  const lastVerdictCodeRef = useRef("");
+  const verdictTimerRef = useRef<number | null>(null);
+
+  const syncVerdictEffect = useCallback((nextView: RoomView) => {
+    const event = nextView.room.game.lastVerdict ?? null;
+    if (!verdictReadyRef.current) {
+      verdictReadyRef.current = true;
+      lastVerdictCodeRef.current = event?.code ?? "";
+      return;
+    }
+    if (!event || event.code === lastVerdictCodeRef.current) return;
+    lastVerdictCodeRef.current = event.code;
+    if (event.verdict === "not-established") return;
+    if (verdictTimerRef.current !== null) window.clearTimeout(verdictTimerRef.current);
+    setVerdictEvent(event);
+    verdictTimerRef.current = window.setTimeout(() => {
+      setVerdictEvent(null);
+      verdictTimerRef.current = null;
+    }, 1_650);
+  }, []);
+
+  useEffect(() => () => {
+    if (verdictTimerRef.current !== null) window.clearTimeout(verdictTimerRef.current);
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -99,6 +126,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
       if (!response.ok || !body.view) throw new Error(body.error?.message ?? "部屋を読み込めませんでした。");
       if (revisionRef.current !== null && revisionRef.current !== body.view.room.revision) lastChangeAt.current = Date.now();
       revisionRef.current = body.view.room.revision;
+      syncVerdictEffect(body.view);
       setView(body.view);
       setError("");
       setSyncState("online");
@@ -109,7 +137,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
     } finally {
       setBooting(false);
     }
-  }, [accessToken, roomId]);
+  }, [accessToken, roomId, syncVerdictEffect]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -150,6 +178,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
       });
       const body = await response.json() as ApiPayload;
       if (response.status === 409 && body.view) {
+        syncVerdictEffect(body.view);
         setView(body.view);
         revisionRef.current = body.view.room.revision;
         setNotice(body.error?.message ?? "相手の操作を先に反映したよ。最新の盤面を確認してね。");
@@ -157,6 +186,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
         return false;
       }
       if (!response.ok || !body.view) throw new Error(body.error?.message ?? "操作を反映できませんでした。");
+      syncVerdictEffect(body.view);
       setView(body.view);
       revisionRef.current = body.view.room.revision;
       lastChangeAt.current = Date.now();
@@ -178,6 +208,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
       return;
     }
     setCopiedKind(kind);
+    if (kind === "turn" || kind === "judge") setCopiedActionCode(view?.room.game.actionCode ?? "");
     setNotice(kind === "invite" ? "招待URLをコピーしたよ。DiscordやXのDMで相手へ送ってね。" : "コピーしたよ。いつものAIとの会話へ貼ってね。");
   }
 
@@ -268,7 +299,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
         <section className={styles.matchBanner}>
           <div className={styles.sideO}><i>○</i><span>{oLabel}</span>{you === "O" && <small>あなた側</small>}</div>
           <strong>VS</strong>
-          <div className={styles.sideX}><i>×</i><span>{xLabel}</span>{you === "X" && <small>あなた側</small>}</div>
+          <div className={styles.sideX}><i>▲</i><span>{xLabel}</span>{you === "X" && <small>あなた側</small>}</div>
         </section>
       )}
 
@@ -294,7 +325,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                 <section className={styles.turnStatus}>
                   <div><small>{game.phase === "judge" ? "判定する側" : "いまの手番"}</small><strong>{game.phase === "judge" && game.proposal ? profileLabel(room.players[oppositeSide(game.proposal.player)]?.profile) : profileLabel(room.players[game.turn]?.profile)}</strong></div>
                   <div><small>この文字から</small><strong>{game.currentChar}</strong></div>
-                  <div><small>残り異議札</small><span><b>○</b>{game.objections.O} <b>×</b>{game.objections.X}</span></div>
+                  <div><small>残り異議札</small><span><b>○</b>{game.objections.O} <b>▲</b>{game.objections.X}</span></div>
                 </section>
 
                 <section className={styles.board} style={boardStyle} aria-label={`${game.boardSize}×${game.boardSize}の共有ゲーム盤`}>
@@ -356,7 +387,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                       kind="turn"
                       prompt={buildAiTurnPrompt(room, you)}
                       reply={aiReply}
-                      copied={copiedKind === "turn"}
+                      copied={copiedKind === "turn" && copiedActionCode === game.actionCode}
                       busy={busy}
                       onReply={setAiReply}
                       onCopy={() => copy("turn", buildAiTurnPrompt(room, you))}
@@ -377,7 +408,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                       kind="judge"
                       prompt={buildAiJudgePrompt(room, you)}
                       reply={aiReply}
-                      copied={copiedKind === "judge"}
+                      copied={copiedKind === "judge" && copiedActionCode === game.actionCode}
                       busy={busy}
                       onReply={setAiReply}
                       onCopy={() => copy("judge", buildAiJudgePrompt(room, you))}
@@ -404,12 +435,13 @@ export default function RoomClient({ roomId }: { roomId: string }) {
             </section>
             <section className={styles.historyCard}>
               <small>PLAY LOG</small><h2>ことばの足あと</h2>
-              {game.history.length ? <ol>{[...game.history].reverse().slice(0, 12).map((item, index) => <li key={`${item.coordinate}-${index}`}><i className={item.player === "O" ? styles.logO : styles.logX}>{item.player === "O" ? "○" : "×"}</i><span>{item.coordinate}</span><strong>{item.reading}</strong></li>)}</ol> : <p>最初の一手を待ってるよ。</p>}
+              {game.history.length ? <ol>{[...game.history].reverse().slice(0, 12).map((item, index) => <li key={`${item.coordinate}-${index}`}><i className={item.player === "O" ? styles.logO : styles.logX}>{item.player === "O" ? "○" : "▲"}</i><span>{item.coordinate}</span><strong>{item.reading}</strong></li>)}</ol> : <p>最初の一手を待ってるよ。</p>}
             </section>
             <Link href="/online" className={styles.newRoomLink}>＋ 新しい部屋を作る</Link>
           </aside>
         </div>
       )}
+      {verdictEvent && <VerdictEffect event={verdictEvent} room={room} />}
     </main>
   );
 }
@@ -478,7 +510,7 @@ function WaitingRoom({ room, you, inviteUrl, inviteCopied, busy, onCopyInvite, o
       <h1>{guestJoined ? "ふたり、そろったよ！" : "相手を招待しよう。"}</h1>
       {!guestJoined && you === "O" && <><p>このURLをDiscordやXのDMで相手へ送ってね。URLの秘密部分はブラウザの履歴以外の通常リクエストには送られません。</p>{inviteUrl ? <button className={styles.inviteButton} type="button" onClick={onCopyInvite}>{inviteCopied ? "✓ 招待URLをもう一度コピー" : "⧉ 招待URLをコピー"}</button> : <p className={styles.missingInvite}>招待情報がこの端末から失われています。新しい部屋を作り直してね。</p>}</>}
       {!guestJoined && you === "X" && <p>参加できたよ。ホストがこの画面を確認するまで少し待ってね。</p>}
-      {guestJoined && <div className={styles.readyPair}><span>○ {profileLabel(room.players.O?.profile)}</span><b>VS</b><span>× {profileLabel(room.players.X?.profile)}</span></div>}
+      {guestJoined && <div className={styles.readyPair}><span>○ {profileLabel(room.players.O?.profile)}</span><b>VS</b><span>▲ {profileLabel(room.players.X?.profile)}</span></div>}
       {guestJoined && you === "O" && <button className={styles.startMatchButton} type="button" disabled={busy} onClick={onStart}>{busy ? "開始中…" : "この二人で対戦を始める →"}</button>}
       {guestJoined && you === "X" && <p className={styles.waitPulse}>ホストのスタートを待っています…</p>}
     </section>
@@ -576,5 +608,21 @@ function WinnerCard({ room }: { room: RoomView["room"] }) {
   const winner = game.winner;
   const title = winner === "DRAW" ? "引き分け！" : winner ? `${profileLabel(room.players[winner]?.profile)}の勝ち！` : "対戦終了";
   const reason = game.winReason === "n-ending" ? "「ん」で終わる読みが宣言され、その場で勝負が決まりました。" : winner === "DRAW" ? "双方ともラインを完成できなくなりました。" : `${game.boardSize}枚のラインがそろったよ。`;
-  return <div className={styles.winnerCard}><span>✦ ○ ✧ × ✦</span><p>GAME SET!</p><h2>{title}</h2><p>{reason}</p><Link href="/online">もう一局の部屋を作る →</Link></div>;
+  return <div className={styles.winnerCard}><span>✦ ○ ✧ ▲ ✦</span><p>GAME SET!</p><h2>{title}</h2><p>{reason}</p><Link href="/online">もう一局の部屋を作る →</Link></div>;
+}
+
+function VerdictEffect({ event, room }: { event: OnlineVerdictEvent; room: RoomView["room"] }) {
+  const accepted = event.verdict === "accept";
+  const judgeName = profileLabel(room.players[event.judge]?.profile);
+  return (
+    <div className={`${styles.verdictEffect} ${accepted ? styles.verdictAccepted : styles.verdictObjection}`} role="status" aria-live="assertive">
+      <div className={styles.verdictSparkles} aria-hidden="true"><i>✦</i><i>{accepted ? "○" : "⚡"}</i><i>✧</i><i>{accepted ? "▲" : "!"}</i></div>
+      <section>
+        <span>{accepted ? "✓" : "⚡"}</span>
+        <small>{judgeName}の判定</small>
+        <h2>{accepted ? "受理！" : "異議あり！"}</h2>
+        <p>「{event.reading}」{accepted ? "成立！" : "は別の一手で再勝負！"}</p>
+      </section>
+    </div>
+  );
 }
