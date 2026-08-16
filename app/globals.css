@@ -254,12 +254,13 @@ footer b { color: var(--purple); }
 .text-button { display: block; margin: 18px auto 0; border: 0; background: transparent; color: #746d80; font-size: 11px; text-decoration: underline; text-underline-offset: 4px; }
 .title-content { margin-top: 18px; }
 .title-content > p:not(.start-kicker) { margin-block: 12px 18px; }
-.start-card > .title-credit { position: absolute; z-index: 2; right: 26px; bottom: 20px; margin: 0; color: #867d91; font-size: 8px; font-weight: 800; letter-spacing: .08em; line-height: 1.55; text-align: right; opacity: .78; }
-.title-actions { display: grid; gap: 10px; justify-items: center; }
+.start-card > .title-credit { position: absolute; z-index: 2; left: 26px; bottom: 20px; margin: 0; color: #867d91; font-size: 8px; font-weight: 800; letter-spacing: .08em; line-height: 1.55; text-align: left; opacity: .78; }
+.title-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; justify-items: stretch; }
 .title-start-button { display: grid; grid-template-columns: 1fr auto; align-items: center; }
 .title-start-button > span { justify-self: center; padding-left: 22px; line-height: 1.2; }
-.online-title-button { display: grid; grid-template-columns: 1fr auto; align-items: center; width: min(100%, 330px); min-height: 62px; padding: 7px 17px; border: 3px solid var(--line); border-radius: 16px; background: var(--mint); color: var(--ink); box-shadow: 0 5px 0 var(--line); font-weight: 900; text-decoration: none; }
-.online-title-button > span { display: grid; justify-self: center; gap: 1px; padding-left: 22px; text-align: center; }
+.title-actions .start-button, .title-actions .tutorial-button { width: 100%; min-height: 54px; }
+.online-title-button { display: grid; grid-column: 1 / -1; grid-template-columns: 1fr auto; align-items: center; width: 100%; min-height: 66px; padding: 8px 17px; border: 3px solid var(--line); border-radius: 16px; background: var(--mint); color: var(--ink); box-shadow: 0 5px 0 var(--line); font-weight: 900; text-decoration: none; }
+.online-title-button > span { display: grid; justify-self: start; gap: 2px; padding-left: 4px; text-align: left; }
 .online-title-button strong { font-size: 15px; }.online-title-button small { color: #316b61; font-size: 8px; letter-spacing: .04em; }
 .online-title-button > b { font-size: 22px; }
 .online-title-button:active { transform: translateY(5px); box-shadow: none; }
@@ -562,7 +563,7 @@ footer b { color: var(--purple); }
   .start-brand { width: 150px; height: auto; }
   .title-logo-stage .start-brand { width: min(100%, 420px); margin: 0 auto; }
   .title-hero { display: block; }
-  .start-card > .title-credit { right: 22px; bottom: 18px; }
+  .start-card > .title-credit { left: 22px; bottom: 18px; }
   .tutorial-chapters { display: flex; gap: 6px; overflow-x: auto; padding: 0 1px 5px; scrollbar-width: thin; }
   .tutorial-chapters span { min-width: max-content; min-height: 40px; padding-inline: 10px; }
   .tutorial-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
@@ -587,7 +588,7 @@ footer b { color: var(--purple); }
 
 @media (max-width: 480px) {
   .start-shell { width: 100%; padding: 0; grid-template-columns: minmax(0, 1fr); }.start-card { width: 100%; min-width: 0; min-height: 100svh; max-height: none; border: 0; border-radius: 0; box-shadow: none; padding: 16px 17px 28px; overflow: visible; }.start-card > .start-brand { width: 124px; }
-  .title-content { margin-top: 0; padding-bottom: 48px; }.title-logo-stage .start-brand { width: min(100%, 340px); }.start-card > .title-credit { right: 17px; bottom: 16px; font-size: 7px; }.title-copy .navigator-stage { width: min(100%, 330px); min-height: 94px; margin-top: -12px; grid-template-columns: minmax(0, 1fr) 122px; gap: 3px; }.welcome-bubble { min-width: 0; padding-inline: 8px; }.guide-view { padding-top: 10px; }.rule-lead { grid-template-columns: 68px 1fr; gap: 10px; padding: 11px; }.mini-grid { width: 60px; }.partner-guide { grid-template-columns: 46px 1fr; padding: 13px; }.partner-guide-icon { width: 44px; height: 44px; }
+  .title-content { margin-top: 0; padding-bottom: 48px; }.title-logo-stage .start-brand { width: min(100%, 340px); }.start-card > .title-credit { left: 17px; bottom: 16px; font-size: 7px; }.title-copy .navigator-stage { width: min(100%, 330px); min-height: 94px; margin-top: -12px; grid-template-columns: minmax(0, 1fr) 122px; gap: 3px; }.welcome-bubble { min-width: 0; padding-inline: 8px; }.guide-view { padding-top: 10px; }.rule-lead { grid-template-columns: 68px 1fr; gap: 10px; padding: 11px; }.mini-grid { width: 60px; }.partner-guide { grid-template-columns: 46px 1fr; padding: 13px; }.partner-guide-icon { width: 44px; height: 44px; }
   .guide-heading { align-items: flex-start; gap: 6px; }.guide-heading-tools { gap: 3px; }.guide-heading-tools .navigator-pair.compact { width: 83px; }.back-button { min-height: 33px; padding-inline: 8px; }
   .tutorial-view, .tutorial-layout, .tutorial-game, .tutorial-coach, .tutorial-heading, .tutorial-chapters, .tutorial-status, .tutorial-board, .tutorial-coach-guide, .tutorial-coach-actions { min-width: 0; max-width: 100%; }
   .view-tutorial > .start-brand { display: none; }

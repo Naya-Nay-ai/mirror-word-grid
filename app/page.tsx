@@ -1356,14 +1356,14 @@ export default function Home() {
                 <h2>絵の読み方は、<br /><span>ひとつじゃない。</span></h2>
                 <p>絵からことばを見つけて、しりとりで陣地をつなごう。先に一列そろえた側の勝ち！</p>
                 <div className="title-actions">
-                  <Link className="online-title-button" href="/online"><span><strong>ふたりでオンライン対戦</strong><small>招待URLで同じ盤面へ</small></span><b>↗</b></Link>
-                  <button className="start-button title-start-button" type="button" onClick={() => setView("mode")}><span>ゲームをはじめる</span><b>→</b></button>
+                  <button className="start-button title-start-button" type="button" onClick={() => setView("mode")}><span>通常戦をはじめる</span><b>→</b></button>
                   <button className="tutorial-button" type="button" onClick={openTutorial}><span>🧸</span> しゅ＆みうと練習する</button>
+                  <Link className="online-title-button" href="/online"><span><strong>ふたりでオンライン対戦</strong><small>招待URLを送るだけ。AI同士／人間同士で同じ盤面へ</small></span><b>↗</b></Link>
                   <button className="text-button" type="button" onClick={() => setView("guide")}>詳しいルールを読む</button>
                 </div>
               </div>
             </div>
-            <p className="title-credit">MIRROR ROOM<br />© 2026 MIRROR ROOM — by Nay &amp; Naya</p>
+            <p className="title-credit">© 2026 MIRROR ROOM — by Nay &amp; Naya</p>
           </>}
 
           {view === "tutorial" && (
