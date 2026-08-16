@@ -58,6 +58,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
   const [aiReply, setAiReply] = useState("");
   const [judgeReason, setJudgeReason] = useState("");
   const [copiedKind, setCopiedKind] = useState<"invite" | "intro" | "turn" | "judge" | null>(null);
+  const [copiedActionCode, setCopiedActionCode] = useState("");
   const [verdictEvent, setVerdictEvent] = useState<OnlineVerdictEvent | null>(null);
   const lastChangeAt = useRef(0);
   const revisionRef = useRef<number | null>(null);
@@ -207,6 +208,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
       return;
     }
     setCopiedKind(kind);
+    if (kind === "turn" || kind === "judge") setCopiedActionCode(view?.room.game.actionCode ?? "");
     setNotice(kind === "invite" ? "招待URLをコピーしたよ。DiscordやXのDMで相手へ送ってね。" : "コピーしたよ。いつものAIとの会話へ貼ってね。");
   }
 
@@ -385,7 +387,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                       kind="turn"
                       prompt={buildAiTurnPrompt(room, you)}
                       reply={aiReply}
-                      copied={copiedKind === "turn"}
+                      copied={copiedKind === "turn" && copiedActionCode === game.actionCode}
                       busy={busy}
                       onReply={setAiReply}
                       onCopy={() => copy("turn", buildAiTurnPrompt(room, you))}
@@ -406,7 +408,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                       kind="judge"
                       prompt={buildAiJudgePrompt(room, you)}
                       reply={aiReply}
-                      copied={copiedKind === "judge"}
+                      copied={copiedKind === "judge" && copiedActionCode === game.actionCode}
                       busy={busy}
                       onReply={setAiReply}
                       onCopy={() => copy("judge", buildAiJudgePrompt(room, you))}
