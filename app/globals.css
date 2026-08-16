@@ -254,10 +254,18 @@ footer b { color: var(--purple); }
 .text-button { display: block; margin: 18px auto 0; border: 0; background: transparent; color: #746d80; font-size: 11px; text-decoration: underline; text-underline-offset: 4px; }
 .title-content { margin-top: 18px; }
 .title-content > p:not(.start-kicker) { margin-block: 12px 18px; }
-.start-card > .title-credit { position: absolute; z-index: 2; right: 26px; bottom: 20px; margin: 0; color: #867d91; font-size: 8px; font-weight: 800; letter-spacing: .08em; line-height: 1.55; text-align: right; opacity: .78; }
-.title-actions { display: grid; gap: 10px; justify-items: center; }
+.start-card > .title-credit { position: absolute; z-index: 2; left: 26px; bottom: 20px; margin: 0; color: #867d91; font-size: 8px; font-weight: 800; letter-spacing: .08em; line-height: 1.55; text-align: left; opacity: .78; }
+.title-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; justify-items: stretch; }
 .title-start-button { display: grid; grid-template-columns: 1fr auto; align-items: center; }
 .title-start-button > span { justify-self: center; padding-left: 22px; line-height: 1.2; }
+.title-actions .start-button, .title-actions .tutorial-button { width: 100%; min-height: 54px; }
+.online-title-button { display: grid; grid-column: 1 / -1; grid-template-columns: 1fr auto; align-items: center; width: 100%; min-height: 66px; padding: 8px 17px; border: 3px solid var(--line); border-radius: 16px; background: var(--mint); color: var(--ink); box-shadow: 0 5px 0 var(--line); font-weight: 900; text-decoration: none; }
+.online-title-button > span { display: grid; justify-self: start; gap: 2px; padding-left: 4px; text-align: left; }
+.online-title-button strong { display: flex; align-items: center; gap: 7px; font-size: 15px; }
+.new-badge { display: inline-grid; place-items: center; min-width: 42px; height: 18px; padding: 0 6px; border: 2px solid var(--line); border-radius: 99px; background: #ff5f86; color: white; font-size: 8px; font-style: normal; font-weight: 1000; letter-spacing: .08em; line-height: 1; box-shadow: 0 2px 0 rgba(47,41,70,.28); }
+.online-title-button small { color: #316b61; font-size: 8px; letter-spacing: .04em; }
+.online-title-button > b { font-size: 22px; }
+.online-title-button:active { transform: translateY(5px); box-shadow: none; }
 .title-start-button > b { float: none; justify-self: end; line-height: 1; }
 .guide-button { width: min(100%,330px); min-height: 50px; border: 2px solid var(--line); border-radius: 15px; background: white; box-shadow: 0 3px 0 var(--line); font-size: 13px; font-weight: 900; cursor: pointer; }
 .guide-button span { display: inline-grid; place-items: center; width: 23px; height: 23px; margin-right: 7px; border: 2px solid var(--line); border-radius: 50%; background: var(--mint-soft); }
@@ -557,7 +565,7 @@ footer b { color: var(--purple); }
   .start-brand { width: 150px; height: auto; }
   .title-logo-stage .start-brand { width: min(100%, 420px); margin: 0 auto; }
   .title-hero { display: block; }
-  .start-card > .title-credit { right: 22px; bottom: 18px; }
+  .start-card > .title-credit { left: 22px; bottom: 18px; }
   .tutorial-chapters { display: flex; gap: 6px; overflow-x: auto; padding: 0 1px 5px; scrollbar-width: thin; }
   .tutorial-chapters span { min-width: max-content; min-height: 40px; padding-inline: 10px; }
   .tutorial-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
@@ -582,7 +590,7 @@ footer b { color: var(--purple); }
 
 @media (max-width: 480px) {
   .start-shell { width: 100%; padding: 0; grid-template-columns: minmax(0, 1fr); }.start-card { width: 100%; min-width: 0; min-height: 100svh; max-height: none; border: 0; border-radius: 0; box-shadow: none; padding: 16px 17px 28px; overflow: visible; }.start-card > .start-brand { width: 124px; }
-  .title-content { margin-top: 0; padding-bottom: 48px; }.title-logo-stage .start-brand { width: min(100%, 340px); }.start-card > .title-credit { right: 17px; bottom: 16px; font-size: 7px; }.title-copy .navigator-stage { width: min(100%, 330px); min-height: 94px; margin-top: -12px; grid-template-columns: minmax(0, 1fr) 122px; gap: 3px; }.welcome-bubble { min-width: 0; padding-inline: 8px; }.guide-view { padding-top: 10px; }.rule-lead { grid-template-columns: 68px 1fr; gap: 10px; padding: 11px; }.mini-grid { width: 60px; }.partner-guide { grid-template-columns: 46px 1fr; padding: 13px; }.partner-guide-icon { width: 44px; height: 44px; }
+  .title-content { margin-top: 0; padding-bottom: 48px; }.title-logo-stage .start-brand { width: min(100%, 340px); }.start-card > .title-credit { left: 17px; bottom: 16px; font-size: 7px; }.title-copy .navigator-stage { width: min(100%, 330px); min-height: 94px; margin-top: -12px; grid-template-columns: minmax(0, 1fr) 122px; gap: 3px; }.welcome-bubble { min-width: 0; padding-inline: 8px; }.guide-view { padding-top: 10px; }.rule-lead { grid-template-columns: 68px 1fr; gap: 10px; padding: 11px; }.mini-grid { width: 60px; }.partner-guide { grid-template-columns: 46px 1fr; padding: 13px; }.partner-guide-icon { width: 44px; height: 44px; }
   .guide-heading { align-items: flex-start; gap: 6px; }.guide-heading-tools { gap: 3px; }.guide-heading-tools .navigator-pair.compact { width: 83px; }.back-button { min-height: 33px; padding-inline: 8px; }
   .tutorial-view, .tutorial-layout, .tutorial-game, .tutorial-coach, .tutorial-heading, .tutorial-chapters, .tutorial-status, .tutorial-board, .tutorial-coach-guide, .tutorial-coach-actions { min-width: 0; max-width: 100%; }
   .view-tutorial > .start-brand { display: none; }
@@ -618,6 +626,11 @@ footer b { color: var(--purple); }
 .setup-choice-buttons button.selected { border-color: var(--line); background: #fff7cf; box-shadow: 0 3px 0 var(--line); transform: translateY(-1px); }
 .setup-choice-buttons .side-o-choice.selected { background: var(--pink-soft); }
 .setup-choice-buttons .side-x-choice.selected { background: var(--purple-soft); }
+.player-name-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.player-name-inputs label { display: block; text-align: left; }
+.player-name-inputs label > span { margin-bottom: 4px; font-size: 9px; }
+.player-name-inputs input { height: 42px; font-size: 12px; }
+.player-name-setting > p { margin: 8px 1px 0; color: #766e80; font-size: 9px; line-height: 1.5; text-align: left; }
 .objection-count-setting { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; padding: 10px 12px; border: 2px solid rgba(47,41,70,.13); border-radius: 14px; background: rgba(255,255,255,.76); }
 .objection-count-setting .setup-choice-heading { margin: 0; }.objection-count-setting > p { grid-column: 1 / -1; margin: 2px 0 0; color: #71697a; font-size: 10px; line-height: 1.45; }
 .number-stepper { display: grid; grid-template-columns: 36px 42px 36px; align-items: center; gap: 3px; }.number-stepper button { width: 36px; height: 36px; border: 2px solid var(--line); border-radius: 10px; background: white; box-shadow: 0 2px 0 var(--line); color: var(--ink); font-size: 20px; font-weight: 900; cursor: pointer; }.number-stepper button:active { translate: 0 2px; box-shadow: none; }.number-stepper button:disabled { opacity: .35; cursor: not-allowed; }.number-stepper strong { text-align: center; font-size: 21px; }
@@ -967,6 +980,7 @@ label > span,
 }
 
 @media (max-width: 480px) {
+  .player-name-inputs { grid-template-columns: 1fr; }
   .topbar .eyebrow { font-size: 11px; }
   .tile-name,
   .play-column .tile-name { font-size: 11px; }
