@@ -92,6 +92,8 @@ h1 span { color: var(--pink); display: block; }
 .tile.retry-blocked { background: #eee9f2; filter: grayscale(.55); }
 .tile.retry-blocked .tile-art, .tile.retry-blocked .tile-name { opacity: .34; }
 .retry-lock { position: absolute; z-index: 3; inset: 50% auto auto 50%; translate: -50% -50%; padding: 5px 8px; border: 2px solid #b74a39; border-radius: 99px; background: #fff3ea; color: #ad3929; box-shadow: 0 2px 0 rgba(112,39,29,.24); font-size: 9px; font-weight: 900; letter-spacing: .08em; }
+.tile.contested, .share-tile.contested { box-shadow: inset 0 0 0 3px rgba(255, 167, 35, .62), 0 3px 0 rgba(47,41,70,.34); }
+.contested-lock { position: absolute; z-index: 3; right: 4px; bottom: 4px; padding: 3px 6px; border: 1.5px solid #9d5a00; border-radius: 99px; background: #fff4bb; color: #7f4900; box-shadow: 0 2px 0 rgba(112,70,10,.2); font-size: 8px; font-weight: 900; white-space: nowrap; }
 @keyframes winner-pop { to { transform: translateY(-4px) rotate(1deg); box-shadow: 0 7px 0 var(--line), 0 0 0 4px white; } }
 
 .game-message { display: flex; gap: 7px; align-items: flex-start; min-height: 34px; margin: 11px 4px 8px; color: #5f586d; font-size: 12px; line-height: 1.45; }

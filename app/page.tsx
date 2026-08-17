@@ -10,7 +10,9 @@ import {
   chooseRandomStart,
   findWinner,
   hasArtificialPolitePrefix,
+  isContestedCell,
   isKanaOnlyReading,
+  isLastEmptyCell,
   isRegistered,
   isRepeatedRejectedReading,
   nextRetryBlocks,
@@ -20,11 +22,13 @@ import {
   parseMachineReply,
   readingEnd,
   readingStartsWith,
+  recordCellObjection,
   recommendedObjectionCount,
   resolveDeclaredReading,
   winnerAfterNEnding,
   winLinesFor,
   type BoardSize,
+  type CellObjectionHistory,
   type Panel,
   type Player,
   type RejectedAttempt,
@@ -83,12 +87,13 @@ type GameState = {
   copied: boolean;
   proposal: Proposal | null;
   winner: Player | "DRAW" | null;
-  winReason: "line" | "draw" | "n-ending" | null;
+  winReason: "line" | "draw" | "n-ending" | "final-contested" | null;
   winningLine: number[];
   history: HistoryItem[];
   mode: Mode;
   retryBlocked: number[];
   rejectedAttempts: RejectedAttempt[];
+  cellObjections: CellObjectionHistory;
   partnerBriefed: boolean;
   seed: number;
   boardSize: BoardSize;
@@ -286,6 +291,7 @@ function createGame(
     mode,
     retryBlocked: [],
     rejectedAttempts: [],
+    cellObjections: {},
     partnerBriefed: mode !== "partner",
     seed,
     boardSize,
@@ -363,6 +369,12 @@ function rejectProposal(state: GameState, judge: Player, kind: "objection" | "no
   const rejectedAttempts = rejectedIndex === undefined || !rejectedReading
     ? state.rejectedAttempts
     : [...state.rejectedAttempts, { panelIndex: rejectedIndex, reading: normalizeReading(rejectedReading) }];
+  const cellObjections = kind === "objection" && rejectedIndex !== undefined
+    ? recordCellObjection(state.cellObjections, rejectedIndex, judge)
+    : state.cellObjections;
+  const finalContested = kind === "objection" && rejectedIndex !== undefined
+    && isContestedCell(cellObjections, rejectedIndex)
+    && isLastEmptyCell(state.claims, rejectedIndex, state.board.length);
   return {
     ...state,
     turn: proposer,
@@ -374,7 +386,11 @@ function rejectProposal(state: GameState, judge: Player, kind: "objection" | "no
     usedCodes: [...state.usedCodes, state.activeCode].slice(-30),
     copied: false,
     proposal: null,
-    retryBlocked,
+    winner: finalContested ? "DRAW" : state.winner,
+    winReason: finalContested ? "final-contested" : state.winReason,
+    winningLine: finalContested ? [] : state.winningLine,
+    cellObjections,
+    retryBlocked: finalContested ? [] : retryBlocked,
     rejectedAttempts,
   };
 }
@@ -391,9 +407,10 @@ function boardSummary(game: GameState) {
     const owner = game.claims[index];
     if (owner) return `${coordinate(index, game.boardSize)}:${owner}取得済み`;
     const blocked = game.retryBlocked.includes(index) ? "｜今回の再試行では選択不可" : "";
+    const contested = isContestedCell(game.cellObjections, index) ? "｜⚡争奪中（以後異議不可）" : "";
     const rejected = game.rejectedAttempts.filter((attempt) => attempt.panelIndex === index).map((attempt) => attempt.reading);
     const rejectedText = rejected.length ? `｜再使用禁止の読み:${rejected.join("・")}` : "";
-    return `${coordinate(index, game.boardSize)}｜絵文字:${panel.icon}｜ID:${panel.id}｜名前:${panel.name}｜カテゴリ:${panel.category}｜共通説明:${panelVisualDescription(panel)}｜正式プリセット読み:${presetReadingsForAi(panel)}${blocked}${rejectedText}`;
+    return `${coordinate(index, game.boardSize)}｜絵文字:${panel.icon}｜ID:${panel.id}｜名前:${panel.name}｜カテゴリ:${panel.category}｜共通説明:${panelVisualDescription(panel)}｜正式プリセット読み:${presetReadingsForAi(panel)}${blocked}${contested}${rejectedText}`;
   }).join("\n");
 }
 
@@ -478,6 +495,8 @@ function partnerIntroPrompt(game: GameState) {
 - 各側${game.objectionLimit}枚
 - 相手の1手番に使える異議は最大1回。次の手番へ進んだ時点で使用済み状態をリセットする
 - 異議を使うと宣言マスはその再試行中のみ選択不可になり、異議を受けた読みも再使用できない
+- 同じ未取得マスへ○・×双方が1回ずつ異議を使うと「争奪マス」になり、以後そのマスへ異議は使えない。不成立と固定機械ルールは通常どおり判定する
+- 最後の空き1マスが争奪マスになった場合は「最終争奪」として即引き分け
 - 成立しているが戦略上止めたい読みには「異議」を使う
 - 最初のグレー読みで異議を使わせ、その後に本命を通す囮読みも正式な戦略
 
@@ -534,7 +553,8 @@ function partnerJudgePromptBase(game: GameState) {
 }
 
 function partnerJudgePrompt(game: GameState) {
-  const objectionAvailable = canUseObjection(game.objections.X, game.objectionUsedThisTurn.X);
+  const contested = Boolean(game.proposal && isContestedCell(game.cellObjections, game.proposal.panelIndex));
+  const objectionAvailable = !contested && canUseObjection(game.objections.X, game.objectionUsedThisTurn.X);
   const objectionLine = `【判定:異議｜理由:自由読みとして強引、または戦略上ここは取らせたくない｜コード:${game.activeCode}】`;
   let prompt = partnerJudgePromptBase(game)
     .replace("\n見た目：", "\n共通説明：")
@@ -547,6 +567,7 @@ function partnerJudgePrompt(game: GameState) {
     .replaceAll("無効", "不成立")
     .replace("【判定:不成立｜理由:絵文字との関連がほぼない", "【判定:不成立｜理由:札そのものとの意味的なつながりが遠い");
   if (!objectionAvailable) prompt = prompt.replace(`\n${objectionLine}`, "");
+  if (contested) prompt = prompt.replace("\n\n## 受理する場合", "\n\nこのマスは⚡争奪中です。異議は選べません。不成立と固定機械ルールは通常どおり有効です。\n\n## 受理する場合");
   return prompt;
 }
 
@@ -615,6 +636,7 @@ function makeShareCode(game: GameState) {
     winner: game.winner,
     winningLine: game.winningLine,
     retryBlocked: game.retryBlocked,
+    contestedCells: game.board.map((_, index) => index).filter((index) => isContestedCell(game.cellObjections, index)),
     boardSize: game.boardSize,
   };
   return encodeShareState(payload);
@@ -764,6 +786,7 @@ export default function Home() {
             objectionUsedThisTurn: restored.objectionUsedThisTurn ?? { O: false, X: false },
             retryBlocked: restored.retryBlocked ?? [],
             rejectedAttempts: restored.rejectedAttempts ?? [],
+            cellObjections: restored.cellObjections ?? {},
             partnerBriefed: restored.partnerBriefed ?? true,
             winReason: restored.winReason ?? (restored.winner === "DRAW" ? "draw" : restored.winner ? "line" : null),
             playerNames: restored.playerNames ?? defaultPlayerNames(restored.mode),
@@ -898,7 +921,8 @@ export default function Home() {
   const customReadingNeedsAid = Boolean(customReading.trim()) && !isKanaOnlyReading(customReading);
   const customReadingAidInvalid = Boolean(customReadingAid.trim()) && !isKanaOnlyReading(customReadingAid);
   const proposalJudge: Player | null = game.proposal ? (game.proposal.player === "O" ? "X" : "O") : null;
-  const proposalCanUseObjection = proposalJudge ? canUseObjection(game.objections[proposalJudge], game.objectionUsedThisTurn[proposalJudge]) : false;
+  const proposalContested = Boolean(game.proposal && isContestedCell(game.cellObjections, game.proposal.panelIndex));
+  const proposalCanUseObjection = proposalJudge ? !proposalContested && canUseObjection(game.objections[proposalJudge], game.objectionUsedThisTurn[proposalJudge]) : false;
 
   function nameFor(player: Player, mode = game.mode) {
     return game.playerNames?.[player] ?? defaultPlayerNames(mode)[player];
@@ -1280,11 +1304,18 @@ export default function Home() {
         setGame(nextGame);
         flashRejection(`今回はこの札の読みとして不成立。異議札は減りません。理由：${fields["理由"]}`);
       } else if (fields["判定"] === "異議") {
+        if (isContestedCell(game.cellObjections, game.proposal.panelIndex)) return setMessage("このマスは⚡争奪中だから、もう異議は使えないよ。不成立または受理で判定してもらってね。状態は変更していないよ。");
         if (!canUseObjection(game.objections.X, game.objectionUsedThisTurn.X)) return setMessage(game.objections.X <= 0 ? "パートナーの異議札は残っていないよ。成立している読みなら受理、遠いなら不成立で返してもらってね。状態は変更していないよ。" : "パートナーはこの手番ですでに異議を使っているよ。成立している読みなら受理、遠いなら不成立で返してもらってね。状態は変更していないよ。");
         const nextGame = rejectProposal(game, "X", "objection");
         setGame(nextGame);
         showVerdict("objection", "X");
-        flashRejection(`異議成立。${fields["理由"] ? `理由：${fields["理由"]}` : "この手番で一度だけ使える拒否権を使ったよ。"}`);
+        if (nextGame.winReason === "final-contested") {
+          flashRejection("最後の1マスを双方が異議で阻止したため引き分け！");
+        } else if (isContestedCell(nextGame.cellObjections, game.proposal.panelIndex)) {
+          flashRejection("双方がこのマスへ異議を使用。⚡争奪マスになり、以後このマスへの異議は使えないよ。");
+        } else {
+          flashRejection(`異議成立。${fields["理由"] ? `理由：${fields["理由"]}` : "この手番で一度だけ使える拒否権を使ったよ。"}`);
+        }
       } else return setMessage("判定は「受理」「不成立」「異議」のどれかで返してもらってね。");
       setPartnerReply("");
       return;
@@ -1307,6 +1338,10 @@ export default function Home() {
       showVerdict("accepted", proposal.player);
       setMessage(`受理！ 「${proposalLabel(proposal)}」で取得したよ。次の手番を確認してね。`);
     } else {
+      if (isContestedCell(game.cellObjections, game.proposal.panelIndex)) {
+        setMessage("このマスは⚡争奪中だから、もう異議は使えないよ。不成立または受理で判定してね。");
+        return;
+      }
       if (!canUseObjection(game.objections[judge], game.objectionUsedThisTurn[judge])) {
         setMessage(game.objections[judge] <= 0 ? "異議札が残っていないよ。受理するか、つながりが遠いなら理由つきで不成立にしてね。" : "この相手手番では、もう異議を使っているよ。受理するか、つながりが遠いなら理由つきで不成立にしてね。");
         return;
@@ -1314,7 +1349,13 @@ export default function Home() {
       const nextGame = rejectProposal(game, judge, "objection");
       setGame(nextGame);
       showVerdict("objection", judge);
-      flashRejection("異議成立。同じマス・同じ読みの連打はできないよ。別の合法手でやり直そう。");
+      if (nextGame.winReason === "final-contested") {
+        flashRejection("最後の1マスを双方が異議で阻止したため引き分け！");
+      } else if (isContestedCell(nextGame.cellObjections, game.proposal.panelIndex)) {
+        flashRejection("双方がこのマスへ異議を使用。⚡争奪マスになり、以後このマスへの異議は使えないよ。");
+      } else {
+        flashRejection("異議成立。同じマス・同じ読みの連打はできないよ。別の合法手でやり直そう。");
+      }
     }
   }
 
@@ -1628,7 +1669,7 @@ export default function Home() {
                     <p className="boundary-summary"><b>成立してる</b> → 受理 or 異議　／　<b>かなり遠い</b> → 不成立にできる or あえて受理　／　<b>機械ルール上使えない</b> → 受理不可</p>
                     <div className="emoji-variation-note"><b>固有語・二人だけの呼び名も使えるよ</b><p>その札の対象そのものを指す固定の名前・愛称・秘密の言葉なら成立できるよ。理由に「二人の間でこの対象そのものを○○と呼んでいる」と書こう。思い出・出来事・セリフは、固定の愛称でない限り別もの。</p></div>
                     <div className="emoji-variation-note"><b>絵文字の色や細部は、みんな同じとは限らないよ</b><p>OS・端末・AIによって、🎂がチョコ・ピンク・白に見えることも。相手は、自分と違って見えることだけで不成立にはせず、止めたい時は異議札を使うよ。</p></div>
-                    <p className="rule-caution">濁音・半濁音は清音とつないでOK（か↔が、は↔ば↔ぱ）。異議は相手の1手番につき1回まで。不成立は異議の代わりにはできないよ。</p>
+                    <p className="rule-caution">濁音・半濁音は清音とつないでOK（か↔が、は↔ば↔ぱ）。異議は相手の1手番につき1回まで。同じ空きマスへ双方が異議を使うと⚡争奪中になり、そのマスへの異議は終了。最後の1マスなら引き分けだよ。不成立は異議の代わりにはできないよ。</p>
                   </section>
 
                   <section className="partner-guide">
@@ -1637,7 +1678,7 @@ export default function Home() {
                   </section>
 
                   <section className="quick-rules" aria-label="補足ルール">
-                    <span>⚡ 異議札は対戦前に変更</span><span>1手番につき異議は1回</span><span>「ん」で終わると即敗北</span><span>両者ライン不能で引き分け</span>
+                    <span>⚡ 異議札は対戦前に変更</span><span>1手番につき異議は1回</span><span>双方が同じマスへ異議 → 争奪中</span><span>最終争奪は引き分け</span><span>「ん」で終わると即敗北</span><span>両者ライン不能で引き分け</span>
                   </section>
 
                   <div className="guide-actions">
@@ -1794,19 +1835,21 @@ export default function Home() {
               const selected = game.selectedIndex === index;
               const winning = game.winningLine.includes(index);
               const retryBlocked = game.retryBlocked.includes(index) && !owner;
+              const contested = isContestedCell(game.cellObjections, index) && !owner;
               return (
                 <button
                   key={panel.id}
                   type="button"
-                  className={`tile ${owner ? `claimed ${owner.toLowerCase()}` : ""} ${selected ? "selected" : ""} ${winning ? "winning" : ""} ${retryBlocked ? "retry-blocked" : ""}`}
+                  className={`tile ${owner ? `claimed ${owner.toLowerCase()}` : ""} ${selected ? "selected" : ""} ${winning ? "winning" : ""} ${retryBlocked ? "retry-blocked" : ""} ${contested ? "contested" : ""}`}
                   onClick={() => selectPanel(index)}
                   disabled={Boolean(owner) || retryBlocked || !game.partnerBriefed || game.phase !== "select" || Boolean(game.winner)}
-                  aria-label={`${coordinate(index, game.boardSize)} ${panel.name}${owner ? ` ${owner}が取得済み` : retryBlocked ? " 今回の再試行では選択不可" : ""}`}
+                  aria-label={`${coordinate(index, game.boardSize)} ${panel.name}${owner ? ` ${owner}が取得済み` : retryBlocked ? " 今回の再試行では選択不可" : contested ? " 争奪中・異議不可" : ""}`}
                 >
                   <span className="coordinate">{coordinate(index, game.boardSize)}</span>
                   <span className="tile-art" aria-hidden="true"><PanelArtwork panel={panel} /></span>
                   {owner && <span className={`claim-chip claim-${owner.toLowerCase()}`} aria-hidden="true" />}
                   {retryBlocked && <span className="retry-lock" aria-hidden="true">異議</span>}
+                  {contested && !retryBlocked && <span className="contested-lock" aria-hidden="true">⚡ 争奪中</span>}
                 </button>
               );
             })}
@@ -1874,7 +1917,7 @@ export default function Home() {
                   <label><span>不成立の理由</span><select value={notEstablishedReason} onChange={(event) => setNotEstablishedReason(event.target.value)}><option value="">理由を選ぶ</option>{NOT_ESTABLISHED_REASONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
                   <label><span>補足（任意）</span><input value={notEstablishedNote} onChange={(event) => setNotEstablishedNote(event.target.value)} placeholder="短く補足できるよ" /></label>
                 </div>
-                <div className="judge-actions"><button type="button" className="invalid-button" onClick={notEstablishLocalProposal}>× 不成立<small>理由が必要・札は減らない</small></button><button type="button" className="object-button" disabled={!proposalCanUseObjection} onClick={() => judgeLocal(false)}>⚡ 異議を出す<small>{proposalJudge && game.objectionUsedThisTurn[proposalJudge] ? "この手番では使用済み" : proposalJudge && game.objections[proposalJudge] <= 0 ? "残り0枚" : "札を1枚使う"}</small></button><button type="button" className="accept-button" onClick={() => judgeLocal(true)}>✓ 受理する<small>読みを成立</small></button></div>
+                <div className="judge-actions"><button type="button" className="invalid-button" onClick={notEstablishLocalProposal}>× 不成立<small>理由が必要・札は減らない</small></button><button type="button" className="object-button" disabled={!proposalCanUseObjection} onClick={() => judgeLocal(false)}>⚡ 異議を出す<small>{proposalContested ? "争奪マス・異議不可" : proposalJudge && game.objectionUsedThisTurn[proposalJudge] ? "この手番では使用済み" : proposalJudge && game.objections[proposalJudge] <= 0 ? "残り0枚" : "札を1枚使う"}</small></button><button type="button" className="accept-button" onClick={() => judgeLocal(true)}>✓ 受理する<small>読みを成立</small></button></div>
               </div>
             )}
 
@@ -1883,7 +1926,7 @@ export default function Home() {
                 <div className="confetti">✦ ○ ✧ × ✦</div>
                 <p>GAME SET!</p>
                 <h2>{game.winner === "DRAW" ? "引き分け！" : `${game.winner === "O" ? "○" : "×"} ${game.playerNames?.[game.winner] ?? defaultPlayerNames(game.mode)[game.winner]}の勝ち！`}</h2>
-                <p>{game.winReason === "n-ending" ? "『ん』で終わる読みを出したため、その場で勝負が決まりました。" : game.winner === "DRAW" ? Object.keys(game.claims).length < game.boardSize * game.boardSize ? "盤面に空きはあるけれど、どちらもラインを完成できなくなりました。" : "全マスを使ってもラインが完成しませんでした。" : `タテ・ヨコ・ナナメの${game.boardSize}枚ラインが揃ったよ。`}</p>
+                <p>{game.winReason === "n-ending" ? "『ん』で終わる読みを出したため、その場で勝負が決まりました。" : game.winReason === "final-contested" ? "最後の1マスを双方が異議で阻止したため引き分け。" : game.winner === "DRAW" ? Object.keys(game.claims).length < game.boardSize * game.boardSize ? "盤面に空きはあるけれど、どちらもラインを完成できなくなりました。" : "全マスを使ってもラインが完成しませんでした。" : `タテ・ヨコ・ナナメの${game.boardSize}枚ラインが揃ったよ。`}</p>
                 <button type="button" className="primary" onClick={openNewGameFlow}>もう一局あそぶ</button>
               </div>
             )}
@@ -1910,7 +1953,7 @@ export default function Home() {
           <details className="rules-card">
             <summary><span>HOW TO PLAY</span><strong>あそびかた</strong><b>＋</b></summary>
             <ol><li><b>1</b><span>今の文字から読める絵文字を選ぶ</span></li><li><b>2</b><span>正式プリセット、または理由つきの自由読みを宣言</span></li><li><b>3</b><span>成立した読みの最後の文字を次へつなぐ。「ん」で終わればその場で負け</span></li><li><b>4</b><span>先に自分の色を一列そろえたら勝ち</span></li><li><b>5</b><span>双方とも列を完成できなくなった時点で引き分け</span></li></ol>
-            <p>成立している自由読みは受理か異議。札とのつながりがかなり遠い読みは理由つきで不成立にでき、納得したらあえて受理してもOK。現在文字違い・「ん」終わり・選択不可などの機械ルールは受理できないよ。</p>
+            <p>成立している自由読みは受理か異議。同じ空きマスへ双方が異議を使うと⚡争奪中になり、そのマスへの異議は使えなくなるよ。最後の1マスなら引き分け。札とのつながりがかなり遠い読みは理由つきで不成立にでき、現在文字違い・「ん」終わり・選択不可などの機械ルールも通常どおり有効だよ。</p>
           </details>
           <section className="prototype-note"><span>PROTOTYPE 02</span><p>共通性の高い絵文字65枚入り。正式プリセットは札ごとに必要な数だけ登録できるよ。</p></section>
         </aside>

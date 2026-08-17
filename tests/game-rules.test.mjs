@@ -10,6 +10,8 @@ import {
   hasCompletableLine,
   hasArtificialPolitePrefix,
   isKanaOnlyReading,
+  isContestedCell,
+  isLastEmptyCell,
   isRepeatedRejectedReading,
   nextRetryBlocks,
   parseMachineReply,
@@ -18,6 +20,7 @@ import {
   readingEnd,
   readingStartsWith,
   recommendedObjectionCount,
+  recordCellObjection,
   resolveDeclaredReading,
   winnerAfterNEnding,
   winLinesFor,
@@ -44,6 +47,20 @@ test("an objection can be used only once in the opponent's turn", () => {
   assert.equal(canUseObjection(3, false), true);
   assert.equal(canUseObjection(3, true), false);
   assert.equal(canUseObjection(0, false), false);
+});
+
+test("contested-cell history is tracked per cell and only activates after both sides object", () => {
+  const oneSide = recordCellObjection({}, 3, "O");
+  assert.deepEqual(oneSide, { 3: ["O"] });
+  assert.equal(isContestedCell(oneSide, 3), false);
+  assert.equal(isContestedCell(oneSide, 4), false);
+
+  const bothSides = recordCellObjection(oneSide, 3, "X");
+  assert.deepEqual(bothSides, { 3: ["O", "X"] });
+  assert.equal(isContestedCell(bothSides, 3), true);
+  assert.deepEqual(recordCellObjection(bothSides, 3, "O"), bothSides);
+  assert.equal(isLastEmptyCell({ 0: "O", 1: "X", 2: "O" }, 3, 4), true);
+  assert.equal(isLastEmptyCell({ 0: "O", 1: "X" }, 3, 4), false);
 });
 
 test("formal preset readings can have any array length", () => {

@@ -1,6 +1,7 @@
 import {
   parseMachineReply,
   findWinner,
+  isContestedCell,
   presetReadingValue,
   readingEnd,
   winLinesFor,
@@ -15,15 +16,16 @@ import {
 } from "./online-engine";
 import type { JudgeAction, PublicRoom } from "./online-types";
 
-const JUDGEMENT_CORE = `自由読みは、絵・名前・共通説明・申告された表示差から対象へつながるかを、あなた自身の知識や相手との関係性も含めて判断してください。二人だけの愛称や象徴も、その対象を直接指す固定の呼び名なら成立できます。成立している読みを勝負上止めたい場合は「異議」、意味のつながりがかなり遠ければ理由つきで「不成立」、納得したら「受理」です。現在文字違い、取得済み、選択不可、「ん」終わりなどの機械ルールはアプリが固定判定します。`;
+const JUDGEMENT_CORE = `自由読みは、絵・名前・共通説明・申告された表示差から対象へつながるかを、あなた自身の知識や相手との関係性も含めて判断してください。二人だけの愛称や象徴も、その対象を直接指す固定の呼び名なら成立できます。成立している読みを勝負上止めたい場合は「異議」、意味のつながりがかなり遠ければ理由つきで「不成立」、納得したら「受理」です。⚡争奪中のマスには異議を使えませんが、不成立と固定機械ルールは通常どおり有効です。現在文字違い、取得済み、選択不可、「ん」終わりなどの機械ルールはアプリが固定判定します。`;
 
 function panelDescription(room: PublicRoom, index: number) {
   const panel = room.game.board[index];
   const owner = room.game.claims[index];
   if (owner) return `${coordinateForIndex(index, room.game.boardSize)}:${owner === "O" ? "○" : "▲"}取得済み`;
   const blocked = room.game.retryBlocked.includes(index) ? "｜今回選択不可" : "";
+  const contested = isContestedCell(room.game.cellObjections, index) ? "｜⚡争奪中（異議不可）" : "";
   const presets = panel.readings.map(presetReadingValue).join("・");
-  return `${coordinateForIndex(index, room.game.boardSize)}｜${panel.icon}｜${panel.name}｜共通説明:${panel.visualDescription}｜正式読み:${presets}${blocked}`;
+  return `${coordinateForIndex(index, room.game.boardSize)}｜${panel.icon}｜${panel.name}｜共通説明:${panel.visualDescription}｜正式読み:${presets}${blocked}${contested}`;
 }
 
 function boardSummary(room: PublicRoom) {
@@ -67,6 +69,8 @@ ${sideContext(room, side)}
 - 現在文字から始まる読みで空き札を取り、縦・横・斜めの一列を先に完成した側の勝ち
 - 正式読みは理由なしで成立。自由読みは理由が必要
 - 自由読みが成立していても、勝負上止めたいなら異議札を使える
+- 同じ未取得マスへ○・▲双方が1回ずつ異議を使うと「争奪マス」になり、以後そのマスへの異議は使えない
+- 最後の空き1マスが争奪マスになった場合は「最終争奪」として引き分け
 - 札との意味的なつながりがかなり遠い自由読みは理由つきで不成立にできる
 - 「ん」で終わる読みを宣言した側は即敗北
 - 双方ともライン完成不能になったら引き分け
@@ -122,7 +126,8 @@ export function buildAiJudgePrompt(room: PublicRoom, side: Player) {
   const proposal = game.proposal;
   if (!proposal) return "判定待ちの読みはありません。";
   const panel = game.board[proposal.panelIndex];
-  const objectionAvailable = game.objections[side] > 0 && !game.objectionUsedThisTurn[side];
+  const contested = isContestedCell(game.cellObjections, proposal.panelIndex);
+  const objectionAvailable = !contested && game.objections[side] > 0 && !game.objectionUsedThisTurn[side];
   const acceptedClaims = { ...game.claims, [proposal.panelIndex]: proposal.player };
   const acceptedResult = findWinner(acceptedClaims, game.boardSize);
   const nextChar = readingEnd(proposal.reading);
@@ -163,7 +168,7 @@ ${sideContext(room, side)}
 理由：${proposal.reason}
 現在文字：「${game.currentChar}」
 残り異議札：あなた側 ${game.objections[side]}枚
-異議：${objectionAvailable ? "この相手手番で使用可能" : "現在は使用不可"}
+異議：${contested ? "このマスは⚡争奪中のため使用不可" : objectionAvailable ? "この相手手番で使用可能" : "現在は使用不可"}
 戦況：${lineSituation(room)}
 
 ${JUDGEMENT_CORE}
@@ -224,6 +229,9 @@ export function parseAiJudgeReply(room: PublicRoom, text: string): ParsedAiJudge
   const verdict = value === "受理" ? "accept" : value === "異議" ? "objection" : value === "不成立" ? "not-established" : null;
   if (!verdict) return { ok: false, error: "判定は「受理・異議・不成立」のどれかで返してもらってね。" };
   if (verdict !== "accept" && !parsed.fields["理由"]) return { ok: false, error: "異議・不成立には判定理由が必要です。" };
+  if (verdict === "objection" && room.game.proposal && isContestedCell(room.game.cellObjections, room.game.proposal.panelIndex)) {
+    return { ok: false, error: "このマスは⚡争奪中だから、もう異議は使えません。不成立または受理で返してもらってね。" };
+  }
   if (verdict !== "accept") {
     return { ok: true, action: { type: "judge", verdict, reason: parsed.fields["理由"] ?? "", sourceCode } };
   }

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
-import { readingEnd, type Player } from "../../game-rules";
+import { isContestedCell, readingEnd, type Player } from "../../game-rules";
 import {
   coordinateForIndex,
   oppositeSide,
@@ -332,6 +332,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                   {game.board.map((panel, index) => {
                     const owner = game.claims[index];
                     const blocked = game.retryBlocked.includes(index) && !owner;
+                    const contested = isContestedCell(game.cellObjections, index) && !owner;
                     const selected = index === activeSelectedIndex;
                     const winning = game.winningLine.includes(index);
                     const selectable = yourTurn && controller === "human" && !owner && !blocked;
@@ -341,14 +342,15 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                         key={`${panel.id}-${index}`}
                         disabled={!selectable}
                         onClick={() => selectable && setSelectedIndex(index)}
-                        className={[styles.tile, owner ? styles[`claimed${owner}`] : "", blocked ? styles.blocked : "", selected ? styles.selected : "", winning ? styles.winning : ""].filter(Boolean).join(" ")}
-                        aria-label={`${coordinateForIndex(index, game.boardSize)} ${panel.name}${owner ? ` ${sideName(owner)}が取得済み` : blocked ? " 今回選択不可" : ""}`}
+                        className={[styles.tile, owner ? styles[`claimed${owner}`] : "", blocked ? styles.blocked : "", contested ? styles.contested : "", selected ? styles.selected : "", winning ? styles.winning : ""].filter(Boolean).join(" ")}
+                        aria-label={`${coordinateForIndex(index, game.boardSize)} ${panel.name}${owner ? ` ${sideName(owner)}が取得済み` : blocked ? " 今回選択不可" : contested ? " 争奪中・異議不可" : ""}`}
                       >
                         <small>{coordinateForIndex(index, game.boardSize)}</small>
                         <span aria-hidden="true">{panel.icon}</span>
                         <b>{panel.name}</b>
                         {owner && <i aria-hidden="true">{owner === "O" ? "○" : "▲"}</i>}
                         {blocked && <em>異議</em>}
+                        {contested && !blocked && <em className={styles.contestedBadge}>⚡ 争奪中</em>}
                       </button>
                     );
                   })}
@@ -592,13 +594,14 @@ function JudgeCard({ room, reason, busy, onReason, onJudge }: {
   onJudge: (verdict: "accept" | "objection" | "not-established") => void;
 }) {
   const you = oppositeSide(room.game.proposal!.player);
-  const canObject = room.game.objections[you] > 0 && !room.game.objectionUsedThisTurn[you];
+  const contested = isContestedCell(room.game.cellObjections, room.game.proposal!.panelIndex);
+  const canObject = !contested && room.game.objections[you] > 0 && !room.game.objectionUsedThisTurn[you];
   return (
     <div className={styles.judgeCard}>
       <p>FREE READING CHECK</p><h2>この自由読み、どうする？</h2><ProposalView room={room} />
       <p className={styles.judgeGuide}>成立しているなら受理。成立するけど勝負上止めたいなら異議。札との意味的なつながりがかなり遠いなら不成立にできるよ。</p>
       <label><span>異議・不成立の理由</span><textarea value={reason} onChange={(event) => onReason(event.target.value)} maxLength={240} rows={2} placeholder="理由を短く書いてね" /></label>
-      <div className={styles.judgeButtons}><button type="button" disabled={busy || !reason.trim()} onClick={() => onJudge("not-established")}>× 不成立<small>札は減らない</small></button><button type="button" disabled={busy || !canObject || !reason.trim()} onClick={() => onJudge("objection")}>⚡ 異議<small>{canObject ? "1枚使う" : "現在使用不可"}</small></button><button type="button" disabled={busy} onClick={() => onJudge("accept")}>✓ 受理<small>読みを成立</small></button></div>
+      <div className={styles.judgeButtons}><button type="button" disabled={busy || !reason.trim()} onClick={() => onJudge("not-established")}>× 不成立<small>札は減らない</small></button><button type="button" disabled={busy || !canObject || !reason.trim()} onClick={() => onJudge("objection")}>⚡ 異議<small>{contested ? "争奪マス・異議不可" : canObject ? "1枚使う" : "現在使用不可"}</small></button><button type="button" disabled={busy} onClick={() => onJudge("accept")}>✓ 受理<small>読みを成立</small></button></div>
     </div>
   );
 }
@@ -607,12 +610,13 @@ function WinnerCard({ room }: { room: RoomView["room"] }) {
   const game = room.game;
   const winner = game.winner;
   const title = winner === "DRAW" ? "引き分け！" : winner ? `${profileLabel(room.players[winner]?.profile)}の勝ち！` : "対戦終了";
-  const reason = game.winReason === "n-ending" ? "「ん」で終わる読みが宣言され、その場で勝負が決まりました。" : winner === "DRAW" ? "双方ともラインを完成できなくなりました。" : `${game.boardSize}枚のラインがそろったよ。`;
+  const reason = game.winReason === "n-ending" ? "「ん」で終わる読みが宣言され、その場で勝負が決まりました。" : game.winReason === "final-contested" ? "最後の1マスを双方が異議で阻止したため引き分け。" : winner === "DRAW" ? "双方ともラインを完成できなくなりました。" : `${game.boardSize}枚のラインがそろったよ。`;
   return <div className={styles.winnerCard}><span>✦ ○ ✧ ▲ ✦</span><p>GAME SET!</p><h2>{title}</h2><p>{reason}</p><Link href="/online">もう一局の部屋を作る →</Link></div>;
 }
 
 function VerdictEffect({ event, room }: { event: OnlineVerdictEvent; room: RoomView["room"] }) {
   const accepted = event.verdict === "accept";
+  const finalContested = room.game.winReason === "final-contested";
   const judgeName = profileLabel(room.players[event.judge]?.profile);
   return (
     <div className={`${styles.verdictEffect} ${accepted ? styles.verdictAccepted : styles.verdictObjection}`} role="status" aria-live="assertive">
@@ -620,8 +624,8 @@ function VerdictEffect({ event, room }: { event: OnlineVerdictEvent; room: RoomV
       <section>
         <span>{accepted ? "✓" : "⚡"}</span>
         <small>{judgeName}の判定</small>
-        <h2>{accepted ? "受理！" : "異議あり！"}</h2>
-        <p>「{event.reading}」{accepted ? "成立！" : "は別の一手で再勝負！"}</p>
+        <h2>{finalContested ? "最終争奪 — DRAW" : accepted ? "受理！" : "異議あり！"}</h2>
+        <p>{finalContested ? "最後の1マスを双方が異議で阻止したため引き分け" : <>「{event.reading}」{accepted ? "成立！" : "は別の一手で再勝負！"}</>}</p>
       </section>
     </div>
   );
