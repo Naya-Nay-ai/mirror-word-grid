@@ -8,7 +8,7 @@ export const QUICK_REACTIONS = [
   { id: "nice", emoji: "👏", message: "うまっ" },
   { id: "silence", emoji: "😑", message: "……。" },
   { id: "game-on", emoji: "🔥", message: "勝負じゃ" },
-  { id: "want-that", emoji: "🫵", message: "そこ欲しいの知ってる" },
+  { id: "want-that", emoji: "👀", message: "そこ欲しいの知ってる" },
   { id: "approved", emoji: "🤝", message: "それは認める" },
   { id: "yes", emoji: "🎉", message: "よっしゃ！" },
 ] as const;

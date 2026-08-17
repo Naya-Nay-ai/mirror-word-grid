@@ -50,7 +50,7 @@
 .tile.winning { animation: winner .65s ease-in-out infinite alternate; z-index: 5; }
 @keyframes winner { to { transform: translateY(-4px) rotate(1deg); box-shadow: 0 7px 0 var(--line), 0 0 0 4px white; } }
 .actionCard { min-height: 110px; margin-top: 12px; overflow: hidden; border: 3px solid var(--line); border-radius: 21px; background: white; box-shadow: var(--shadow); }
-.reactionDock { display: flex; justify-content: flex-end; align-items: center; gap: 9px; min-height: 39px; margin-top: 8px; }
+.reactionDock { display: flex; justify-content: space-between; align-items: center; gap: 9px; min-height: 48px; padding: 5px 7px 5px 11px; border: 2px dashed #c9c1d2; border-radius: 14px; background: rgba(255,255,255,.78); }
 .reactionDock > span { color: #756d80; font-size: 8px; font-weight: 800; }
 .reactionDock > button { min-height: 38px; padding: 0 13px; border: 2px solid var(--line); border-radius: 999px; background: white; box-shadow: 0 3px 0 rgba(47,41,70,.24); color: var(--ink); cursor: pointer; font-size: 9px; font-weight: 900; }
 .reactionDock > button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(47,41,70,.24); }
@@ -140,7 +140,8 @@
 .aiPrepCard button { width: 100%; margin-top: 9px; background: var(--yellow); }
 .roomInfoCard dl { display: grid; gap: 5px; margin: 0; }.roomInfoCard dl div { display: flex; justify-content: space-between; gap: 8px; padding: 6px 7px; border-radius: 8px; background: #faf7ee; font-size: 9px; }.roomInfoCard dt { color: #7a7284; }.roomInfoCard dd { margin: 0; overflow: hidden; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
 .historyCard ol { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }.historyCard li { display: grid; grid-template-columns: 22px 28px minmax(0, 1fr); gap: 5px; align-items: center; padding: 5px 7px; border-radius: 8px; background: #faf7ee; font-size: 9px; }.historyCard li i { display: grid; place-items: center; width: 21px; height: 21px; border-radius: 50%; font: 900 16px/1 Arial, sans-serif; }.logO { background: var(--pink-soft); color: #e84673; }.logX { background: var(--purple-soft); color: #5f49db; }.historyCard li span { color: #877f90; }.historyCard li strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.newRoomLink { justify-self: center; color: #6c6478; font-size: 9px; font-weight: 900; text-underline-offset: 4px; }
+.roomExitArea { grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 2px; padding: 14px 4px 0; border-top: 1px dashed rgba(47,41,70,.2); }
+.newRoomLink { color: #756e7e; font-size: 8px; font-weight: 800; text-underline-offset: 4px; opacity: .78; }
 .waitingCard { display: grid; justify-items: center; min-height: 500px; align-content: center; padding: 30px; border: 3px solid var(--line); border-radius: 24px; background: linear-gradient(145deg, white, #fff6d7 55%, var(--purple-soft)); box-shadow: var(--shadow); text-align: center; }
 .waitingIcon { display: grid; place-items: center; width: 70px; height: 70px; border: 3px solid var(--line); border-radius: 23px; background: var(--yellow); box-shadow: 0 5px 0 var(--line); color: var(--purple); font-size: 34px; font-weight: 900; transform: rotate(-3deg); }
 .waitingCard > p:first-of-type { margin: 22px 0 5px; color: var(--purple); font-size: 9px; font-weight: 900; letter-spacing: .16em; }.waitingCard h1 { margin: 0; font-size: clamp(28px, 6vw, 43px); letter-spacing: -.045em; }.waitingCard > p:not(:first-of-type) { max-width: 500px; color: #655d70; font-size: 11px; line-height: 1.7; }
@@ -174,9 +175,10 @@
   .sideColumn { grid-template-columns: 1fr; }.sideColumn > :last-child { grid-column: auto; }
   .readyPair { grid-template-columns: 1fr; }.readyPair b { transform: rotate(90deg); }
   .waitingCard { min-height: 440px; padding: 22px 14px; }
-  .reactionDock { min-height: 36px; margin-top: 6px; }
+  .reactionDock { min-height: 44px; padding: 4px 6px; }
   .reactionDock > span { display: none; }
-  .reactionDock > button { min-height: 36px; padding: 0 11px; }
+  .reactionDock > button { width: 100%; min-height: 36px; padding: 0 11px; }
+  .roomExitArea { justify-content: center; margin-top: 4px; padding-top: 16px; }
   .reactionToasts { right: 9px; bottom: 62px; width: calc(100vw - 18px); }
   .reactionToast { min-width: min(220px, 82vw); padding: 8px 10px; }
   .reactionOverlay { padding: 7px; }
