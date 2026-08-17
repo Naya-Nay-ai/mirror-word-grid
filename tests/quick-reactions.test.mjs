@@ -14,6 +14,7 @@ function event(id, side, reactionId, sentAt) {
 test("quick-reaction catalog is compact and identifiers are validated", () => {
   assert.equal(QUICK_REACTIONS.length, 10);
   assert.equal(new Set(QUICK_REACTIONS.map((reaction) => reaction.id)).size, QUICK_REACTIONS.length);
+  assert.equal(QUICK_REACTIONS.find((reaction) => reaction.id === "want-that")?.emoji, "👀");
   assert.equal(isQuickReactionId("really"), true);
   assert.equal(isQuickReactionId("free-form-message"), false);
 });

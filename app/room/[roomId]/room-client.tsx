@@ -527,14 +527,6 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                     />
                   )}
                 </section>
-                {reactionsAvailable && (
-                  <div className={styles.reactionDock}>
-                    <span>ひとことだけ、ぽんっ。</span>
-                    <button type="button" onClick={() => setReactionOpen(true)} disabled={reactionBusy} aria-haspopup="dialog">
-                      💬 {reactionCoolingDown ? "送信したよ ✓" : "リアクション"}
-                    </button>
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -556,8 +548,20 @@ export default function RoomClient({ roomId }: { roomId: string }) {
               <small>PLAY LOG</small><h2>ことばの足あと</h2>
               {game.history.length ? <ol>{[...game.history].reverse().slice(0, 12).map((item, index) => <li key={`${item.coordinate}-${index}`}><i className={item.player === "O" ? styles.logO : styles.logX}>{item.player === "O" ? "○" : "▲"}</i><span>{item.coordinate}</span><strong>{item.reading}</strong></li>)}</ol> : <p>最初の一手を待ってるよ。</p>}
             </section>
-            <Link href="/online" className={styles.newRoomLink}>＋ 新しい部屋を作る</Link>
+            {reactionsAvailable && (
+              <div className={styles.reactionDock}>
+                <span>ひとことだけ、ぽんっ。</span>
+                <button type="button" onClick={() => setReactionOpen(true)} disabled={reactionBusy || reactionCoolingDown} aria-haspopup="dialog">
+                  💬 {reactionCoolingDown ? "送信したよ ✓" : "リアクション"}
+                </button>
+              </div>
+            )}
           </aside>
+          <div className={styles.roomExitArea}>
+            <Link href="/online" className={styles.newRoomLink} onClick={(event) => {
+              if ((room.status === "waiting" || room.status === "active") && !window.confirm("この対戦ルームを離れて、新しい部屋の作成画面へ移動する？\n今の部屋は自動消去まで残ります。")) event.preventDefault();
+            }}>＋ 新しい部屋を作る</Link>
+          </div>
         </div>
       )}
       {reactionToasts.length > 0 && <ReactionToasts events={reactionToasts} room={room} />}
