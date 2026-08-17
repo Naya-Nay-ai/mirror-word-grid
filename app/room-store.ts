@@ -3,6 +3,13 @@ import "server-only";
 import { Redis } from "@upstash/redis";
 
 import type { StoredRoom } from "./online-types";
+import {
+  appendQuickReaction,
+  emptyQuickReactionChannel,
+  QUICK_REACTION_CHANNEL_TTL_SECONDS,
+  type QuickReactionChannel,
+  type QuickReactionEvent,
+} from "./quick-reactions";
 import { resolveRoomStoreCredentials } from "./room-store-credentials";
 
 export const ROOM_TTL_SECONDS = 24 * 60 * 60;
@@ -15,6 +22,8 @@ export interface RoomStore {
   create(room: StoredRoom): Promise<boolean>;
   get(roomId: string): Promise<StoredRoom | null>;
   compareAndSet(roomId: string, expectedRevision: number, next: StoredRoom): Promise<CompareAndSetResult>;
+  getReactionChannel(roomId: string): Promise<QuickReactionChannel>;
+  appendReaction(roomId: string, event: QuickReactionEvent, cooldownMs: number): Promise<{ accepted: boolean; channel: QuickReactionChannel }>;
 }
 
 export class RoomStoreConfigurationError extends Error {
@@ -25,6 +34,7 @@ export class RoomStoreConfigurationError extends Error {
 }
 
 const keyFor = (roomId: string) => `mwg:room:${roomId}`;
+const reactionKeyFor = (roomId: string) => `${keyFor(roomId)}:reactions`;
 
 const CAS_SCRIPT = `
 local current = redis.call("GET", KEYS[1])
@@ -39,6 +49,29 @@ redis.call("SET", KEYS[1], ARGV[2], "EX", ARGV[3])
 return 1
 `;
 
+const APPEND_REACTION_SCRIPT = `
+local current = redis.call("GET", KEYS[1])
+local channel = { events = {}, lastSentAt = {} }
+if current then
+  channel = cjson.decode(current)
+end
+local side = ARGV[1]
+local sentAt = tonumber(ARGV[2])
+local cooldown = tonumber(ARGV[3])
+local previous = tonumber(channel.lastSentAt[side] or 0)
+if sentAt - previous < cooldown then
+  return { 0, cjson.encode(channel) }
+end
+table.insert(channel.events, cjson.decode(ARGV[4]))
+while #channel.events > 2 do
+  table.remove(channel.events, 1)
+end
+channel.lastSentAt[side] = sentAt
+local encoded = cjson.encode(channel)
+redis.call("SET", KEYS[1], encoded, "EX", ARGV[5])
+return { 1, encoded }
+`;
+
 function roomFromValue(value: StoredRoom | string | null) {
   if (!value) return null;
   if (typeof value === "string") {
@@ -46,6 +79,18 @@ function roomFromValue(value: StoredRoom | string | null) {
       return JSON.parse(value) as StoredRoom;
     } catch {
       return null;
+    }
+  }
+  return value;
+}
+
+function reactionChannelFromValue(value: QuickReactionChannel | string | null) {
+  if (!value) return emptyQuickReactionChannel();
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value) as QuickReactionChannel;
+    } catch {
+      return emptyQuickReactionChannel();
     }
   }
   return value;
@@ -78,16 +123,36 @@ class UpstashRoomStore implements RoomStore {
     const current = await this.get(roomId);
     return { ok: false, reason: result === -1 ? "missing" : "conflict", current };
   }
+
+  async getReactionChannel(roomId: string) {
+    const value = await this.redis.get<QuickReactionChannel | string>(reactionKeyFor(roomId));
+    return reactionChannelFromValue(value);
+  }
+
+  async appendReaction(roomId: string, event: QuickReactionEvent, cooldownMs: number) {
+    const result = await this.redis.eval<[string, string, string, string, string], [number, string]>(
+      APPEND_REACTION_SCRIPT,
+      [reactionKeyFor(roomId)],
+      [event.side, String(event.sentAt), String(cooldownMs), JSON.stringify(event), String(QUICK_REACTION_CHANNEL_TTL_SECONDS)],
+    );
+    return { accepted: result[0] === 1, channel: reactionChannelFromValue(result[1]) };
+  }
 }
 
 type MemoryEntry = { room: StoredRoom; expiresAt: number };
-type RoomGlobals = typeof globalThis & { __mwgRooms?: Map<string, MemoryEntry> };
+type ReactionMemoryEntry = { channel: QuickReactionChannel; expiresAt: number };
+type RoomGlobals = typeof globalThis & {
+  __mwgRooms?: Map<string, MemoryEntry>;
+  __mwgReactions?: Map<string, ReactionMemoryEntry>;
+};
 
 class MemoryRoomStore implements RoomStore {
   private readonly rooms = (globalThis as RoomGlobals).__mwgRooms ?? new Map<string, MemoryEntry>();
+  private readonly reactions = (globalThis as RoomGlobals).__mwgReactions ?? new Map<string, ReactionMemoryEntry>();
 
   constructor() {
     (globalThis as RoomGlobals).__mwgRooms = this.rooms;
+    (globalThis as RoomGlobals).__mwgReactions = this.reactions;
   }
 
   private read(roomId: string) {
@@ -119,6 +184,26 @@ class MemoryRoomStore implements RoomStore {
     }
     this.rooms.set(roomId, { room: structuredClone(next), expiresAt: Date.now() + ROOM_TTL_SECONDS * 1000 });
     return { ok: true };
+  }
+
+  async getReactionChannel(roomId: string) {
+    const entry = this.reactions.get(roomId);
+    if (!entry || entry.expiresAt <= Date.now()) {
+      if (entry) this.reactions.delete(roomId);
+      return emptyQuickReactionChannel();
+    }
+    return structuredClone(entry.channel);
+  }
+
+  async appendReaction(roomId: string, event: QuickReactionEvent, cooldownMs: number) {
+    const result = appendQuickReaction(await this.getReactionChannel(roomId), event, cooldownMs);
+    if (result.accepted) {
+      this.reactions.set(roomId, {
+        channel: structuredClone(result.channel),
+        expiresAt: Date.now() + QUICK_REACTION_CHANNEL_TTL_SECONDS * 1000,
+      });
+    }
+    return structuredClone(result);
   }
 }
 

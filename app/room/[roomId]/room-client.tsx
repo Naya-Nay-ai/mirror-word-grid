@@ -21,6 +21,15 @@ import {
 } from "../../online-prompts";
 import type { ControllerKind, OnlineVerdictEvent, PlayerProfile, RoomAction, RoomView } from "../../online-types";
 import {
+  QUICK_REACTIONS,
+  QUICK_REACTION_COOLDOWN_MS,
+  QUICK_REACTION_DISPLAY_MS,
+  quickReactionFor,
+  type QuickReactionEvent,
+  type QuickReactionId,
+  type QuickReactionView,
+} from "../../quick-reactions";
+import {
   copyText,
   credentialForRoom,
   saveRoomCredential,
@@ -29,6 +38,11 @@ import styles from "./room.module.css";
 
 type ApiPayload = {
   view?: RoomView;
+  error?: { code?: string; message?: string };
+};
+
+type ReactionApiPayload = {
+  reactionView?: QuickReactionView;
   error?: { code?: string; message?: string };
 };
 
@@ -60,11 +74,18 @@ export default function RoomClient({ roomId }: { roomId: string }) {
   const [copiedKind, setCopiedKind] = useState<"invite" | "intro" | "turn" | "judge" | null>(null);
   const [copiedActionCode, setCopiedActionCode] = useState("");
   const [verdictEvent, setVerdictEvent] = useState<OnlineVerdictEvent | null>(null);
+  const [reactionOpen, setReactionOpen] = useState(false);
+  const [reactionBusy, setReactionBusy] = useState(false);
+  const [reactionCoolingDown, setReactionCoolingDown] = useState(false);
+  const [reactionToasts, setReactionToasts] = useState<QuickReactionEvent[]>([]);
   const lastChangeAt = useRef(0);
   const revisionRef = useRef<number | null>(null);
   const verdictReadyRef = useRef(false);
   const lastVerdictCodeRef = useRef("");
   const verdictTimerRef = useRef<number | null>(null);
+  const reactionCooldownTimerRef = useRef<number | null>(null);
+  const reactionToastTimersRef = useRef(new Map<string, number>());
+  const seenReactionIdsRef = useRef(new Set<string>());
 
   const syncVerdictEffect = useCallback((nextView: RoomView) => {
     const event = nextView.room.game.lastVerdict ?? null;
@@ -86,6 +107,34 @@ export default function RoomClient({ roomId }: { roomId: string }) {
 
   useEffect(() => () => {
     if (verdictTimerRef.current !== null) window.clearTimeout(verdictTimerRef.current);
+    if (reactionCooldownTimerRef.current !== null) window.clearTimeout(reactionCooldownTimerRef.current);
+    reactionToastTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+  }, []);
+
+  const syncReactions = useCallback((nextView: QuickReactionView) => {
+    const now = Date.now();
+    const incoming: QuickReactionEvent[] = [];
+    for (const event of nextView.events) {
+      if (seenReactionIdsRef.current.has(event.id)) continue;
+      seenReactionIdsRef.current.add(event.id);
+      if (event.side !== nextView.you && now - event.sentAt <= QUICK_REACTION_DISPLAY_MS + 2_000) incoming.push(event);
+    }
+    while (seenReactionIdsRef.current.size > 50) {
+      const oldest = seenReactionIdsRef.current.values().next().value as string | undefined;
+      if (!oldest) break;
+      seenReactionIdsRef.current.delete(oldest);
+    }
+    if (!incoming.length) return;
+    setReactionToasts((current) => [...current, ...incoming].slice(-2));
+    for (const event of incoming) {
+      const existing = reactionToastTimersRef.current.get(event.id);
+      if (existing !== undefined) window.clearTimeout(existing);
+      const timer = window.setTimeout(() => {
+        setReactionToasts((current) => current.filter((item) => item.id !== event.id));
+        reactionToastTimersRef.current.delete(event.id);
+      }, QUICK_REACTION_DISPLAY_MS);
+      reactionToastTimersRef.current.set(event.id, timer);
+    }
   }, []);
 
   useEffect(() => {
@@ -139,6 +188,20 @@ export default function RoomClient({ roomId }: { roomId: string }) {
     }
   }, [accessToken, roomId, syncVerdictEffect]);
 
+  const loadReactions = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const response = await fetch(`/api/rooms/${roomId}/reactions`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      const body = await response.json() as ReactionApiPayload;
+      if (response.ok && body.reactionView) syncReactions(body.reactionView);
+    } catch {
+      // 盤面同期は従来の経路を維持し、補助機能の失敗では対戦を止めない。
+    }
+  }, [accessToken, roomId, syncReactions]);
+
   useEffect(() => {
     if (!accessToken) return;
     const timer = window.setTimeout(() => void loadRoom(false), 0);
@@ -146,6 +209,9 @@ export default function RoomClient({ roomId }: { roomId: string }) {
   }, [accessToken, loadRoom]);
 
   const activeRoomId = view?.room.id;
+  const reactionsAvailable = view?.room.status === "active"
+    && view.room.players.O?.profile.controller === "human"
+    && view.room.players.X?.profile.controller === "human";
   useEffect(() => {
     if (!accessToken || !activeRoomId) return;
     let cancelled = false;
@@ -163,6 +229,22 @@ export default function RoomClient({ roomId }: { roomId: string }) {
       window.clearTimeout(timer);
     };
   }, [accessToken, activeRoomId, loadRoom]);
+
+  useEffect(() => {
+    if (!accessToken || !activeRoomId || !reactionsAvailable) return;
+    let cancelled = false;
+    let timer = 0;
+    const poll = async () => {
+      await loadReactions();
+      if (cancelled) return;
+      timer = window.setTimeout(poll, document.hidden ? 8_000 : 2_000);
+    };
+    timer = window.setTimeout(poll, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [accessToken, activeRoomId, loadReactions, reactionsAvailable]);
 
   async function sendAction(action: RoomAction) {
     if (!view || busy) return false;
@@ -198,6 +280,33 @@ export default function RoomClient({ roomId }: { roomId: string }) {
       return false;
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function sendReaction(reactionId: QuickReactionId) {
+    if (!reactionsAvailable || reactionBusy || reactionCoolingDown) return;
+    setReactionBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/rooms/${roomId}/reactions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ reactionId }),
+      });
+      const body = await response.json() as ReactionApiPayload;
+      if (!response.ok || !body.reactionView) throw new Error(body.error?.message ?? "リアクションを送れませんでした。");
+      syncReactions(body.reactionView);
+      setReactionOpen(false);
+      setReactionCoolingDown(true);
+      if (reactionCooldownTimerRef.current !== null) window.clearTimeout(reactionCooldownTimerRef.current);
+      reactionCooldownTimerRef.current = window.setTimeout(() => {
+        setReactionCoolingDown(false);
+        reactionCooldownTimerRef.current = null;
+      }, QUICK_REACTION_COOLDOWN_MS);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "リアクションを送れませんでした。");
+    } finally {
+      setReactionBusy(false);
     }
   }
 
@@ -418,6 +527,14 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                     />
                   )}
                 </section>
+                {reactionsAvailable && (
+                  <div className={styles.reactionDock}>
+                    <span>ひとことだけ、ぽんっ。</span>
+                    <button type="button" onClick={() => setReactionOpen(true)} disabled={reactionBusy} aria-haspopup="dialog">
+                      💬 {reactionCoolingDown ? "送信したよ ✓" : "リアクション"}
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -443,8 +560,63 @@ export default function RoomClient({ roomId }: { roomId: string }) {
           </aside>
         </div>
       )}
+      {reactionToasts.length > 0 && <ReactionToasts events={reactionToasts} room={room} />}
+      {reactionOpen && reactionsAvailable && (
+        <ReactionSheet
+          busy={reactionBusy || reactionCoolingDown}
+          onClose={() => setReactionOpen(false)}
+          onSend={sendReaction}
+        />
+      )}
       {verdictEvent && <VerdictEffect event={verdictEvent} room={room} />}
     </main>
+  );
+}
+
+function ReactionToasts({ events, room }: { events: QuickReactionEvent[]; room: RoomView["room"] }) {
+  return (
+    <div className={styles.reactionToasts} role="status" aria-live="polite" aria-atomic="false">
+      {events.map((event) => {
+        const reaction = quickReactionFor(event.reactionId);
+        return (
+          <div key={event.id} className={styles.reactionToast}>
+            <small>{profileLabel(room.players[event.side]?.profile)}</small>
+            <p><span aria-hidden="true">{reaction.emoji}</span>{reaction.message}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ReactionSheet({ busy, onClose, onSend }: {
+  busy: boolean;
+  onClose: () => void;
+  onSend: (reactionId: QuickReactionId) => void;
+}) {
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
+  return (
+    <div className={styles.reactionOverlay}>
+      <button type="button" className={styles.reactionScrim} onClick={onClose} aria-label="リアクションを閉じる" />
+      <section className={styles.reactionSheet} role="dialog" aria-modal="true" aria-labelledby="reaction-title">
+        <header><div><small>QUICK REACTION</small><h2 id="reaction-title">ひとこと、飛ばす？</h2></div><button type="button" onClick={onClose} aria-label="閉じる">×</button></header>
+        <div className={styles.reactionGrid}>
+          {QUICK_REACTIONS.map((reaction) => (
+            <button type="button" key={reaction.id} disabled={busy} onClick={() => onSend(reaction.id)}>
+              <span aria-hidden="true">{reaction.emoji}</span><b>{reaction.message}</b>
+            </button>
+          ))}
+        </div>
+        <p>送ったリアクションは相手に数秒だけ表示されるよ。</p>
+      </section>
+    </div>
   );
 }
 
