@@ -1,5 +1,7 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import type { Player } from "./game-rules";
 import {
   applyRoomAction,
@@ -16,6 +18,11 @@ import type {
   RoomView,
   StoredRoom,
 } from "./online-types";
+import {
+  isQuickReactionId,
+  QUICK_REACTION_COOLDOWN_MS,
+  type QuickReactionView,
+} from "./quick-reactions";
 import {
   generateAccessToken,
   generateActionCode,
@@ -45,6 +52,17 @@ function authorizedView(room: StoredRoom, token: string): RoomView {
   const you = sideForToken(room, token);
   if (!you) throw new OnlineGameError("unauthorized", "この部屋を開く権限を確認できません。招待リンクを開き直してね。", 401);
   return { room: publicRoom(room), you };
+}
+
+function reactionSide(room: StoredRoom, token: string) {
+  const view = authorizedView(room, token);
+  if (room.status !== "active") {
+    throw new OnlineGameError("reactions_unavailable", "リアクションは対戦中に使えるよ。", 409);
+  }
+  if (room.players.O?.profile.controller !== "human" || room.players.X?.profile.controller !== "human") {
+    throw new OnlineGameError("reactions_unavailable", "リアクションは人間同士のオンライン対戦で使えるよ。", 409);
+  }
+  return view.you;
 }
 
 export async function createRoom(input: unknown, now = new Date()): Promise<CreateRoomResponse> {
@@ -90,6 +108,40 @@ export async function getRoomView(roomId: string, token: string): Promise<RoomVi
   const room = await getRoomStore().get(roomId);
   if (!room) throw new OnlineGameError("room_not_found", "この部屋は見つからないか、24時間の期限が切れています。", 404);
   return authorizedView(room, token);
+}
+
+export async function getRoomReactions(roomId: string, token: string): Promise<QuickReactionView> {
+  const store = getRoomStore();
+  const room = await store.get(roomId);
+  if (!room) throw new OnlineGameError("room_not_found", "この部屋は見つからないか、24時間の期限が切れています。", 404);
+  const you = reactionSide(room, token);
+  const channel = await store.getReactionChannel(roomId);
+  return { events: channel.events, you };
+}
+
+export async function sendRoomReaction(
+  roomId: string,
+  token: string,
+  reactionId: unknown,
+  now = new Date(),
+): Promise<QuickReactionView> {
+  if (!isQuickReactionId(reactionId)) {
+    throw new OnlineGameError("invalid_reaction", "リアクションを選び直してね。", 400);
+  }
+  const store = getRoomStore();
+  const room = await store.get(roomId);
+  if (!room) throw new OnlineGameError("room_not_found", "この部屋は見つからないか、24時間の期限が切れています。", 404);
+  const you = reactionSide(room, token);
+  const result = await store.appendReaction(roomId, {
+    id: randomUUID(),
+    side: you,
+    reactionId,
+    sentAt: now.getTime(),
+  }, QUICK_REACTION_COOLDOWN_MS);
+  if (!result.accepted) {
+    throw new OnlineGameError("reaction_cooldown", "ちょっとだけ間をあけて送ってね。", 429);
+  }
+  return { events: result.channel.events, you };
 }
 
 export async function mutateRoom(

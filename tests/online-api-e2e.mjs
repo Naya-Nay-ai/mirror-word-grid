@@ -62,6 +62,47 @@ assert.equal(started.response.status, 200);
 assert.equal(started.body.view.room.status, "active");
 assert.equal(started.body.view.room.revision, 2);
 
+const reactionsBefore = await jsonRequest(`/api/rooms/${roomId}/reactions`, { headers: headers(hostToken) });
+assert.equal(reactionsBefore.response.status, 200);
+assert.deepEqual(reactionsBefore.body.reactionView.events, []);
+
+const hostReaction = await jsonRequest(`/api/rooms/${roomId}/reactions`, {
+  method: "POST",
+  headers: headers(hostToken),
+  body: JSON.stringify({ reactionId: "really" }),
+});
+assert.equal(hostReaction.response.status, 200);
+assert.equal(hostReaction.body.reactionView.events[0].side, "O");
+assert.equal(hostReaction.body.reactionView.events[0].reactionId, "really");
+
+const reactionDidNotMutateGame = await jsonRequest(`/api/rooms/${roomId}`, { headers: headers(hostToken) });
+assert.equal(reactionDidNotMutateGame.body.view.room.revision, 2);
+assert.equal(reactionDidNotMutateGame.body.view.room.expiresAt, started.body.view.room.expiresAt);
+
+const reactionSpam = await jsonRequest(`/api/rooms/${roomId}/reactions`, {
+  method: "POST",
+  headers: headers(hostToken),
+  body: JSON.stringify({ reactionId: "yes" }),
+});
+assert.equal(reactionSpam.response.status, 429);
+assert.equal(reactionSpam.body.error.code, "reaction_cooldown");
+
+const guestReaction = await jsonRequest(`/api/rooms/${roomId}/reactions`, {
+  method: "POST",
+  headers: headers(guestToken),
+  body: JSON.stringify({ reactionId: "objection" }),
+});
+assert.equal(guestReaction.response.status, 200);
+assert.deepEqual(guestReaction.body.reactionView.events.map((event) => event.side), ["O", "X"]);
+
+const invalidReaction = await jsonRequest(`/api/rooms/${roomId}/reactions`, {
+  method: "POST",
+  headers: headers(guestToken),
+  body: JSON.stringify({ reactionId: "自由入力は送れない" }),
+});
+assert.equal(invalidReaction.response.status, 400);
+assert.equal(invalidReaction.body.error.code, "invalid_reaction");
+
 const game = started.body.view.room.game;
 let formal = null;
 for (let index = 0; index < game.board.length && !formal; index += 1) {
@@ -120,5 +161,5 @@ console.log(JSON.stringify({
   ok: true,
   roomId,
   finalRevision: accepted.body.view.room.revision,
-  verified: ["create", "auth", "join", "start", "formal move", "revision conflict", "free-reading judgement", "ttl refresh"],
+  verified: ["create", "auth", "join", "start", "quick reactions", "reaction cooldown", "reaction revision isolation", "formal move", "revision conflict", "free-reading judgement", "ttl refresh"],
 }, null, 2));
