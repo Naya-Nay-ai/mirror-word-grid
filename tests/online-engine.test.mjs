@@ -41,6 +41,46 @@ function matchingPreset(game) {
   throw new Error("fixture has no matching preset");
 }
 
+function laterTurn(room, turn, currentChar = "か") {
+  return {
+    ...room,
+    status: "active",
+    game: {
+      ...room.game,
+      turn,
+      currentChar,
+      phase: "select",
+      proposal: null,
+      winner: null,
+      winReason: null,
+      winningLine: [],
+      retryBlocked: [],
+      rejectedAttempts: [],
+      objectionUsedThisTurn: { O: false, X: false },
+    },
+  };
+}
+
+function declareCustom(room, actor, panelIndex, nextCode) {
+  return applyRoomAction(room, actor, {
+    type: "declare",
+    panelIndex,
+    display: `${room.game.currentChar}すてき札`,
+    readingAid: `${room.game.currentChar}すてきふだ`,
+    reason: "この対戦で札そのものにつけた固定の呼び名だから",
+    sourceCode: room.game.actionCode,
+  }, "2026-01-01T00:01:00.000Z", nextCode);
+}
+
+function objectTo(room, actor, nextCode) {
+  return applyRoomAction(room, actor, {
+    type: "judge",
+    verdict: "objection",
+    reason: "成立はするが勝ち筋を止めたい",
+    sourceCode: room.game.actionCode,
+  }, "2026-01-01T00:02:00.000Z", nextCode);
+}
+
 test("player profiles are compact, bounded, and form the match label", () => {
   const profile = normalizeProfile({ playerName: " なや ", partnerName: " Nay ", controller: "ai" });
   assert.deepEqual(profile, { playerName: "なや", partnerName: "Nay", controller: "ai" });
@@ -189,6 +229,82 @@ test("an objection consumes one card and blocks the rejected cell for the retry"
   assert.equal(rejected.game.objectionUsedThisTurn.X, true);
   assert.deepEqual(rejected.game.retryBlocked, [0]);
   assert.equal(rejected.game.turn, "O");
+  assert.deepEqual(rejected.game.cellObjections, { 0: ["X"] });
+});
+
+test("one-sided cell objection stays ordinary; both sides make only that cell contested", () => {
+  const firstDeclared = declareCustom(laterTurn(roomWith(), "O"), "O", 0, "MWG-FIRST-JUDGE");
+  const firstRejected = objectTo(firstDeclared, "X", "MWG-FIRST-RETRY");
+  assert.deepEqual(firstRejected.game.cellObjections, { 0: ["X"] });
+  assert.equal(firstRejected.game.winner, null);
+
+  const returnDeclared = declareCustom(laterTurn(firstRejected, "X"), "X", 0, "MWG-RETURN-JUDGE");
+  const contested = objectTo(returnDeclared, "O", "MWG-CONTESTED");
+  assert.deepEqual(contested.game.cellObjections, { 0: ["X", "O"] });
+  assert.equal(contested.game.winner, null);
+
+  const sameCellAgain = declareCustom(laterTurn(contested, "O"), "O", 0, "MWG-SAME-JUDGE");
+  assert.throws(
+    () => objectTo(sameCellAgain, "X", "MWG-BLOCKED-OBJECTION"),
+    (error) => error instanceof OnlineGameError && error.code === "contested_cell",
+  );
+
+  const otherCell = declareCustom(laterTurn(contested, "O"), "O", 1, "MWG-OTHER-JUDGE");
+  const otherRejected = objectTo(otherCell, "X", "MWG-OTHER-RETRY");
+  assert.deepEqual(otherRejected.game.cellObjections?.[1], ["X"]);
+  assert.equal(otherRejected.game.objections.X, 1);
+});
+
+test("a contested cell still obeys not-established and fixed machine rules", () => {
+  const history = { 0: ["O", "X"] };
+  const base = roomWith();
+  const contestedRoom = laterTurn({ ...base, game: { ...base.game, cellObjections: history } }, "O", "か");
+
+  assert.throws(
+    () => applyRoomAction(contestedRoom, "O", {
+      type: "declare",
+      panelIndex: 0,
+      display: "さかな",
+      reason: "魚に見立てた",
+    }, "2026-01-01T00:01:00.000Z", "MWG-WRONG"),
+    (error) => error instanceof OnlineGameError && error.code === "wrong_start",
+  );
+
+  const declared = declareCustom(contestedRoom, "O", 0, "MWG-NOT-JUDGE");
+  const notEstablished = applyRoomAction(declared, "X", {
+    type: "judge",
+    verdict: "not-established",
+    reason: "札との意味的なつながりが遠い",
+    sourceCode: declared.game.actionCode,
+  }, "2026-01-01T00:02:00.000Z", "MWG-NOT-RETRY");
+  assert.equal(notEstablished.game.phase, "select");
+  assert.equal(notEstablished.game.objections.X, 3);
+  assert.deepEqual(notEstablished.game.cellObjections, history);
+  assert.deepEqual(notEstablished.game.retryBlocked, [0]);
+});
+
+test("the last empty cell continues after one objection and draws after both sides object", () => {
+  const claims = Object.fromEntries(Array.from({ length: 15 }, (_, index) => [index, "X"]));
+  claims[0] = "O";
+  claims[5] = "O";
+  claims[10] = "O";
+  const base = roomWith();
+  const lastCellRoom = laterTurn({ ...base, game: { ...base.game, claims } }, "O", "か");
+
+  const firstDeclared = declareCustom(lastCellRoom, "O", 15, "MWG-LAST-FIRST-JUDGE");
+  const oneSide = objectTo(firstDeclared, "X", "MWG-LAST-FIRST-RETRY");
+  assert.equal(oneSide.status, "active");
+  assert.equal(oneSide.game.winner, null);
+  assert.deepEqual(oneSide.game.cellObjections, { 15: ["X"] });
+
+  const returnDeclared = declareCustom(laterTurn(oneSide, "X"), "X", 15, "MWG-LAST-RETURN-JUDGE");
+  const finalDraw = objectTo(returnDeclared, "O", "MWG-FINAL-CONTESTED");
+  assert.equal(finalDraw.status, "finished");
+  assert.equal(finalDraw.game.phase, "finished");
+  assert.equal(finalDraw.game.winner, "DRAW");
+  assert.equal(finalDraw.game.winReason, "final-contested");
+  assert.deepEqual(finalDraw.game.cellObjections, { 15: ["X", "O"] });
+  assert.equal(finalDraw.game.objections.O, 2);
 });
 
 test("an AI-controlled side must return the current action code", () => {
@@ -238,6 +354,14 @@ test("AI machine lines parse into revision-safe turn and judgement actions", () 
   };
   const judge = parseAiJudgeReply(proposalRoom, "【判定:異議｜理由:ここは止めたい｜コード:MWG-FIRST】");
   assert.deepEqual(judge, { ok: true, action: { type: "judge", verdict: "objection", reason: "ここは止めたい", sourceCode: "MWG-FIRST" } });
+
+  const contestedProposalRoom = {
+    ...proposalRoom,
+    game: { ...proposalRoom.game, cellObjections: { 0: ["O", "X"] } },
+  };
+  const contestedJudge = parseAiJudgeReply(contestedProposalRoom, "【判定:異議｜理由:ここは止めたい｜コード:MWG-FIRST】");
+  assert.equal(contestedJudge.ok, false);
+  if (!contestedJudge.ok) assert.match(contestedJudge.error, /争奪中/u);
 
   const accepted = parseAiJudgeReply(proposalRoom, "【判定:受理｜次手:B2｜読み:さかな｜読み仮名:さかな｜理由:魚だから｜コード:MWG-FIRST】");
   assert.deepEqual(accepted, {

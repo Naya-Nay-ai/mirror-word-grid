@@ -15,6 +15,8 @@ export type ShareState = {
   winner: Player | "DRAW" | null;
   winningLine: number[];
   retryBlocked: number[];
+  /** Optional so links created before the contested-cell rule still decode. */
+  contestedCells?: number[];
   boardSize: BoardSize;
 };
 
@@ -38,7 +40,8 @@ export function decodeShareState(value: string): ShareState | null {
       !["O", "X"].includes(parsed.turn ?? "") ||
       typeof parsed.currentChar !== "string" ||
       !Array.isArray(parsed.objections) || parsed.objections.length !== 2 ||
-      !Array.isArray(parsed.winningLine) || !Array.isArray(parsed.retryBlocked)
+      !Array.isArray(parsed.winningLine) || !Array.isArray(parsed.retryBlocked) ||
+      (parsed.contestedCells !== undefined && !Array.isArray(parsed.contestedCells))
     ) return null;
 
     const validPanels = parsed.board.every((panel) => (
@@ -61,4 +64,3 @@ export function decodeShareState(value: string): ShareState | null {
     return null;
   }
 }
-

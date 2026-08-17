@@ -58,7 +58,7 @@ export default function SharePage() {
       "",
       "盤面：",
       ...state.board.map((panel, index) => {
-        const claim = state.claims[index] ? `${state.claims[index]}取得済み` : state.retryBlocked.includes(index) ? "空き（今回の再試行では選択不可）" : "空き";
+        const claim = state.claims[index] ? `${state.claims[index]}取得済み` : state.retryBlocked.includes(index) ? "空き（今回の再試行では選択不可）" : state.contestedCells?.includes(index) ? "空き（⚡争奪中・異議不可）" : "空き";
         return `${coordinate(index, state.boardSize)}｜カードID:${panel.id}｜見た目:${panel.visualDescription}｜登録読み:${panel.readings.join("・")}｜取得状態:${claim}｜現在の文字:${state.currentChar}｜戦況:${status}`;
       }),
     ].join("\n");
@@ -105,12 +105,13 @@ export default function SharePage() {
             const claim = state.claims[index];
             const winning = state.winningLine.includes(index);
             const blocked = state.retryBlocked.includes(index) && !claim;
+            const contested = Boolean(state.contestedCells?.includes(index) && !claim);
             return (
-              <article key={`${panel.id}-${index}`} className={`share-tile ${claim ? `claimed ${claim.toLowerCase()}` : ""} ${winning ? "winning" : ""} ${blocked ? "retry-blocked" : ""}`}>
+              <article key={`${panel.id}-${index}`} className={`share-tile ${claim ? `claimed ${claim.toLowerCase()}` : ""} ${winning ? "winning" : ""} ${blocked ? "retry-blocked" : ""} ${contested ? "contested" : ""}`}>
                 <span className="share-coordinate">{coordinate(index, state.boardSize)}</span>
                 <span className="share-emoji" aria-hidden="true">{panel.icon}</span>
                 <strong>{panel.name}</strong>
-                <small>{claim ? `${claim}取得済み` : blocked ? "異議で選択不可" : "空き"}</small>
+                <small>{claim ? `${claim}取得済み` : blocked ? "異議で選択不可" : contested ? "⚡ 争奪中" : "空き"}</small>
                 {claim && <i className={`share-claim ${claim.toLowerCase()}`} aria-hidden="true" />}
               </article>
             );

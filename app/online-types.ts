@@ -1,4 +1,4 @@
-import type { BoardSize, Panel, Player, RejectedAttempt } from "./game-rules";
+import type { BoardSize, CellObjectionHistory, Panel, Player, RejectedAttempt } from "./game-rules";
 
 export type ControllerKind = "human" | "ai";
 export type RoomStatus = "waiting" | "active" | "finished" | "closed";
@@ -51,11 +51,13 @@ export type OnlineGameState = {
   actionCode: string;
   proposal: OnlineProposal | null;
   winner: Player | "DRAW" | null;
-  winReason: "line" | "draw" | "n-ending" | null;
+  winReason: "line" | "draw" | "n-ending" | "final-contested" | null;
   winningLine: number[];
   history: OnlineHistoryItem[];
   /** Optional so rooms created before this field was added remain readable. */
   lastVerdict?: OnlineVerdictEvent | null;
+  /** Optional so rooms created before the contested-cell rule remain readable. */
+  cellObjections?: CellObjectionHistory;
   retryBlocked: number[];
   rejectedAttempts: RejectedAttempt[];
   seed: number;

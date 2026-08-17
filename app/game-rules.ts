@@ -9,6 +9,35 @@ export function canUseObjection(remaining: number, usedThisTurn: boolean) {
   return remaining > 0 && !usedThisTurn;
 }
 
+/**
+ * マスごとに、どちらの側がそのマスへの読みへ異議を使ったかを記録する。
+ * Record + 配列だけにして、localStorage と Redis のどちらにもそのまま保存できる形にする。
+ */
+export type CellObjectionHistory = Record<number, Player[]>;
+
+export function recordCellObjection(
+  history: CellObjectionHistory | undefined,
+  panelIndex: number,
+  judge: Player,
+): CellObjectionHistory {
+  const current = history?.[panelIndex] ?? [];
+  if (current.includes(judge)) return history ?? {};
+  return { ...(history ?? {}), [panelIndex]: [...current, judge] };
+}
+
+export function isContestedCell(history: CellObjectionHistory | undefined, panelIndex: number) {
+  const judges = history?.[panelIndex] ?? [];
+  return judges.includes("O") && judges.includes("X");
+}
+
+export function isLastEmptyCell(
+  claims: Record<number, Player>,
+  panelIndex: number,
+  boardLength: number,
+) {
+  return !claims[panelIndex] && Object.keys(claims).length === boardLength - 1;
+}
+
 export type PresetReading = string | {
   display: string;
   reading: string;

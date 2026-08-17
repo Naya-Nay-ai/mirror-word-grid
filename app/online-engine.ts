@@ -3,12 +3,15 @@ import {
   chooseRandomStart,
   findWinner,
   hasArtificialPolitePrefix,
+  isContestedCell,
+  isLastEmptyCell,
   isRegistered,
   isRepeatedRejectedReading,
   nextRetryBlocks,
   normalizeReading,
   presetReadingDisplay,
   presetReadingValue,
+  recordCellObjection,
   readingEnd,
   readingStartsWith,
   recommendedObjectionCount,
@@ -175,6 +178,7 @@ export function createOnlineGame(
     winningLine: [],
     history: [],
     lastVerdict: null,
+    cellObjections: {},
     retryBlocked: [],
     rejectedAttempts: [],
     seed,
@@ -286,11 +290,17 @@ function rejectProposal(
 ): OnlineGameState {
   const proposal = game.proposal;
   if (!proposal) throw new OnlineGameError("missing_proposal", "判定待ちの読みがありません。", 409);
+  const cellObjections = kind === "objection"
+    ? recordCellObjection(game.cellObjections, proposal.panelIndex, judge)
+    : game.cellObjections;
+  const finalContested = kind === "objection"
+    && isContestedCell(cellObjections, proposal.panelIndex)
+    && isLastEmptyCell(game.claims, proposal.panelIndex, game.board.length);
   const retryBlocked = nextRetryBlocks(game.claims, game.retryBlocked, proposal.panelIndex, game.board.length);
   return {
     ...game,
     turn: proposal.player,
-    phase: "select",
+    phase: finalContested ? "finished" : "select",
     objections: kind === "objection"
       ? { ...game.objections, [judge]: Math.max(0, game.objections[judge] - 1) }
       : game.objections,
@@ -299,7 +309,11 @@ function rejectProposal(
       : game.objectionUsedThisTurn,
     actionCode: nextCode,
     proposal: null,
-    retryBlocked,
+    winner: finalContested ? "DRAW" : game.winner,
+    winReason: finalContested ? "final-contested" : game.winReason,
+    winningLine: finalContested ? [] : game.winningLine,
+    cellObjections,
+    retryBlocked: finalContested ? [] : retryBlocked,
     rejectedAttempts: [...game.rejectedAttempts, {
       panelIndex: proposal.panelIndex,
       reading: normalizeReading(proposal.reading),
@@ -389,6 +403,9 @@ export function applyRoomAction(
             : applyAcceptedMove(game, nextProposal, nextCode);
       }
     } else if (action.verdict === "objection") {
+      if (isContestedCell(room.game.cellObjections, proposal.panelIndex)) {
+        throw new OnlineGameError("contested_cell", "このマスは争奪中のため、もう異議は使えません。不成立または受理で判定してね。", 409);
+      }
       if (!canUseObjection(room.game.objections[actor], room.game.objectionUsedThisTurn[actor])) {
         throw new OnlineGameError("objection_unavailable", "この相手手番では異議札を使えません。", 409);
       }
