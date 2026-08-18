@@ -36,14 +36,13 @@
 .tile:disabled { opacity: 1; cursor: default; }
 .tile > small { position: absolute; top: 4px; left: 5px; z-index: 2; color: #81798d; font-size: 7px; font-weight: 900; }
 .tile > span { display: grid; place-items: center; width: 100%; font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; font-size: clamp(29px, 6.4vw, 47px); line-height: 1; filter: drop-shadow(0 2px 0 rgba(47,41,70,.12)); }
-.tile > b { width: 100%; margin-top: 5px; overflow: hidden; color: #514a5e; font-size: clamp(7px, 1.7vw, 10px); text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .tile > i { position: absolute; top: 5px; right: 5px; display: grid; place-items: center; z-index: 3; width: 21px; height: 21px; border: 2px solid white; border-radius: 50%; background: rgba(255,255,255,.92); box-shadow: 0 0 0 2px rgba(47,41,70,.42), 0 2px 3px rgba(47,41,70,.2); font: 900 16px/1 Arial, sans-serif; }
 .tile.claimedO { background: #ffc8d7; }.tile.claimedO > i { color: #ee4c78; }
 .tile.claimedX { background: #d7d0ff; }.tile.claimedX > i { color: #624ce6; }
-.tile.claimedO > span, .tile.claimedO > b, .tile.claimedX > span, .tile.claimedX > b { opacity: .47; }
+.tile.claimedO > span, .tile.claimedX > span { opacity: .47; }
 .tile.selected { background: var(--mint-soft); box-shadow: inset 0 0 0 3px var(--mint), 0 4px 0 var(--line); transform: translateY(-2px); }
 .tile.blocked { background: #eee9f2; filter: grayscale(.6); }
-.tile.blocked > span, .tile.blocked > b { opacity: .32; }
+.tile.blocked > span { opacity: .32; }
 .tile > em { position: absolute; z-index: 4; padding: 4px 7px; border: 2px solid #a54233; border-radius: 99px; background: #fff1ea; color: #9f3526; font-size: 8px; font-style: normal; font-weight: 900; }
 .tile.contested { box-shadow: inset 0 0 0 3px rgba(255, 167, 35, .62), 0 3px 0 rgba(47,41,70,.34); }
 .tile > em.contestedBadge { right: 4px; bottom: 4px; padding: 3px 5px; border-color: #9d5a00; background: #fff4bb; color: #7f4900; font-size: 7px; white-space: nowrap; }
@@ -52,14 +51,14 @@
 .actionCard { min-height: 110px; margin-top: 12px; overflow: hidden; border: 3px solid var(--line); border-radius: 21px; background: white; box-shadow: var(--shadow); }
 .reactionDock { display: flex; justify-content: space-between; align-items: center; gap: 9px; min-height: 48px; padding: 5px 7px 5px 11px; border: 2px dashed #c9c1d2; border-radius: 14px; background: rgba(255,255,255,.78); }
 .reactionDock > span { color: #756d80; font-size: 8px; font-weight: 800; }
-.reactionDock > button { min-height: 38px; padding: 0 13px; border: 2px solid var(--line); border-radius: 999px; background: white; box-shadow: 0 3px 0 rgba(47,41,70,.24); color: var(--ink); cursor: pointer; font-size: 9px; font-weight: 900; }
+.reactionDock > button { min-height: 38px; padding: 0 13px; border: 2px solid var(--line); border-radius: 999px; background: white; box-shadow: 0 3px 0 rgba(47,41,70,.24); color: var(--ink); cursor: pointer; font-size: 10px; font-weight: 900; }
 .reactionDock > button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(47,41,70,.24); }
 .reactionDock > button:disabled { opacity: .65; cursor: default; }
 .reactionToasts { position: fixed; right: max(14px, calc((100vw - 1160px) / 2 + 14px)); bottom: 74px; z-index: 80; display: grid; gap: 7px; width: min(310px, calc(100vw - 28px)); pointer-events: none; }
 .reactionToast { justify-self: end; min-width: min(235px, 78vw); max-width: 100%; padding: 9px 12px; border: 2px solid var(--line); border-radius: 15px 15px 3px 15px; background: rgba(255,255,255,.97); box-shadow: 0 5px 0 rgba(47,41,70,.2), 0 10px 24px rgba(47,41,70,.14); animation: reactionToast 4.5s ease both; }
-.reactionToast small { display: block; overflow: hidden; color: var(--purple); font-size: 8px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
-.reactionToast p { display: flex; gap: 7px; align-items: center; margin: 2px 0 0; font-size: 12px; font-weight: 900; line-height: 1.25; }
-.reactionToast p span { font-size: 20px; }
+.reactionToast small { display: block; overflow: hidden; color: var(--purple); font-size: 9px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+.reactionToast p { display: flex; gap: 8px; align-items: center; margin: 2px 0 0; font-size: 14px; font-weight: 900; line-height: 1.25; }
+.reactionToast p span { font-size: 23px; }
 @keyframes reactionToast { 0% { opacity: 0; transform: translateY(12px) scale(.94); } 10%,82% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-7px) scale(.98); } }
 .reactionOverlay { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; justify-content: center; padding: 12px; }
 .reactionScrim { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: rgba(47,41,70,.38); cursor: default; }
@@ -72,7 +71,7 @@
 .reactionGrid > button { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 6px; align-items: center; min-height: 48px; padding: 6px 9px; border: 2px solid var(--line); border-radius: 12px; background: white; box-shadow: 0 2px 0 rgba(47,41,70,.25); cursor: pointer; text-align: left; }
 .reactionGrid > button:nth-child(3n + 1) { background: #fff4c9; }.reactionGrid > button:nth-child(3n + 2) { background: #ffe4ec; }.reactionGrid > button:nth-child(3n) { background: #e7e3ff; }
 .reactionGrid > button:disabled { opacity: .52; cursor: default; }
-.reactionGrid > button span { font-size: 22px; text-align: center; }.reactionGrid > button b { overflow: hidden; font-size: 9px; line-height: 1.25; text-overflow: ellipsis; }
+.reactionGrid > button span { font-size: 24px; text-align: center; }.reactionGrid > button b { overflow: hidden; font-size: 10px; line-height: 1.25; text-overflow: ellipsis; }
 .reactionSheet > p { margin: 10px 2px 0; color: #746c7f; font-size: 8px; text-align: center; }
 @keyframes reactionSheetIn { from { opacity: 0; transform: translateY(22px); } }
 .simpleMessage { display: flex; gap: 14px; align-items: center; min-height: 108px; padding: 20px; background: linear-gradient(135deg, white, #fff7dc); }
@@ -170,7 +169,7 @@
   .matchBanner > div { grid-template-columns: 28px minmax(0, 1fr); min-height: 49px; padding: 6px; border-radius: 13px; }
   .matchBanner > div > i { width: 27px; height: 27px; font-size: 22px; }.matchBanner > div > small { display: none; }.matchBanner > div > span { font-size: 10px; }.matchBanner > strong { font-size: 8px; }
   .turnStatus { grid-template-columns: 1.25fr .65fr .75fr; padding: 6px; gap: 5px; }.turnStatus > div { min-height: 50px; padding: 6px; }.turnStatus small { font-size: 6px; }.turnStatus strong { font-size: 10px; }.turnStatus > div:nth-child(2) strong { font-size: 25px; }.turnStatus span { font-size: 11px; }
-  .board { gap: 5px; padding: 6px; border-radius: 17px; }.tile { padding: 5px 2px 3px; border-radius: 10px; }.tile > span { font-size: clamp(24px, 11vw, 39px); }.tile > b { font-size: 6px; }.tile > i { top: 4px; right: 4px; width: 17px; height: 17px; border-width: 1.5px; box-shadow: 0 0 0 1px rgba(47,41,70,.42); font-size: 13px; }
+  .board { gap: 5px; padding: 6px; border-radius: 17px; }.tile { padding: 5px 2px 3px; border-radius: 10px; }.tile > span { font-size: clamp(24px, 11vw, 39px); }.tile > i { top: 4px; right: 4px; width: 17px; height: 17px; border-width: 1.5px; box-shadow: 0 0 0 1px rgba(47,41,70,.42); font-size: 13px; }
   .judgeButtons { grid-template-columns: 1fr; }.judgeButtons button { min-height: 46px; grid-template-columns: 1fr auto; }
   .sideColumn { grid-template-columns: 1fr; }.sideColumn > :last-child { grid-column: auto; }
   .readyPair { grid-template-columns: 1fr; }.readyPair b { transform: rotate(90deg); }
@@ -186,6 +185,6 @@
   .reactionSheet > header h2 { font-size: 16px; }
   .reactionGrid { gap: 6px; margin-top: 9px; }
   .reactionGrid > button { min-height: 45px; padding: 5px 7px; }
-  .reactionGrid > button span { font-size: 20px; }.reactionGrid > button b { font-size: 8px; }
+  .reactionGrid > button span { font-size: 22px; }.reactionGrid > button b { font-size: 9px; }
 }
 @media (prefers-reduced-motion: reduce) { .syncBadge i, .tile.winning, .simpleMessage > span, .proposalWaiting > p, .waitPulse, .loadingDots i, .verdictEffect, .verdictEffect::before, .verdictEffect section, .verdictSparkles i, .reactionToast, .reactionSheet { animation: none !important; }.verdictEffect { opacity: 1; }.verdictEffect::before, .verdictSparkles { display: none; } }
