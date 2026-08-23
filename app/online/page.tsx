@@ -17,6 +17,7 @@ import styles from "./online.module.css";
 type ApiFailure = { error?: { message?: string } };
 type SetupStep = 1 | 2 | 3;
 type ResumeRoom = { credential: SavedRoomCredential; remainingLabel: string };
+type MatchMode = ControllerKind | "team";
 
 function remainingTimeLabel(expiresAt: string, now: number) {
   const remainingMinutes = Math.max(1, Math.ceil((Date.parse(expiresAt) - now) / 60_000));
@@ -28,7 +29,7 @@ function remainingTimeLabel(expiresAt: string, now: number) {
 export default function OnlineLobby() {
   const [playerName, setPlayerName] = useState("");
   const [partnerName, setPartnerName] = useState("");
-  const [controller, setController] = useState<ControllerKind>("ai");
+  const [matchMode, setMatchMode] = useState<MatchMode>("ai");
   const [boardSize, setBoardSize] = useState<BoardSize>(4);
   const [startingPlayer, setStartingPlayer] = useState<Player | "random">("random");
   const [setupStep, setSetupStep] = useState<SetupStep>(1);
@@ -36,6 +37,9 @@ export default function OnlineLobby() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [resumeRoom, setResumeRoom] = useState<ResumeRoom | null>(null);
+  const aiAssisted = matchMode !== "human";
+  const controller: ControllerKind = aiAssisted ? "ai" : "human";
+  const teamMode = matchMode === "team";
 
   useEffect(() => {
     let cancelled = false;
@@ -77,12 +81,12 @@ export default function OnlineLobby() {
 
   function moveToStep(nextStep: SetupStep) {
     if (nextStep > 2 && !playerName.trim()) {
-      setError(controller === "ai" ? "ユーザー名を入力してね。" : "プレイヤー名を入力してね。");
+      setError(aiAssisted ? "ユーザー名を入力してね。" : "プレイヤー名を入力してね。");
       setSetupStep(2);
       return;
     }
-    if (nextStep > 2 && controller === "ai" && !partnerName.trim()) {
-      setError("AI同士で遊ぶときは、パートナーAI名も入力してね。");
+    if (nextStep > 2 && aiAssisted && !partnerName.trim()) {
+      setError("AIパートナー名も入力してね。");
       setSetupStep(2);
       return;
     }
@@ -94,12 +98,12 @@ export default function OnlineLobby() {
     event.preventDefault();
     if (busy) return;
     if (!playerName.trim()) {
-      setError(controller === "ai" ? "ユーザー名を入力してね。" : "プレイヤー名を入力してね。");
+      setError(aiAssisted ? "ユーザー名を入力してね。" : "プレイヤー名を入力してね。");
       setSetupStep(2);
       return;
     }
-    if (controller === "ai" && !partnerName.trim()) {
-      setError("AI同士で遊ぶときは、パートナーAI名も入力してね。");
+    if (aiAssisted && !partnerName.trim()) {
+      setError("AIパートナー名も入力してね。");
       setSetupStep(2);
       return;
     }
@@ -111,9 +115,10 @@ export default function OnlineLobby() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          profile: { playerName, partnerName: controller === "ai" ? partnerName : "", controller },
+          profile: { playerName, partnerName: aiAssisted ? partnerName : "", controller },
           boardSize,
           startingPlayer,
+          teamMode,
         }),
       });
       const body = await response.json() as CreateRoomResponse & ApiFailure;
@@ -153,8 +158,8 @@ export default function OnlineLobby() {
           </div>
           <ul className={styles.featureList}>
             <li>招待URLをDiscordやXのDMで送るだけ</li>
-            <li><strong>AI同士でも、人間同士でもオンライン対戦できます</strong></li>
-            <li>AI対戦でもAI APIは使いません</li>
+            <li><strong>AI同士・人間同士・人間＋AIチームで対戦できます</strong></li>
+            <li>AIを使う対戦でもAI APIは使いません</li>
             <li>会話はそれぞれのAIのホームに残ります</li>
           </ul>
         </div>
@@ -174,11 +179,14 @@ export default function OnlineLobby() {
           <section className={styles.setupSection} data-active={setupStep === 1}>
             <div className={styles.sectionHeading}><span>01</span><div><small>CHOOSE MODE</small><h2>どちらのモードで遊ぶ？</h2></div></div>
             <div className={styles.choiceGrid}>
-              <button type="button" aria-pressed={controller === "ai"} className={controller === "ai" ? styles.selectedChoice : ""} onClick={() => setController("ai")}>
-                <b>✦ AI同士で対戦</b><small>お互いのホームAIに手番を渡して遊ぶ</small>
+              <button type="button" aria-pressed={matchMode === "ai"} className={matchMode === "ai" ? styles.selectedChoice : ""} onClick={() => setMatchMode("ai")}>
+                <b>✦ AI同士で対戦</b><small>お互いのホームAIが一手を決める</small>
               </button>
-              <button type="button" aria-pressed={controller === "human"} className={controller === "human" ? styles.selectedChoice : ""} onClick={() => setController("human")}>
+              <button type="button" aria-pressed={matchMode === "human"} className={matchMode === "human" ? styles.selectedChoice : ""} onClick={() => setMatchMode("human")}>
                 <b>● 人間同士で対戦</b><small>離れた相手と同じ盤面で直接遊ぶ</small>
+              </button>
+              <button type="button" style={{ gridColumn: "1 / -1" }} aria-pressed={matchMode === "team"} className={matchMode === "team" ? styles.selectedChoice : ""} onClick={() => setMatchMode("team")}>
+                <b>🤝 人間＋AI チーム戦</b><small>人間が最終決定。AIはセコンドとして作戦相談と貼り付け文を担当</small>
               </button>
             </div>
             <button className={styles.nextButton} type="button" onClick={() => moveToStep(2)}>次へ <b>→</b></button>
@@ -187,16 +195,16 @@ export default function OnlineLobby() {
           <section className={styles.setupSection} data-active={setupStep === 2}>
             <div className={styles.sectionHeading}><span>02</span><div><small>YOUR NAME</small><h2>名前を入力</h2></div></div>
             <label className={styles.field}>
-              <span>{controller === "ai" ? "ユーザー名" : "プレイヤー名"} <b>必須</b></span>
+              <span>{aiAssisted ? "ユーザー名" : "プレイヤー名"} <b>必須</b></span>
               <input value={playerName} onChange={(event) => setPlayerName(event.target.value)} maxLength={12} placeholder="名前を入力" autoComplete="nickname" required />
             </label>
-            {controller === "ai" && (
+            {aiAssisted && (
               <label className={styles.field}>
                 <span>パートナーAI名 <b>必須</b></span>
                 <input value={partnerName} onChange={(event) => setPartnerName(event.target.value)} maxLength={12} placeholder="AI名を入力" required />
               </label>
             )}
-            <p className={styles.namePreview}>盤面表示：<strong>{playerName || (controller === "ai" ? "ユーザー" : "プレイヤー")}{controller === "ai" && partnerName ? ` ＆ ${partnerName}` : ""}</strong></p>
+            <p className={styles.namePreview}>盤面表示：<strong>{playerName || (aiAssisted ? "ユーザー" : "プレイヤー")}{aiAssisted && partnerName ? ` ＆ ${partnerName}` : ""}</strong>{teamMode ? "（チーム戦）" : ""}</p>
             <div className={styles.stepActions}>
               <button className={styles.previousButton} type="button" onClick={() => moveToStep(1)}>← 前へ</button>
               <button className={styles.nextButton} type="button" onClick={() => moveToStep(3)}>次へ <b>→</b></button>

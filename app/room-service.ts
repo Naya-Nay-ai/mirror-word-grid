@@ -86,7 +86,12 @@ export async function createRoom(input: unknown, now = new Date()): Promise<Crea
       id,
       revision: 0,
       status: "waiting",
-      settings: { boardSize, startingPlayer, objectionLimit },
+      settings: {
+        boardSize,
+        startingPlayer,
+        objectionLimit,
+        teamMode: source.teamMode === true && profile.controller === "ai",
+      },
       players: {
         O: { side: "O", profile, joinedAt: timestamp },
         X: null,
