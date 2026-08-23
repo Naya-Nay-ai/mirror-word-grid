@@ -69,6 +69,8 @@ export type OnlineRoomSettings = {
   boardSize: BoardSize;
   startingPlayer: Player;
   objectionLimit: number;
+  /** AI戦UIを使いながら、人間が最終決定しAIがセコンドを務めるモード。旧ルーム互換のため optional。 */
+  teamMode?: boolean;
 };
 
 export type StoredRoom = {
@@ -96,6 +98,7 @@ export type CreateRoomInput = {
   boardSize: BoardSize;
   startingPlayer?: Player | "random";
   objectionLimit?: number;
+  teamMode?: boolean;
 };
 
 export type DeclareAction = {
