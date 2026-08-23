@@ -96,7 +96,6 @@ export default function RoomClient({ roomId }: { roomId: string }) {
     }
     if (!event || event.code === lastVerdictCodeRef.current) return;
     lastVerdictCodeRef.current = event.code;
-    if (event.verdict === "not-established") return;
     if (verdictTimerRef.current !== null) window.clearTimeout(verdictTimerRef.current);
     setVerdictEvent(event);
     verdictTimerRef.current = window.setTimeout(() => {
@@ -457,7 +456,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
                         <small>{coordinateForIndex(index, game.boardSize)}</small>
                         <span aria-hidden="true">{panel.icon}</span>
                         {owner && <i aria-hidden="true">{owner === "O" ? "○" : "▲"}</i>}
-                        {blocked && <em>異議</em>}
+                        {blocked && <em>{contested ? "⚡ 争奪中・今回選択不可" : "今回選択不可"}</em>}
                         {contested && !blocked && <em className={styles.contestedBadge}>⚡ 争奪中</em>}
                       </button>
                     );
@@ -791,16 +790,17 @@ function WinnerCard({ room }: { room: RoomView["room"] }) {
 
 function VerdictEffect({ event, room }: { event: OnlineVerdictEvent; room: RoomView["room"] }) {
   const accepted = event.verdict === "accept";
+  const notEstablished = event.verdict === "not-established";
   const finalContested = room.game.winReason === "final-contested";
   const judgeName = profileLabel(room.players[event.judge]?.profile);
   return (
     <div className={`${styles.verdictEffect} ${accepted ? styles.verdictAccepted : styles.verdictObjection}`} role="status" aria-live="assertive">
-      <div className={styles.verdictSparkles} aria-hidden="true"><i>✦</i><i>{accepted ? "○" : "⚡"}</i><i>✧</i><i>{accepted ? "▲" : "!"}</i></div>
+      <div className={styles.verdictSparkles} aria-hidden="true"><i>✦</i><i>{accepted ? "○" : notEstablished ? "×" : "⚡"}</i><i>✧</i><i>{accepted ? "▲" : notEstablished ? "×" : "!"}</i></div>
       <section>
-        <span>{accepted ? "✓" : "⚡"}</span>
+        <span>{accepted ? "✓" : notEstablished ? "×" : "⚡"}</span>
         <small>{judgeName}の判定</small>
-        <h2>{finalContested ? "最終争奪 — DRAW" : accepted ? "受理！" : "異議あり！"}</h2>
-        <p>{finalContested ? "最後の1マスを双方が異議で阻止したため引き分け" : <>「{event.reading}」{accepted ? "成立！" : "は別の一手で再勝負！"}</>}</p>
+        <h2>{finalContested ? "最終争奪 — DRAW" : accepted ? "受理！" : notEstablished ? "不成立！" : "異議あり！"}</h2>
+        <p>{finalContested ? "最後の1マスを双方が異議で阻止したため引き分け" : <>「{event.reading}」{accepted ? "成立！" : notEstablished ? "は不成立。別の読み・札で再勝負！" : "は別の一手で再勝負！"}</>}</p>
       </section>
     </div>
   );
