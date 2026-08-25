@@ -216,7 +216,8 @@ export function readingStartsWith(value: string, currentChar: string) {
 }
 
 function vowelForKana(value: string) {
-  const kana = SMALL_KANA[value] ?? value;
+  const normalizedSmallKana = SMALL_KANA[value] ?? value;
+  const kana = CLEAR_KANA[normalizedSmallKana] ?? normalizedSmallKana;
   for (const [vowel, chars] of Object.entries(VOWEL_GROUPS)) {
     if (chars.includes(kana)) return vowel;
   }
