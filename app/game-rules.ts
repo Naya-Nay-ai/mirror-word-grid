@@ -92,6 +92,7 @@ export function findWinner(claims: Record<number, Player>, boardSize: BoardSize 
 const SMALL_KANA: Record<string, string> = {
   "ぁ": "あ", "ぃ": "い", "ぅ": "う", "ぇ": "え", "ぉ": "お",
   "ゃ": "や", "ゅ": "ゆ", "ょ": "よ", "っ": "つ", "ゎ": "わ",
+  "ゕ": "か", "ゖ": "け",
 };
 
 // この対応範囲は仮仕様。今後の調整をこの表だけで行えるように分離している。
@@ -195,17 +196,32 @@ export function parseMachineReply(text: string): MachineReplyParseResult {
   return { ok: true, fields, line };
 }
 
-export function readingStart(value: string) {
+function normalizeKanaChar(value: string) {
   const normalized = normalizeReading(value);
-  return SMALL_KANA[normalized[0]] ?? normalized[0] ?? "";
+  const char = normalized[0] ?? "";
+  return SMALL_KANA[char] ?? char;
+}
+
+export function readingStart(value: string) {
+  return normalizeKanaChar(value);
 }
 
 export function clearKana(value: string) {
-  return CLEAR_KANA[value] ?? value;
+  const kana = normalizeKanaChar(value);
+  return CLEAR_KANA[kana] ?? kana;
 }
 
 export function readingStartsWith(value: string, currentChar: string) {
   return clearKana(readingStart(value)) === clearKana(currentChar);
+}
+
+function vowelForKana(value: string) {
+  const normalizedSmallKana = SMALL_KANA[value] ?? value;
+  const kana = CLEAR_KANA[normalizedSmallKana] ?? normalizedSmallKana;
+  for (const [vowel, chars] of Object.entries(VOWEL_GROUPS)) {
+    if (chars.includes(kana)) return vowel;
+  }
+  return "";
 }
 
 export function readingEnd(value: string) {
@@ -213,11 +229,13 @@ export function readingEnd(value: string) {
   if (!normalized) return "";
   const last = normalized.at(-1) ?? "";
   if (last !== "ー") return SMALL_KANA[last] ?? last;
-  const before = normalized.at(-2) ?? "";
-  for (const [vowel, chars] of Object.entries(VOWEL_GROUPS)) {
-    if (chars.includes(before)) return vowel;
-  }
-  return before;
+
+  // 長音は直前音の母音へつなぐ。直前が小書きかなでも、先に通常かなへ直して判定する。
+  // 例: コーギー→い / ティー→い / シュー→う / ショー→お / ファー→あ
+  let index = normalized.length - 2;
+  while (index >= 0 && normalized[index] === "ー") index -= 1;
+  const before = SMALL_KANA[normalized[index] ?? ""] ?? normalized[index] ?? "";
+  return vowelForKana(before) || before;
 }
 
 export function chooseRandomStart(board: Panel[], random: () => number) {

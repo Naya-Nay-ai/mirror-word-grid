@@ -11,7 +11,7 @@
     "build": "next build",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
-    "test:rules": "node --test tests/game-rules.test.mjs",
+    "test:rules": "node --test tests/game-rules.test.mjs tests/kana-ending-normalization.test.mjs",
     "test:online": "node --import tsx --test tests/online-engine.test.mjs tests/room-store.test.mjs tests/quick-reactions.test.mjs",
     "test:online-api": "node --import tsx tests/online-api-e2e.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
