@@ -32,6 +32,7 @@ test("prolonged sound mark consistently connects by the preceding sound vowel", 
     ["ファー", "あ"],
     ["チェー", "え"],
     ["ウォー", "お"],
+    ["ヴー", "う"],
   ]);
 
   for (const [reading, expected] of cases) {
@@ -49,4 +50,5 @@ test("voiced and semi-voiced start compatibility is preserved after normalizatio
   assert.equal(readingStartsWith("きのこ", "ぎ"), true);
   assert.equal(readingStartsWith("びわ", "ひ"), true);
   assert.equal(readingStartsWith("ぴあの", "び"), true);
+  assert.equal(readingStartsWith("うみ", "ゔ"), true);
 });
