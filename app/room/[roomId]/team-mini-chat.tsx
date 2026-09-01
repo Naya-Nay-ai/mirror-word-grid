@@ -9,6 +9,8 @@ import { credentialForRoom } from "../../room-client-storage";
 import { TEAM_CHAT_MAX_IMAGE_BYTES, TEAM_CHAT_TEXT_LIMIT, type PublicTeamChatMessage, type TeamChatView } from "../../team-chat";
 import styles from "./team-mini-chat.module.css";
 
+const INTRO_SEEN_KEY = "mirror-word-grid-mini-chat-intro-seen-v1";
+
 type ChatApiResponse = {
   chatView?: TeamChatView;
   error?: { code?: string; message?: string };
@@ -69,6 +71,7 @@ export default function TeamMiniChat({ roomId }: { roomId: string }) {
   const [token, setToken] = useState("");
   const [available, setAvailable] = useState(false);
   const [open, setOpen] = useState(false);
+  const [showIntroBadge, setShowIntroBadge] = useState(false);
   const [messages, setMessages] = useState<PublicTeamChatMessage[]>([]);
   const [you, setYou] = useState<Player | null>(null);
   const [playerNames, setPlayerNames] = useState<Record<Player, string>>({ O: "O", X: "X" });
@@ -81,6 +84,10 @@ export default function TeamMiniChat({ roomId }: { roomId: string }) {
   const [lastSeenId, setLastSeenId] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const imageUrlsRef = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    setShowIntroBadge(window.localStorage.getItem(INTRO_SEEN_KEY) !== "1");
+  }, []);
 
   useEffect(() => {
     let attempts = 0;
@@ -224,6 +231,14 @@ export default function TeamMiniChat({ roomId }: { roomId: string }) {
     void selectImage(file);
   };
 
+  const toggleChat = () => {
+    if (!open && showIntroBadge) {
+      window.localStorage.setItem(INTRO_SEEN_KEY, "1");
+      setShowIntroBadge(false);
+    }
+    setOpen((value) => !value);
+  };
+
   const send = async () => {
     if (!token || sending || (!text.trim() && !imageFile)) return;
     if (countText(text.trim()) > TEAM_CHAT_TEXT_LIMIT) {
@@ -262,7 +277,7 @@ export default function TeamMiniChat({ roomId }: { roomId: string }) {
           <header className={styles.header}>
             <div>
               <h2 className={styles.title}>💬 対戦ミニチャット</h2>
-              <p className={styles.helper}>80文字＋スクショ1枚。Discord往復なしで煽れる😏</p>
+              <p className={styles.helper}>スクショもひとことも、ここでそのまま😏</p>
             </div>
             <button className={styles.close} type="button" onClick={() => setOpen(false)} aria-label="チャットを閉じる">×</button>
           </header>
@@ -271,8 +286,9 @@ export default function TeamMiniChat({ roomId }: { roomId: string }) {
             {messages.length === 0 ? <p className={styles.empty}>まだ静か。<br />最初の一発、どうぞ。</p> : null}
             {messages.map((message) => {
               const mine = message.side === you;
+              const sideClass = message.side === "O" ? styles.sideO : styles.sideX;
               return (
-                <article className={`${styles.message} ${mine ? styles.mine : ""}`} key={message.id}>
+                <article className={`${styles.message} ${sideClass} ${mine ? styles.mine : ""}`} key={message.id}>
                   <div className={styles.meta}>
                     <span>{mine ? "あなた" : playerNames[message.side]}</span>
                     <time>{timeLabel(message.sentAt)}</time>
@@ -300,7 +316,7 @@ export default function TeamMiniChat({ roomId }: { roomId: string }) {
               value={text}
               onChange={(event) => setText(event.target.value)}
               onPaste={handlePaste}
-              placeholder="煽り、ツッコミ、ひとこと。画像はCtrl+VでもOK"
+              placeholder="煽り、ツッコミ、ひとこと。スクショは貼り付けでもOK"
               maxLength={TEAM_CHAT_TEXT_LIMIT}
               disabled={sending}
             />
@@ -319,8 +335,12 @@ export default function TeamMiniChat({ roomId }: { roomId: string }) {
         </section>
       ) : null}
 
-      <button className={styles.fab} type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-        <span>💬 ミニチャット</span>
+      <button className={`${styles.fab} ${showIntroBadge ? styles.attention : ""}`} type="button" onClick={toggleChat} aria-expanded={open}>
+        {showIntroBadge ? <span className={styles.newBadge}>NEW</span> : null}
+        <span className={styles.fabCopy}>
+          <strong>💬 ミニチャット</strong>
+          <small>スクショも送れます</small>
+        </span>
         {unread ? <span className={styles.unread} aria-label="新着メッセージ" /> : null}
       </button>
     </>
