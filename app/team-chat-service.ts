@@ -122,8 +122,10 @@ function normalizeImage(value: unknown): File | null {
 
 async function authorizedTeamChat(roomId: string, token: string) {
   const view = await getRoomView(roomId, token);
-  if (view.room.settings.teamMode !== true) {
-    throw new OnlineGameError("team_chat_unavailable", "ミニチャットは人間＋AIチーム戦で使えるよ。", 409);
+  const aiAssistedMatch = view.room.players.O?.profile.controller === "ai"
+    && view.room.players.X?.profile.controller === "ai";
+  if (!aiAssistedMatch) {
+    throw new OnlineGameError("team_chat_unavailable", "ミニチャットはAI同士の対戦・人間＋AIチーム戦で使えるよ。", 409);
   }
   if (!view.room.players.O || !view.room.players.X || view.room.status === "waiting") {
     throw new OnlineGameError("team_chat_unavailable", "相手が参加したらミニチャットが開くよ。", 409);
