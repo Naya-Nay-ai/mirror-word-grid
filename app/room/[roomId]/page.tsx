@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import RoomClient from "./room-client";
+import TeamMiniChat from "./team-mini-chat";
 
 type RoomPageProps = { params: Promise<{ roomId: string }> };
 
@@ -11,5 +12,10 @@ export const metadata: Metadata = {
 
 export default async function RoomPage({ params }: RoomPageProps) {
   const { roomId } = await params;
-  return <RoomClient roomId={roomId} />;
+  return (
+    <>
+      <RoomClient roomId={roomId} />
+      <TeamMiniChat roomId={roomId} />
+    </>
+  );
 }
