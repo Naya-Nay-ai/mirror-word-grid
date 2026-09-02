@@ -283,7 +283,7 @@ export default function TeamMiniChat({ roomId }: { roomId: string }) {
           </header>
 
           <div className={styles.messages}>
-            {messages.length === 0 ? <p className={styles.empty}>まだ静か。<br />最初の一発、どうぞ。</p> : null}
+            {messages.length === 0 ? <p className={styles.empty}>まだ静か。<br />最初の一撃、どうぞ。</p> : null}
             {messages.map((message) => {
               const mine = message.side === you;
               const sideClass = message.side === "O" ? styles.sideO : styles.sideX;
