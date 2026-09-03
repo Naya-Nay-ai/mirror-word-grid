@@ -91,4 +91,12 @@ export const PANELS: Panel[] = [
   { id: "compass", icon: "🧭", name: "コンパス", category: "道具", readings: ["コンパス", { display: "方位磁石", reading: "ほういじしゃく" }, { display: "方位", reading: "ほうい" }, { display: "方角", reading: "ほうがく" }], visualDescription: "方角を示すコンパスの絵文字" },
   { id: "chair", icon: "🪑", name: "いす", category: "日用品", readings: ["いす", "チェア", "こしかけ", { display: "家具", reading: "かぐ" }], visualDescription: "背もたれのあるいすの絵文字" },
   { id: "magnet", icon: "🧲", name: "じしゃく", category: "道具", readings: [{ display: "磁石", reading: "じしゃく" }, "マグネット", { display: "U字磁石", reading: "ゆーじじしゃく" }, { display: "磁力", reading: "じりょく" }, { display: "磁極", reading: "じきょく" }], visualDescription: "U字型の磁石の絵文字" },
+  { id: "nerd-face", icon: "🤓", name: "めがね", category: "表情", readings: ["めがね", "オタク", "ナード", "インテリ"], visualDescription: "眼鏡をかけた顔の絵文字" },
+  { id: "clown-face", icon: "🤡", name: "ピエロ", category: "表情", readings: ["ピエロ", { display: "道化師", reading: "どうけし" }, { display: "道化", reading: "どうけ" }], visualDescription: "ピエロの顔の絵文字" },
+  { id: "sunglasses-face", icon: "😎", name: "サングラス", category: "表情", readings: ["サングラス", "クール", "どやがお", "キメがお"], visualDescription: "サングラスをかけた顔の絵文字" },
+  { id: "shushing-face", icon: "🤫", name: "ひみつ", category: "表情", readings: ["しー", "ひみつ", "ないしょ", "おしずかに"], visualDescription: "口元に指を当てた顔の絵文字" },
+  { id: "slot-machine", icon: "🎰", name: "スロット", category: "遊び", readings: ["スロット", "パチスロ", "カジノ", "ギャンブル", "ジャックポット"], visualDescription: "三つのリールがあるスロットマシンの絵文字" },
+  { id: "vampire", icon: "🧛", name: "きゅうけつき", category: "空想", readings: [{ display: "吸血鬼", reading: "きゅうけつき" }, "ヴァンパイア", "ヴァンピール"], visualDescription: "吸血鬼を表す人物の絵文字" },
+  { id: "fairy", icon: "🧚", name: "ようせい", category: "空想", readings: [{ display: "妖精", reading: "ようせい" }, "フェアリー"], visualDescription: "羽のある妖精の絵文字" },
+  { id: "cowboy-face", icon: "🤠", name: "カウボーイ", category: "表情", readings: ["カウボーイ", "カウボーイハット", "テンガロンハット"], visualDescription: "カウボーイハットをかぶった顔の絵文字" },
 ];
