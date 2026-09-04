@@ -59,7 +59,7 @@ export const PANELS: Panel[] = [
   { id: "rocket", icon: "🚀", name: "ロケット", category: "乗り物", readings: ["ロケット", "スペースシップ",{ display: "NASA", reading: "ナサ" },{ display: "宇宙", reading: "うちゅう" },{ display: "JAXA", reading: "ジャクサ" }], visualDescription: "炎を噴いて斜め上へ飛ぶロケット" },
   { id: "hat", icon: "🎩", name: "シルクハット", category: "衣類", readings: [{ display: "帽子", reading: "ぼうし" }, "シルクハット", "ハット", "かぶりもの",{ display: "手品", reading: "てじな" }], visualDescription: "背の高いシルクハット" },
   { id: "camera", icon: "📷", name: "カメラ", category: "道具", readings: ["カメラ",{ display: "写真機", reading: "しゃしんき" } ,{ display: "撮影", reading: "さつえい" }, "レンズ","おもいで","シャッター"], visualDescription: "正面に丸いレンズがあるカメラ" },
-  { id: "pencil", icon: "✏️", name: "えんぴつ", category: "文房具", readings: ["えんぴつ", "ペンシル",{ display: "文房具", reading:  "ぶんぼうぐ" }, { display: "筆記用具", reading: "ひっきようぐ" }], visualDescription: "先を削った鉛筆" },
+  { id: "pencil", icon: "✏️", name: "えんぴつ", category: "文房具", readings: ["えんぴつ", "ペンシル",{ display: "文房具", reading: "ぶんぼうぐ" }, { display: "筆記用具", reading: "ひっきようぐ" }], visualDescription: "先を削った鉛筆" },
   { id: "cloud-castle", icon: "🏰", name: "城", category: "建物", readings: ["しろ", "おしろ", { display: "城塞", reading: "じょうさい" }, "キャッスル"], visualDescription: "塔と旗がある石造りの城" },
   { id: "jellyfish", icon: "🐙", name: "たこ", category: "動物", readings: ["たこ", "オクトパス", "クトゥルフ" , { display: "八本足", reading: "はっぽんあし" },{ display: "軟体動物", reading: "なんたいどうぶつ" }], visualDescription: "八本の足を広げたたこ" },
   { id: "fox-mask", icon: "🦊", name: "きつね", category: "動物", readings: ["きつね", "こぎつね", "フォックス"], visualDescription: "尖った耳を持つきつねの顔" },
@@ -110,5 +110,5 @@ export const PANELS: Panel[] = [
   { id: "doughnut", icon: "🍩", name: "ドーナツ", category: "食べ物", readings: ["ドーナツ", "おかし", "スイーツ"], visualDescription: "中央に穴のあるドーナツの絵文字" },
   { id: "violin", icon: "🎻", name: "げんがっき", category: "楽器", readings: [{ display: "弦楽器", reading: "げんがっき" }, { display: "楽器", reading: "がっき" }], visualDescription: "弦と弓を使う楽器の絵文字" },
   { id: "crystal-ball", icon: "🔮", name: "すいしょうだま", category: "道具", readings: [{ display: "水晶玉", reading: "すいしょうだま" }, "うらない", "クリスタル", { display: "水晶", reading: "すいしょう" }], visualDescription: "台座に載った水晶玉の絵文字" },
-  { id: "hundred-points", icon: "💯", name: "ひゃく", category: "記号", readings: [{ display: "百", reading: "ひゃく" }, "パーフェクト", "さいこう"], visualDescription: "100を表す記号の絵文字" },
+  { id: "hundred-points", icon: "💯", name: "ひゃく", category: "記号", readings: [{ display: "100", reading: "ひゃく" }, "パーフェクト", "さいこう"], visualDescription: "100を表す記号の絵文字" },
 ];
