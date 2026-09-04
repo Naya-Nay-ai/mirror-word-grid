@@ -110,4 +110,5 @@ export const PANELS: Panel[] = [
   { id: "doughnut", icon: "🍩", name: "ドーナツ", category: "食べ物", readings: ["ドーナツ", "おかし", "スイーツ"], visualDescription: "中央に穴のあるドーナツの絵文字" },
   { id: "violin", icon: "🎻", name: "げんがっき", category: "楽器", readings: [{ display: "弦楽器", reading: "げんがっき" }, { display: "楽器", reading: "がっき" }], visualDescription: "弦と弓を使う楽器の絵文字" },
   { id: "crystal-ball", icon: "🔮", name: "すいしょうだま", category: "道具", readings: [{ display: "水晶玉", reading: "すいしょうだま" }, "うらない", "クリスタル", { display: "水晶", reading: "すいしょう" }], visualDescription: "台座に載った水晶玉の絵文字" },
+  { id: "hundred-points", icon: "💯", name: "ひゃく", category: "記号", readings: [{ display: "百", reading: "ひゃく" }, { display: "100", reading: "ひゃく" }, "パーフェクト", "さいこう"], visualDescription: "100を表す記号の絵文字" },
 ];
