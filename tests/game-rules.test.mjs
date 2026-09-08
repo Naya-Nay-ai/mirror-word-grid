@@ -164,7 +164,7 @@ test("the reviewed infinity card and eleven additional cards are present without
     icon: "♾️",
     name: "無限",
     category: "記号",
-    readings: [{ display: "無限大", reading: "むげんだい" }, { display: "メビウスの輪", reading: "メビウスのわ" }, "ぐるぐる", "スパイラル", "ループ"],
+    readings: [{ display: "無限大", reading: "むげんだい" }, "インフィニティ", { display: "メビウスの輪", reading: "メビウスのわ" }, "ぐるぐる", "スパイラル", "ループ"],
     visualDescription: "無限を表す記号",
   });
   const additions = ["microphone", "rabbit", "snow", "salad", "swimmer", "police-car", "jockey", "bath", "scream", "ring", "fire"];
