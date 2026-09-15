@@ -1,5 +1,5 @@
 import { OnlineGameError } from "../../../../../../online-engine";
-import { bearerToken } from "../../../../../../room-security";
+import { roomToken } from "../../../../../../room-security";
 import { getTeamChatImageResponse } from "../../../../../../team-chat-service";
 import { errorResponse } from "../../../../../room-response";
 
@@ -20,9 +20,10 @@ function validMessageId(value: string) {
 export async function GET(request: Request, { params }: RouteContext) {
   try {
     const { roomId, messageId } = await params;
+    const id = validRoomId(roomId);
     return await getTeamChatImageResponse(
-      validRoomId(roomId),
-      bearerToken(request),
+      id,
+      roomToken(request, id),
       validMessageId(messageId),
       request.headers.get("if-none-match"),
     );
