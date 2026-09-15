@@ -77,3 +77,5 @@ KV_REST_API_TOKEN
 - `tests/online-engine.test.mjs` — オンラインルールの単体テスト
 - `tests/room-store.test.mjs` — Redis環境変数の優先順位とペア選択テスト
 - `tests/online-api-e2e.mjs` — ホスト／ゲストのAPI通し試験
+
+<!-- deploy-now trigger: 2026-09-15 -->
