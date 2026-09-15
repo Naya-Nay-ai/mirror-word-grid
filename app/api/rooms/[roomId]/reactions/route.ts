@@ -1,5 +1,5 @@
 import { OnlineGameError } from "../../../../online-engine";
-import { bearerToken } from "../../../../room-security";
+import { roomToken } from "../../../../room-security";
 import { getRoomReactions, sendRoomReaction } from "../../../../room-service";
 import { errorResponse, json, readJson } from "../../../room-response";
 
@@ -15,7 +15,8 @@ function validRoomId(value: string) {
 export async function GET(request: Request, { params }: RouteContext) {
   try {
     const { roomId } = await params;
-    const reactionView = await getRoomReactions(validRoomId(roomId), bearerToken(request));
+    const id = validRoomId(roomId);
+    const reactionView = await getRoomReactions(id, roomToken(request, id));
     return json({ reactionView });
   } catch (error) {
     return errorResponse(error);
@@ -25,11 +26,12 @@ export async function GET(request: Request, { params }: RouteContext) {
 export async function POST(request: Request, { params }: RouteContext) {
   try {
     const { roomId } = await params;
+    const id = validRoomId(roomId);
     const body = await readJson(request);
     if (!body || typeof body !== "object") throw new OnlineGameError("invalid_reaction", "リアクションを選び直してね。", 400);
     const reactionView = await sendRoomReaction(
-      validRoomId(roomId),
-      bearerToken(request),
+      id,
+      roomToken(request, id),
       (body as { reactionId?: unknown }).reactionId,
     );
     return json({ reactionView });
