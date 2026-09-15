@@ -5,6 +5,8 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Player } from "./game-rules";
 import type { PublicRoom, StoredRoom } from "./online-types";
 
+const ACCESS_TOKEN_PATTERN = /^[A-Za-z0-9_-]{20,256}$/u;
+
 export function generateAccessToken() {
   return randomBytes(32).toString("base64url");
 }
@@ -35,10 +37,30 @@ export function sideForToken(room: StoredRoom, token: string): Player | null {
   return null;
 }
 
+export function roomSessionCookieName(roomId: string) {
+  return `mwg_room_${roomId}`;
+}
+
 export function bearerToken(request: Request) {
   const header = request.headers.get("authorization") ?? "";
   const match = header.match(/^Bearer ([A-Za-z0-9_-]{20,256})$/u);
   return match?.[1] ?? "";
+}
+
+function roomCookieToken(request: Request, roomId: string) {
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const cookieName = roomSessionCookieName(roomId);
+  for (const part of cookieHeader.split(";")) {
+    const item = part.trim();
+    if (!item.startsWith(`${cookieName}=`)) continue;
+    const token = item.slice(cookieName.length + 1);
+    return ACCESS_TOKEN_PATTERN.test(token) ? token : "";
+  }
+  return "";
+}
+
+export function roomToken(request: Request, roomId: string) {
+  return bearerToken(request) || roomCookieToken(request, roomId);
 }
 
 export function publicRoom(room: StoredRoom): PublicRoom {
