@@ -1,6 +1,6 @@
 import { OnlineGameError } from "../../../online-engine";
 import type { RoomAction } from "../../../online-types";
-import { bearerToken } from "../../../room-security";
+import { roomToken } from "../../../room-security";
 import { getRoomView, mutateRoom } from "../../../room-service";
 import { errorResponse, readJson, viewResponse } from "../../room-response";
 
@@ -16,7 +16,8 @@ function validRoomId(value: string) {
 export async function GET(request: Request, { params }: RouteContext) {
   try {
     const { roomId } = await params;
-    const view = await getRoomView(validRoomId(roomId), bearerToken(request));
+    const id = validRoomId(roomId);
+    const view = await getRoomView(id, roomToken(request, id));
     return viewResponse(view);
   } catch (error) {
     return errorResponse(error);
@@ -26,6 +27,7 @@ export async function GET(request: Request, { params }: RouteContext) {
 export async function PATCH(request: Request, { params }: RouteContext) {
   try {
     const { roomId } = await params;
+    const id = validRoomId(roomId);
     const body = await readJson(request);
     if (!body || typeof body !== "object") throw new OnlineGameError("invalid_action", "操作内容を読み取れませんでした。");
     const source = body as { expectedRevision?: unknown; action?: unknown };
@@ -33,8 +35,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       throw new OnlineGameError("invalid_action", "操作内容を読み取れませんでした。");
     }
     const view = await mutateRoom(
-      validRoomId(roomId),
-      bearerToken(request),
+      id,
+      roomToken(request, id),
       Number(source.expectedRevision),
       source.action as RoomAction,
     );
