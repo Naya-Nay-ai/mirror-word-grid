@@ -2,6 +2,10 @@
 .roomHeader { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 13px; }
 .roomLogo { display: block; width: 150px; }
 .roomLogo img, .loadingShell img, .errorShell > img { display: block; width: 100%; height: auto; }
+.headerTools { display: flex; align-items: center; gap: 8px; }
+.turnNotifyButton { min-height: 34px; padding: 6px 11px; border: 2px solid var(--line); border-radius: 999px; background: var(--yellow); box-shadow: 0 3px 0 rgba(47,41,70,.18); color: var(--ink); cursor: pointer; font-size: 9px; font-weight: 900; white-space: nowrap; }
+.turnNotifyButton.enabled { border-color: #2a9b87; background: var(--mint-soft); color: #276d61; }
+.turnNotifyButton:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(47,41,70,.18); }
 .syncBadge { display: flex; align-items: center; gap: 7px; padding: 7px 11px; border: 2px solid var(--line); border-radius: 999px; background: white; box-shadow: 0 3px 0 rgba(47,41,70,.18); font-size: 9px; font-weight: 900; }
 .syncBadge i { width: 9px; height: 9px; border-radius: 50%; }
 .syncBadge.online i { background: var(--mint); box-shadow: 0 0 0 4px rgba(56,200,174,.2); }
@@ -164,7 +168,11 @@
 }
 @media (max-width: 560px) {
   .roomShell { padding: 10px 8px 38px; }
+  .roomHeader { gap: 7px; }
   .roomLogo { width: 125px; }
+  .headerTools { gap: 5px; }
+  .turnNotifyButton { min-height: 31px; padding: 5px 8px; font-size: 8px; }
+  .syncBadge { padding: 6px 8px; font-size: 8px; }
   .matchBanner { grid-template-columns: minmax(0, 1fr) 27px minmax(0, 1fr); }
   .matchBanner > div { grid-template-columns: 28px minmax(0, 1fr); min-height: 49px; padding: 6px; border-radius: 13px; }
   .matchBanner > div > i { width: 27px; height: 27px; font-size: 22px; }.matchBanner > div > small { display: none; }.matchBanner > div > span { font-size: 10px; }.matchBanner > strong { font-size: 8px; }
