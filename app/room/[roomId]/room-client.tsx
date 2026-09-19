@@ -468,7 +468,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
       <header className={styles.roomHeader}>
         <Link href="/online" className={styles.roomLogo} aria-label="オンライン対戦トップへ"><Image src="/mirror-word-grid-logo.png" alt="MIRROR WORD GRID" width={835} height={483} priority unoptimized /></Link>
         <div className={styles.headerTools}>
-          {roomMode === "human" && turnNotificationPermission !== "unsupported" && (
+          {turnNotificationPermission !== "unsupported" && (
             <button
               type="button"
               className={`${styles.turnNotifyButton} ${turnNotificationPermission === "granted" ? styles.enabled : ""}`}
