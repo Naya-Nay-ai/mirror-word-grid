@@ -78,6 +78,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
   const [reactionBusy, setReactionBusy] = useState(false);
   const [reactionCoolingDown, setReactionCoolingDown] = useState(false);
   const [reactionToasts, setReactionToasts] = useState<QuickReactionEvent[]>([]);
+  const [turnNotificationPermission, setTurnNotificationPermission] = useState<NotificationPermission | "unsupported">("unsupported");
   const lastChangeAt = useRef(0);
   const revisionRef = useRef<number | null>(null);
   const verdictReadyRef = useRef(false);
@@ -86,6 +87,49 @@ export default function RoomClient({ roomId }: { roomId: string }) {
   const reactionCooldownTimerRef = useRef<number | null>(null);
   const reactionToastTimersRef = useRef(new Map<string, number>());
   const seenReactionIdsRef = useRef(new Set<string>());
+  const turnActionReadyRef = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (!("Notification" in window)) {
+      setTurnNotificationPermission("unsupported");
+      return;
+    }
+    setTurnNotificationPermission(Notification.permission);
+  }, []);
+
+  useEffect(() => {
+    if (!view) return;
+    const nextRoom = view.room;
+    const actionable = nextRoom.status === "active" && (
+      (nextRoom.game.phase === "select" && nextRoom.game.turn === view.you)
+      || (nextRoom.game.phase === "judge" && nextRoom.game.proposal?.player !== view.you)
+    );
+    const previous = turnActionReadyRef.current;
+    turnActionReadyRef.current = actionable;
+    document.title = actionable
+      ? "🔔 あなたの番！ | MIRROR WORD GRID"
+      : "オンライン対戦部屋 | MIRROR WORD GRID";
+
+    if (previous === null || previous || !actionable) return;
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    if (!document.hidden && document.hasFocus()) return;
+
+    const judging = nextRoom.game.phase === "judge";
+    const notification = new Notification(
+      judging ? "⚖️ 判定をお願いします！" : "🎮 あなたの番です！",
+      {
+        body: judging
+          ? "相手のことばを確認して、受理するか異議を出してね。"
+          : `盤面が更新されました。「${nextRoom.game.currentChar}」から次の一手をどうぞ！`,
+        icon: "/mirror-word-grid-logo.png",
+        tag: `mwg-turn-${roomId}`,
+      },
+    );
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+  }, [roomId, view]);
 
   const syncVerdictEffect = useCallback((nextView: RoomView) => {
     const event = nextView.room.game.lastVerdict ?? null;
@@ -309,6 +353,29 @@ export default function RoomClient({ roomId }: { roomId: string }) {
     }
   }
 
+  async function enableTurnNotifications() {
+    if (!("Notification" in window)) {
+      setTurnNotificationPermission("unsupported");
+      setNotice("このブラウザは手番通知に対応していないみたい。タブのタイトル表示で手番を知らせるね。");
+      return;
+    }
+    if (Notification.permission === "granted") {
+      setTurnNotificationPermission("granted");
+      setNotice("🔔 手番通知はONだよ。別のタブを見ていても、自分の番になったら知らせるね。");
+      return;
+    }
+    if (Notification.permission === "denied") {
+      setTurnNotificationPermission("denied");
+      setNotice("🔕 通知がブラウザ側でブロックされています。サイトの通知設定を許可するとONにできるよ。");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setTurnNotificationPermission(permission);
+    setNotice(permission === "granted"
+      ? "🔔 手番通知をONにしたよ。別のタブを見ていても、自分の番になったら知らせるね。"
+      : "手番通知はOFFのままです。必要になったら、ブラウザのサイト設定から通知を許可してね。");
+  }
+
   async function copy(kind: typeof copiedKind, text: string) {
     const copied = await copyText(text);
     if (!copied) {
@@ -400,7 +467,19 @@ export default function RoomClient({ roomId }: { roomId: string }) {
     <main className={styles.roomShell}>
       <header className={styles.roomHeader}>
         <Link href="/online" className={styles.roomLogo} aria-label="オンライン対戦トップへ"><Image src="/mirror-word-grid-logo.png" alt="MIRROR WORD GRID" width={835} height={483} priority unoptimized /></Link>
-        <div className={`${styles.syncBadge} ${styles[syncState]}`}><i />{syncState === "online" ? "同期中" : syncState === "syncing" ? "更新中" : "再接続中"}</div>
+        <div className={styles.headerTools}>
+          {roomMode === "human" && turnNotificationPermission !== "unsupported" && (
+            <button
+              type="button"
+              className={`${styles.turnNotifyButton} ${turnNotificationPermission === "granted" ? styles.enabled : ""}`}
+              onClick={() => void enableTurnNotifications()}
+              aria-label={turnNotificationPermission === "granted" ? "手番通知はオンです" : "手番通知をオンにする"}
+            >
+              {turnNotificationPermission === "granted" ? "🔔 手番通知 ON" : turnNotificationPermission === "denied" ? "🔕 通知OFF" : "🔔 手番通知をON"}
+            </button>
+          )}
+          <div className={`${styles.syncBadge} ${styles[syncState]}`}><i />{syncState === "online" ? "同期中" : syncState === "syncing" ? "更新中" : "再接続中"}</div>
+        </div>
       </header>
 
       {!(you === "X" && !room.players.X) && (
