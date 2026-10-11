@@ -410,6 +410,7 @@ export function applyRoomAction(
     return {
       ...room,
       status: "active",
+      settings: { ...room.settings, startingPlayer },
       game: createOnlineGame(nextSeed, room.settings.boardSize, startingPlayer, room.settings.objectionLimit, nextCode),
       series: { ...series, matchNumber: series.matchNumber + 1, rematchVotes: {} },
     };
