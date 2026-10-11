@@ -381,6 +381,7 @@ test("same-room rematch waits for both players, keeps the room, and starts a fre
   assert.deepEqual(restarted.series?.rematchVotes, {});
   assert.equal(restarted.game.seed, 54321);
   assert.equal(restarted.game.startingPlayer, "X");
+  assert.equal(restarted.settings.startingPlayer, "X");
   assert.equal(restarted.game.turn, "X");
   assert.equal(restarted.game.winner, null);
   assert.deepEqual(restarted.game.claims, {});
