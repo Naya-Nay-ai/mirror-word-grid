@@ -147,7 +147,7 @@ export function resolveDeclaredReading(display: string, readingAid = ""): Declar
   const label = display.trim();
   const aid = readingAid.trim();
   if (!label) return { error: "自由読みを入力してね。" };
-  if (isKanaOnlyReading(label) && !aid) return { display: label, reading: label };
+  if (isKanaOnlyReading(label)) return { display: label, reading: label };
   if (!aid) return { error: "漢字・々・英数字などを使うときは、判定用の読み仮名も入力してね。" };
   if (!isKanaOnlyReading(aid)) return { error: "読み仮名は、ひらがなかカタカナで入力してね。" };
   return { display: label, reading: aid };
