@@ -76,6 +76,13 @@ test("free readings accept kana and reject kanji, latin letters, and numbers", (
   }
 });
 
+test("kana-only free reading ignores a stale hidden reading aid", () => {
+  assert.deepEqual(resolveDeclaredReading("きらきらクリスマスツリー", "きになるき"), {
+    display: "きらきらクリスマスツリー",
+    reading: "きらきらクリスマスツリー",
+  });
+});
+
 test("kanji display text uses a separate kana reading for all shiritori checks", () => {
   const resolved = resolveDeclaredReading("トッピングにナッツを少々", "とっぴんぐになっつをしょうしょう");
   assert.deepEqual(resolved, {
