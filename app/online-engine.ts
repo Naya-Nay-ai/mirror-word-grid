@@ -25,6 +25,7 @@ import type {
   DeclareAction,
   OnlineGameState,
   OnlineProposal,
+  OnlineSeriesState,
   PlayerProfile,
   RoomAction,
   StoredRoom,
@@ -187,6 +188,34 @@ export function createOnlineGame(
   };
 }
 
+function emptySeriesState(): OnlineSeriesState {
+  return { matchNumber: 1, wins: { O: 0, X: 0 }, draws: 0, rematchVotes: {} };
+}
+
+function existingSeriesState(room: StoredRoom): OnlineSeriesState {
+  if (room.series) {
+    return {
+      ...room.series,
+      wins: { ...room.series.wins },
+      rematchVotes: { ...room.series.rematchVotes },
+    };
+  }
+  const series = emptySeriesState();
+  if (room.status === "finished") {
+    if (room.game.winner === "DRAW") series.draws = 1;
+    else if (room.game.winner) series.wins[room.game.winner] = 1;
+  }
+  return series;
+}
+
+function finishRoom(room: StoredRoom, game: OnlineGameState): StoredRoom {
+  const series = room.series ? existingSeriesState(room) : emptySeriesState();
+  if (game.winner === "DRAW") series.draws += 1;
+  else if (game.winner) series.wins[game.winner] += 1;
+  series.rematchVotes = {};
+  return { ...room, game, status: "finished", series };
+}
+
 export function proposalLabel(proposal: OnlineProposal) {
   return normalizeReading(proposal.displayReading) === normalizeReading(proposal.reading)
     ? proposal.displayReading
@@ -333,6 +362,7 @@ export function applyRoomAction(
   action: RoomAction,
   nowIso: string,
   nextCode: string,
+  nextSeed = room.game.seed + 1,
 ): StoredRoom {
   if (room.status === "closed") throw new OnlineGameError("room_closed", "この部屋は終了しています。", 410);
 
@@ -368,6 +398,23 @@ export function applyRoomAction(
     return { ...room, status: "active", game: { ...room.game, actionCode: nextCode } };
   }
 
+  if (action.type === "rematch") {
+    if (room.status !== "finished") throw new OnlineGameError("rematch_unavailable", "対戦終了後にもう一戦を選べるよ。", 409);
+    if (!room.players.O || !room.players.X) throw new OnlineGameError("rematch_unavailable", "相手の参加状態を確認できません。", 409);
+    const series = existingSeriesState(room);
+    const rematchVotes = { ...series.rematchVotes, [actor]: true as const };
+    if (!rematchVotes.O || !rematchVotes.X) {
+      return { ...room, series: { ...series, rematchVotes } };
+    }
+    const startingPlayer = oppositeSide(room.game.startingPlayer);
+    return {
+      ...room,
+      status: "active",
+      game: createOnlineGame(nextSeed, room.settings.boardSize, startingPlayer, room.settings.objectionLimit, nextCode),
+      series: { ...series, matchNumber: series.matchNumber + 1, rematchVotes: {} },
+    };
+  }
+
   if (action.type === "declare") {
     assertActiveRoom(room);
     if (room.game.phase !== "select") throw new OnlineGameError("awaiting_judgement", "相手の判定を待ってね。", 409);
@@ -379,7 +426,7 @@ export function applyRoomAction(
       : proposal.custom
         ? { ...room.game, phase: "judge" as const, actionCode: nextCode, proposal }
         : applyAcceptedMove(room.game, proposal, nextCode);
-    return { ...room, game, status: game.winner ? "finished" : room.status };
+    return game.winner ? finishRoom(room, game) : { ...room, game };
   }
 
   if (action.type === "judge") {
@@ -425,7 +472,7 @@ export function applyRoomAction(
         reading: proposalLabel(proposal),
       },
     };
-    return { ...room, game, status: game.winner ? "finished" : room.status };
+    return game.winner ? finishRoom(room, game) : { ...room, game };
   }
 
   throw new OnlineGameError("unknown_action", "その操作は使えません。");
