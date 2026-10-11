@@ -19,7 +19,7 @@ import {
   parseAiJudgeReply,
   parseAiTurnReply,
 } from "../../online-prompts";
-import type { ControllerKind, OnlineVerdictEvent, PlayerProfile, RoomAction, RoomView } from "../../online-types";
+import type { ControllerKind, OnlineSeriesState, OnlineVerdictEvent, PlayerProfile, RoomAction, RoomView } from "../../online-types";
 import {
   QUICK_REACTIONS,
   QUICK_REACTION_COOLDOWN_MS,
@@ -79,6 +79,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
   const [reactionCoolingDown, setReactionCoolingDown] = useState(false);
   const [reactionToasts, setReactionToasts] = useState<QuickReactionEvent[]>([]);
   const [turnNotificationPermission, setTurnNotificationPermission] = useState<NotificationPermission | "unsupported">("unsupported");
+  const [rematchPromptOpen, setRematchPromptOpen] = useState(false);
   const lastChangeAt = useRef(0);
   const revisionRef = useRef<number | null>(null);
   const verdictReadyRef = useRef(false);
@@ -88,6 +89,8 @@ export default function RoomClient({ roomId }: { roomId: string }) {
   const reactionToastTimersRef = useRef(new Map<string, number>());
   const seenReactionIdsRef = useRef(new Set<string>());
   const turnActionReadyRef = useRef<boolean | null>(null);
+  const previousRoomStatusRef = useRef<string | null>(null);
+  const rematchPromptTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!("Notification" in window)) {
@@ -131,6 +134,27 @@ export default function RoomClient({ roomId }: { roomId: string }) {
     };
   }, [roomId, view]);
 
+  useEffect(() => {
+    if (!view) return;
+    const current = view.room.status;
+    const previous = previousRoomStatusRef.current;
+    previousRoomStatusRef.current = current;
+
+    if (current === "active") {
+      if (rematchPromptTimerRef.current !== null) window.clearTimeout(rematchPromptTimerRef.current);
+      rematchPromptTimerRef.current = null;
+      setRematchPromptOpen(false);
+      return;
+    }
+    if (previous === "active" && current === "finished") {
+      if (rematchPromptTimerRef.current !== null) window.clearTimeout(rematchPromptTimerRef.current);
+      rematchPromptTimerRef.current = window.setTimeout(() => {
+        setRematchPromptOpen(true);
+        rematchPromptTimerRef.current = null;
+      }, 1_800);
+    }
+  }, [view]);
+
   const syncVerdictEffect = useCallback((nextView: RoomView) => {
     const event = nextView.room.game.lastVerdict ?? null;
     if (!verdictReadyRef.current) {
@@ -151,6 +175,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
   useEffect(() => () => {
     if (verdictTimerRef.current !== null) window.clearTimeout(verdictTimerRef.current);
     if (reactionCooldownTimerRef.current !== null) window.clearTimeout(reactionCooldownTimerRef.current);
+    if (rematchPromptTimerRef.current !== null) window.clearTimeout(rematchPromptTimerRef.current);
     reactionToastTimersRef.current.forEach((timer) => window.clearTimeout(timer));
   }, []);
 
@@ -544,7 +569,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
 
                 <section className={styles.actionCard}>
                   {room.status === "closed" && <SimpleMessage title="この部屋は終了しました" text="新しい部屋を作って、もう一局遊べるよ。" />}
-                  {room.status === "finished" && <WinnerCard room={room} />}
+                  {room.status === "finished" && <WinnerCard room={room} you={you} busy={busy} onRematch={() => void sendAction({ type: "rematch" })} />}
 
                   {room.status === "active" && game.phase === "select" && !yourTurn && (
                     <SimpleMessage title={`${profileLabel(room.players[game.turn]?.profile)}の手番`} text="盤面は自動で更新されるよ。相手の一手を待ってね。" pulse />
@@ -640,6 +665,15 @@ export default function RoomClient({ roomId }: { roomId: string }) {
             }}>＋ 新しい部屋を作る</Link>
           </div>
         </div>
+      )}
+      {rematchPromptOpen && room.status === "finished" && (
+        <RematchPrompt
+          room={room}
+          you={you}
+          busy={busy}
+          onRematch={() => void sendAction({ type: "rematch" })}
+          onClose={() => setRematchPromptOpen(false)}
+        />
       )}
       {reactionToasts.length > 0 && <ReactionToasts events={reactionToasts} room={room} />}
       {reactionOpen && reactionsAvailable && (
@@ -859,12 +893,75 @@ function JudgeCard({ room, reason, busy, onReason, onJudge }: {
   );
 }
 
-function WinnerCard({ room }: { room: RoomView["room"] }) {
+function seriesForDisplay(room: RoomView["room"]): OnlineSeriesState {
+  if (room.series) return room.series;
+  const wins = { O: 0, X: 0 };
+  let draws = 0;
+  if (room.status === "finished") {
+    if (room.game.winner === "DRAW") draws = 1;
+    else if (room.game.winner) wins[room.game.winner] = 1;
+  }
+  return { matchNumber: 1, wins, draws, rematchVotes: {} };
+}
+
+function WinnerCard({ room, you, busy, onRematch }: {
+  room: RoomView["room"];
+  you: Player;
+  busy: boolean;
+  onRematch: () => void;
+}) {
   const game = room.game;
   const winner = game.winner;
   const title = winner === "DRAW" ? "引き分け！" : winner ? `${profileLabel(room.players[winner]?.profile)}の勝ち！` : "対戦終了";
   const reason = game.winReason === "n-ending" ? "「ん」で終わる読みが宣言され、その場で勝負が決まりました。" : game.winReason === "final-contested" ? "最後の1マスを双方が異議で阻止したため引き分け。" : winner === "DRAW" ? "双方ともラインを完成できなくなりました。" : `${game.boardSize}枚のラインがそろったよ。`;
-  return <div className={styles.winnerCard}><span>✦ ○ ✧ ▲ ✦</span><p>GAME SET!</p><h2>{title}</h2><p>{reason}</p><Link href="/online">もう一局の部屋を作る →</Link></div>;
+  const series = seriesForDisplay(room);
+  const requested = series.rematchVotes[you] === true;
+  const opponentRequested = series.rematchVotes[oppositeSide(you)] === true;
+  return (
+    <div className={styles.winnerCard}>
+      <span>✦ ○ ✧ ▲ ✦</span><p>GAME SET! / 第{series.matchNumber}戦</p><h2>{title}</h2><p>{reason}</p>
+      <div className={styles.seriesScore}><b>○ {series.wins.O}勝</b><span>{series.draws ? `引分 ${series.draws}` : "—"}</span><b>▲ {series.wins.X}勝</b></div>
+      {requested ? (
+        <p className={styles.rematchWaiting}>もう一戦を申請したよ。相手の返事待ち…<small>待っている間もミニチャットは使えるよ。</small></p>
+      ) : (
+        <button type="button" className={styles.rematchButton} disabled={busy} onClick={onRematch}>{opponentRequested ? "🔥 相手がもう一戦希望！ 受ける" : "↻ 同じ部屋でもう一戦"}</button>
+      )}
+      <Link href="/online">新しい部屋を作る →</Link>
+    </div>
+  );
+}
+
+function RematchPrompt({ room, you, busy, onRematch, onClose }: {
+  room: RoomView["room"];
+  you: Player;
+  busy: boolean;
+  onRematch: () => void;
+  onClose: () => void;
+}) {
+  const series = seriesForDisplay(room);
+  const requested = series.rematchVotes[you] === true;
+  const opponentRequested = series.rematchVotes[oppositeSide(you)] === true;
+  return (
+    <div className={styles.rematchOverlay}>
+      <button type="button" className={styles.rematchScrim} onClick={onClose} aria-label="もう一戦の確認を閉じる" />
+      <section className={styles.rematchDialog} role="dialog" aria-modal="true" aria-labelledby="rematch-title">
+        <button type="button" className={styles.rematchClose} onClick={onClose} aria-label="閉じる">×</button>
+        <small>GAME SET! / 第{series.matchNumber}戦</small>
+        <h2 id="rematch-title">{opponentRequested && !requested ? "相手が、もう一戦したいみたい🔥" : "このまま、もう一戦する？"}</h2>
+        <div className={styles.rematchScore}><b>○ {series.wins.O}勝</b><span>{series.draws ? `引分 ${series.draws}` : "VS"}</span><b>▲ {series.wins.X}勝</b></div>
+        <p>部屋番号も相手もミニチャットも、そのまま。盤面だけ新しくなるよ。</p>
+        {requested ? (
+          <div className={styles.rematchRequested}>✓ もう一戦を申請済み<br /><small>相手もOKしたら、自動で次の盤面が始まります。</small></div>
+        ) : (
+          <div className={styles.rematchActions}>
+            <button type="button" disabled={busy} onClick={onRematch}>{busy ? "送信中…" : "↻ もう一戦！"}</button>
+            <button type="button" onClick={onClose}>今回はここまで</button>
+          </div>
+        )}
+        <p className={styles.rematchChatHint}>💬 「休憩終わるから今日はここまで！」みたいな一言は、ミニチャットでそのまま送れるよ。</p>
+      </section>
+    </div>
+  );
 }
 
 function VerdictEffect({ event, room }: { event: OnlineVerdictEvent; room: RoomView["room"] }) {

@@ -65,6 +65,13 @@ export type OnlineGameState = {
   startingPlayer: Player;
 };
 
+export type OnlineSeriesState = {
+  matchNumber: number;
+  wins: Record<Player, number>;
+  draws: number;
+  rematchVotes: Partial<Record<Player, true>>;
+};
+
 export type OnlineRoomSettings = {
   boardSize: BoardSize;
   startingPlayer: Player;
@@ -81,6 +88,8 @@ export type StoredRoom = {
   players: Record<Player, OnlineParticipant | null>;
   auth: Record<Player, string>;
   game: OnlineGameState;
+  /** 同じルームでの連戦状態。旧ルーム互換のため optional。 */
+  series?: OnlineSeriesState;
   createdAt: string;
   updatedAt: string;
   expiresAt: string;
@@ -128,6 +137,7 @@ export type RoomAction =
   | { type: "join"; profile: PlayerProfile }
   | { type: "update-profile"; profile: PlayerProfile }
   | { type: "start" }
+  | { type: "rematch" }
   | DeclareAction
   | JudgeAction
   | { type: "close" };

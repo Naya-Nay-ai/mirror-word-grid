@@ -98,6 +98,7 @@ export async function createRoom(input: unknown, now = new Date()): Promise<Crea
       },
       auth: { O: hashAccessToken(hostToken), X: hashAccessToken(inviteToken) },
       game: createOnlineGame(seed, boardSize, startingPlayer, objectionLimit, generateActionCode()),
+      series: { matchNumber: 1, wins: { O: 0, X: 0 }, draws: 0, rematchVotes: {} },
       createdAt: timestamp,
       updatedAt: timestamp,
       expiresAt: expiresAt(now),
@@ -166,7 +167,7 @@ export async function mutateRoom(
   if (current.revision !== expectedRevision) throw new RoomConflictError(initialView);
 
   const timestamp = now.toISOString();
-  const changed = applyRoomAction(current, initialView.you, action, timestamp, generateActionCode());
+  const changed = applyRoomAction(current, initialView.you, action, timestamp, generateActionCode(), randomSeed());
   const next: StoredRoom = {
     ...changed,
     revision: current.revision + 1,

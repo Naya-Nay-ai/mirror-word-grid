@@ -337,6 +337,77 @@ test("an n-ending declaration immediately loses without claiming the cell", () =
   assert.equal(result.game.claims[0], undefined);
 });
 
+test("same-room rematch waits for both players, keeps the room, and starts a fresh board", () => {
+  const base = roomWith();
+  const finished = {
+    ...base,
+    status: "finished",
+    series: { matchNumber: 1, wins: { O: 1, X: 0 }, draws: 0, rematchVotes: {} },
+    game: {
+      ...base.game,
+      phase: "finished",
+      winner: "O",
+      winReason: "line",
+      winningLine: [0, 1, 2, 3],
+      claims: { 0: "O", 1: "O", 2: "O", 3: "O" },
+    },
+  };
+
+  const requested = applyRoomAction(
+    finished,
+    "O",
+    { type: "rematch" },
+    "2026-01-01T00:05:00.000Z",
+    "MWG-WAITING",
+    12345,
+  );
+  assert.equal(requested.id, finished.id);
+  assert.equal(requested.status, "finished");
+  assert.deepEqual(requested.series?.rematchVotes, { O: true });
+  assert.equal(requested.series?.matchNumber, 1);
+
+  const restarted = applyRoomAction(
+    requested,
+    "X",
+    { type: "rematch" },
+    "2026-01-01T00:06:00.000Z",
+    "MWG-REMATCH",
+    54321,
+  );
+  assert.equal(restarted.id, finished.id);
+  assert.equal(restarted.status, "active");
+  assert.equal(restarted.series?.matchNumber, 2);
+  assert.deepEqual(restarted.series?.wins, { O: 1, X: 0 });
+  assert.deepEqual(restarted.series?.rematchVotes, {});
+  assert.equal(restarted.game.seed, 54321);
+  assert.equal(restarted.game.startingPlayer, "X");
+  assert.equal(restarted.settings.startingPlayer, "X");
+  assert.equal(restarted.game.turn, "X");
+  assert.equal(restarted.game.winner, null);
+  assert.deepEqual(restarted.game.claims, {});
+  assert.equal(restarted.game.actionCode, "MWG-REMATCH");
+});
+
+test("legacy finished rooms can enter rematch without losing the completed result", () => {
+  const base = roomWith();
+  const legacyFinished = {
+    ...base,
+    status: "finished",
+    game: { ...base.game, phase: "finished", winner: "DRAW", winReason: "draw" },
+  };
+  const requested = applyRoomAction(
+    legacyFinished,
+    "O",
+    { type: "rematch" },
+    "2026-01-01T00:05:00.000Z",
+    "MWG-WAITING",
+    12345,
+  );
+  assert.equal(requested.series?.draws, 1);
+  assert.equal(requested.series?.matchNumber, 1);
+  assert.deepEqual(requested.series?.rematchVotes, { O: true });
+});
+
 test("AI machine lines parse into revision-safe turn and judgement actions", () => {
   const base = roomWith();
   const room = { ...base, game: { ...base.game, turn: "X" } };
