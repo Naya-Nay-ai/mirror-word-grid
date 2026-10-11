@@ -19,7 +19,7 @@ import {
   parseAiJudgeReply,
   parseAiTurnReply,
 } from "../../online-prompts";
-import type { ControllerKind, OnlineVerdictEvent, PlayerProfile, RoomAction, RoomView } from "../../online-types";
+import type { ControllerKind, OnlineSeriesState, OnlineVerdictEvent, PlayerProfile, RoomAction, RoomView } from "../../online-types";
 import {
   QUICK_REACTIONS,
   QUICK_REACTION_COOLDOWN_MS,
@@ -893,7 +893,7 @@ function JudgeCard({ room, reason, busy, onReason, onJudge }: {
   );
 }
 
-function seriesForDisplay(room: RoomView["room"]) {
+function seriesForDisplay(room: RoomView["room"]): OnlineSeriesState {
   if (room.series) return room.series;
   const wins = { O: 0, X: 0 };
   let draws = 0;
