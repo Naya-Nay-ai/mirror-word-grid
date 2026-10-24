@@ -122,15 +122,32 @@ test("partner replies accept either one copied machine line or exactly one stand
   assert.equal(parseMachineReply("判定:受理｜コード:MWG-ABCDE").ok, false);
 });
 
-test("panel dictionary keeps 65 unique, simple emoji cards with editable reading arrays", () => {
+test("panel dictionary keeps 97 unique, simple emoji cards with editable reading arrays", () => {
   const segmenter = new Intl.Segmenter("ja", { granularity: "grapheme" });
-  assert.equal(PANELS.length, 65);
-  assert.equal(new Set(PANELS.map((panel) => panel.id)).size, 65);
-  assert.equal(new Set(PANELS.map((panel) => panel.icon)).size, 65);
+  assert.equal(PANELS.length, 97);
+  assert.equal(new Set(PANELS.map((panel) => panel.id)).size, 97);
+  assert.equal(new Set(PANELS.map((panel) => panel.icon)).size, 97);
   assert.equal(PANELS.some((panel) => panel.icon.includes("\u200d")), false);
   assert.equal(PANELS.every((panel) => [...segmenter.segment(panel.icon)].length === 1), true);
   assert.equal(PANELS.every((panel) => panel.readings.length > 0), true);
   assert.equal(PANELS.every((panel) => panel.visualDescription.length > 0), true);
+});
+
+test("shared seasonal additions keep their reviewed emoji and preset readings", () => {
+  const expected = {
+    pumpkin: ["🎃", ["かぼちゃ", "ズッカ"]],
+    skull: ["💀", ["どくろ", "がいこつ", "スカル", "ずがいこつ", "しゃれこうべ"]],
+    "performing-arts": ["🎭", ["マスク", "ペルソナ"]],
+    vampire: ["🧛", ["きゅうけつき", "ヴァンパイア", "ヴァンピール"]],
+    zombie: ["🧟", ["ゾンビ", "アンデッド"]],
+    mage: ["🧙", ["まほうつかい", "ウィザード", "まじゅつし", "メイジ"]],
+    fairy: ["🧚", ["ようせい", "フェアリー", "せいれい"]],
+  };
+  for (const [id, [icon, readings]] of Object.entries(expected)) {
+    const panel = PANELS.find((item) => item.id === id);
+    assert.equal(panel?.icon, icon);
+    assert.deepEqual(panel?.readings, readings);
+  }
 });
 
 test("display labels and game readings stay separate for kanji presets", () => {
