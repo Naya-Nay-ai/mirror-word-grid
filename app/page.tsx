@@ -34,6 +34,7 @@ import {
   type RejectedAttempt,
 } from "./game-rules";
 import { PANELS } from "./panel-dictionary";
+import { getMonthlyEventBoard } from "./monthly-events";
 import { encodeShareState } from "./share-state";
 
 type Mode = "partner" | "local";
@@ -236,6 +237,9 @@ function shuffled<T>(items: T[], random: () => number) {
 }
 
 function makeBoard(seed: number, boardSize: BoardSize) {
+  const monthlyEventBoard = getMonthlyEventBoard(seed, boardSize);
+  if (monthlyEventBoard) return monthlyEventBoard;
+
   const random = seededRandom(seed);
   const spine = SPINES[Math.floor(random() * SPINES.length)];
   const core = spine.ids.map((id) => PANELS.find((panel) => panel.id === id)!).filter(Boolean);
