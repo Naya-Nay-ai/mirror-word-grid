@@ -31,6 +31,7 @@ import type {
   StoredRoom,
 } from "./online-types";
 import { PANELS } from "./panel-dictionary";
+import { getMonthlyEventBoard } from "./monthly-events";
 
 const SPINES = [
   { ids: ["umbrella", "flying-fish", "eggplant", "watermelon", "frog-prince", "ruby", "dog", "plush", "mirror", "storm"] },
@@ -70,6 +71,9 @@ function shuffled<T>(items: T[], random: () => number) {
 }
 
 export function makeOnlineBoard(seed: number, boardSize: BoardSize) {
+  const monthlyEventBoard = getMonthlyEventBoard(seed, boardSize);
+  if (monthlyEventBoard) return monthlyEventBoard;
+
   const random = seededRandom(seed);
   const spine = SPINES[Math.floor(random() * SPINES.length)];
   const core = spine.ids.map((id) => PANELS.find((panel) => panel.id === id)).filter((panel): panel is Panel => Boolean(panel));
