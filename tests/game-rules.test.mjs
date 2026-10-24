@@ -122,11 +122,11 @@ test("partner replies accept either one copied machine line or exactly one stand
   assert.equal(parseMachineReply("判定:受理｜コード:MWG-ABCDE").ok, false);
 });
 
-test("panel dictionary keeps 97 unique, simple emoji cards with editable reading arrays", () => {
+test("panel dictionary keeps 112 unique, simple emoji cards with editable reading arrays", () => {
   const segmenter = new Intl.Segmenter("ja", { granularity: "grapheme" });
-  assert.equal(PANELS.length, 97);
-  assert.equal(new Set(PANELS.map((panel) => panel.id)).size, 97);
-  assert.equal(new Set(PANELS.map((panel) => panel.icon)).size, 97);
+  assert.equal(PANELS.length, 112);
+  assert.equal(new Set(PANELS.map((panel) => panel.id)).size, 112);
+  assert.equal(new Set(PANELS.map((panel) => panel.icon)).size, 112);
   assert.equal(PANELS.some((panel) => panel.icon.includes("\u200d")), false);
   assert.equal(PANELS.every((panel) => [...segmenter.segment(panel.icon)].length === 1), true);
   assert.equal(PANELS.every((panel) => panel.readings.length > 0), true);
