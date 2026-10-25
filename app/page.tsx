@@ -33,7 +33,7 @@ import {
   type Player,
   type RejectedAttempt,
 } from "./game-rules";
-import { PANELS } from "./panel-dictionary";
+import { currentTokyoMonth, eventThemeForMonth, makeBoard, type BoardMode } from "./board-generator";
 import { encodeShareState } from "./share-state";
 
 type Mode = "partner" | "local";
@@ -98,14 +98,10 @@ type GameState = {
   seed: number;
   boardSize: BoardSize;
   startingPlayer: Player;
+  boardMode: BoardMode;
+  eventMonth?: number;
   playerNames: Record<Player, string>;
 };
-
-const SPINES = [
-  { start: "か", ids: ["umbrella", "flying-fish", "eggplant", "watermelon", "frog-prince", "ruby", "dog", "plush", "mirror", "storm"] },
-  { start: "ね", ids: ["box-cat", "moon-coffee", "cake", "mushroom", "top", "pillow", "radio", "crown", "mirror", "moon"] },
-  { start: "つ", ids: ["moon", "mushroom", "top", "pillow", "radio", "crown", "mirror", "frog-prince", "ruby", "dog"] },
-];
 
 const STORAGE_KEY = "mirror-word-grid-prototype-v2";
 const PRACTICE_PROVISIONAL_STILLS: Record<string, string> = {
@@ -220,30 +216,6 @@ const TUTORIAL_SHU_NOTES = [
   "却下されたのは『まるまる』だけ。♾️の正式読み『ループ』は使える！",
   "正式読みも自由読みも、駆け引きに使ってラインを作れたね！",
 ] as const;
-function seededRandom(seed: number) {
-  let value = seed % 2147483647;
-  if (value <= 0) value += 2147483646;
-  return () => ((value = (value * 16807) % 2147483647) - 1) / 2147483646;
-}
-
-function shuffled<T>(items: T[], random: () => number) {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
-function makeBoard(seed: number, boardSize: BoardSize) {
-  const random = seededRandom(seed);
-  const spine = SPINES[Math.floor(random() * SPINES.length)];
-  const core = spine.ids.map((id) => PANELS.find((panel) => panel.id === id)!).filter(Boolean);
-  const rest = shuffled(PANELS.filter((panel) => !spine.ids.includes(panel.id)), random).slice(0, boardSize * boardSize - core.length);
-  const board = shuffled([...core, ...rest], random);
-  return { board, start: chooseRandomStart(board, random) };
-}
-
 function codeFor(seed: number) {
   return `MWG-${Math.abs(seed).toString(36).slice(-5).toUpperCase().padStart(5, "0")}`;
 }
@@ -263,8 +235,10 @@ function createGame(
   startingPlayer: Player = "O",
   objectionLimit = recommendedObjectionCount(boardSize),
   playerNames = defaultPlayerNames(mode),
+  boardMode: BoardMode = "normal",
+  eventMonth = boardMode === "event" ? currentTokyoMonth() : undefined,
 ): GameState {
-  const { board, start } = makeBoard(seed, boardSize);
+  const { board, start } = makeBoard(seed, boardSize, boardMode, eventMonth);
   const defaults = defaultPlayerNames(mode);
   const safePlayerNames = {
     O: playerNames.O.trim().replace(/[\r\n]/g, "").slice(0, 12) || defaults.O,
@@ -296,6 +270,8 @@ function createGame(
     seed,
     boardSize,
     startingPlayer,
+    boardMode,
+    eventMonth,
     playerNames: safePlayerNames,
   };
 }
@@ -741,6 +717,8 @@ export default function Home() {
   const [view, setView] = useState<View>("loading");
   const [pendingMode, setPendingMode] = useState<Mode>("partner");
   const [pendingBoardSize, setPendingBoardSize] = useState<BoardSize>(4);
+  const [pendingBoardMode, setPendingBoardMode] = useState<BoardMode>("normal");
+  const [pendingEventMonth, setPendingEventMonth] = useState<number | undefined>(undefined);
   const [pendingStartingPlayer, setPendingStartingPlayer] = useState<Player>("O");
   const [pendingObjectionLimit, setPendingObjectionLimit] = useState(recommendedObjectionCount(4));
   const [pendingPlayerNames, setPendingPlayerNames] = useState<Record<Player, string>>(() => defaultPlayerNames("partner"));
@@ -782,6 +760,8 @@ export default function Home() {
             board,
             boardSize: restored.boardSize ?? (restored.board.length === 25 ? 5 : 4),
             startingPlayer: restored.startingPlayer ?? "O",
+            boardMode: restored.boardMode ?? "normal",
+            eventMonth: restored.eventMonth,
             objectionLimit: restored.objectionLimit ?? recommendedObjectionCount(restored.boardSize ?? (restored.board.length === 25 ? 5 : 4)),
             objectionUsedThisTurn: restored.objectionUsedThisTurn ?? { O: false, X: false },
             retryBlocked: restored.retryBlocked ?? [],
@@ -796,6 +776,8 @@ export default function Home() {
           setGame(migrated);
           setPendingMode(migrated.mode);
           setPendingBoardSize(migrated.boardSize);
+          setPendingBoardMode(migrated.boardMode);
+          setPendingEventMonth(migrated.eventMonth);
           setPendingStartingPlayer(migrated.startingPlayer);
           setPendingObjectionLimit(migrated.objectionLimit);
           setPendingPlayerNames(migrated.playerNames);
@@ -855,7 +837,7 @@ export default function Home() {
     if (countdown <= 0) {
       const kickoff = window.setTimeout(() => {
         if (!resumeAfterCountdown) {
-          setGame(createGame(Date.now(), pendingMode, pendingBoardSize, pendingStartingPlayer, pendingObjectionLimit, pendingPlayerNames));
+          setGame(createGame(Date.now(), pendingMode, pendingBoardSize, pendingStartingPlayer, pendingObjectionLimit, pendingPlayerNames, pendingBoardMode, pendingEventMonth));
           setCustomReading("");
           setCustomReadingAid("");
           setReason("");
@@ -868,7 +850,7 @@ export default function Home() {
     }
     const tick = window.setTimeout(() => setCountdown((value) => value - 1), 800);
     return () => window.clearTimeout(tick);
-  }, [view, countdown, pendingMode, pendingBoardSize, pendingStartingPlayer, pendingObjectionLimit, pendingPlayerNames, resumeAfterCountdown]);
+  }, [view, countdown, pendingMode, pendingBoardSize, pendingBoardMode, pendingEventMonth, pendingStartingPlayer, pendingObjectionLimit, pendingPlayerNames, resumeAfterCountdown]);
 
   const selectedPanel = game.selectedIndex === null ? null : game.board[game.selectedIndex];
   const registeredOptions = useMemo(() => {
@@ -943,6 +925,8 @@ export default function Home() {
   function openNewGameFlow() {
     setPendingMode(game.mode);
     setPendingBoardSize(game.boardSize);
+    setPendingBoardMode(game.boardMode ?? "normal");
+    setPendingEventMonth(game.eventMonth);
     setPendingStartingPlayer(game.startingPlayer);
     setPendingObjectionLimit(game.objectionLimit);
     setPendingPlayerNames(game.playerNames ?? defaultPlayerNames(game.mode));
