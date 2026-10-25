@@ -214,3 +214,19 @@
   .reactionGrid > button span { font-size: 22px; }.reactionGrid > button b { font-size: 9px; }
 }
 @media (prefers-reduced-motion: reduce) { .syncBadge i, .tile.winning, .simpleMessage > span, .proposalWaiting > p, .waitPulse, .loadingDots i, .verdictEffect, .verdictEffect::before, .verdictEffect section, .verdictSparkles i, .reactionToast, .reactionSheet, .rematchDialog { animation: none !important; }.verdictEffect { opacity: 1; }.verdictEffect::before, .verdictSparkles { display: none; } }
+
+
+.eventRoomBadge {
+  width: fit-content;
+  margin: 0 0 7px 5px;
+  padding: 5px 10px;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: #402a62;
+  color: white;
+  box-shadow: 0 2px 0 rgba(47,41,70,.18);
+  font-size: 9px;
+  font-weight: 1000;
+  letter-spacing: .08em;
+}
+.eventRoomBadge span { margin-left: 4px; color: #ffd99d; }
