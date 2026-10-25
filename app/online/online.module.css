@@ -485,3 +485,16 @@
   .logoLink { width: 218px; }
   .heroCopy h1 { font-size: 21px; }
 }
+
+
+.eventModeNote {
+  margin: 8px 0 0;
+  padding: 9px 11px;
+  border: 2px solid var(--line);
+  border-radius: 11px;
+  background: linear-gradient(135deg, #fff3d5, #efe5ff);
+  color: #655d70;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.5;
+}
