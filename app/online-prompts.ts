@@ -15,11 +15,18 @@ import {
   proposalLabel,
 } from "./online-engine";
 import type { JudgeAction, PublicRoom } from "./online-types";
+import { eventThemeForMonth } from "./board-generator";
 
 const JUDGEMENT_CORE = `自由読みは、絵・名前・共通説明・申告された表示差から対象へつながるかを、あなた自身の知識や相手との関係性も含めて判断してください。二人だけの愛称や象徴も、その対象を直接指す固定の呼び名なら成立できます。成立している読みを勝負上止めたい場合は「異議」、意味のつながりがかなり遠ければ理由つきで「不成立」、納得したら「受理」です。⚡争奪中のマスには異議を使えませんが、不成立と固定機械ルールは通常どおり有効です。現在文字違い、取得済み、選択不可、「ん」終わりなどの機械ルールはアプリが固定判定します。`;
 
 function isTeamMode(room: PublicRoom) {
   return room.settings.teamMode === true;
+}
+
+function eventModeLine(room: PublicRoom) {
+  if (room.settings.boardMode !== "event") return "";
+  const theme = eventThemeForMonth(room.settings.eventMonth ?? 0);
+  return theme ? `- 盤面タイプ：${theme.icon} EVENT「${theme.label}」（今月テーマ札が中心）\n` : "";
 }
 
 function panelDescription(room: PublicRoom, index: number) {
@@ -64,7 +71,7 @@ export function buildAiIntroPrompt(room: PublicRoom, side: Player) {
   const teamGuide = isTeamMode(room)
     ? `\n## チーム戦での役割\n- 今回はユーザー主導。あなたはセコンドとして盤面分析・候補・推奨手・理由をはっきり伝える\n- 手番文や判定文を受け取った直後は、勝手に最終決定せず、まずユーザーと相談する\n- 最初の相談返答では【手番:…】【判定:…】の機械読取行を出さない\n- ユーザーが最終決定した後、その決定どおりにアプリ貼り付け用の【】1行を生成する\n- 受理後に次の一手も必要な判定では、判定と次手の両方がユーザー決定済みになってから1行を生成する\n- 相手への会話・煽り・雑談・掛け合いは今までどおり楽しんでよい`
     : `\n## 会話と返答\n盤面だけを機械的に処理せず、相手の読みや作戦へあなたらしく反応し、勝負・雑談・掛け合いも楽しんでください。毎回アプリが指定する機械読取用の【】1行だけを、最後の独立したMarkdownコードブロックへ入れてください。会話本文はコードブロックの外に書きます。`;
-  return `# MIRROR WORD GRID：オンライン対戦の準備\n\n${sideContext(room, side)}\nユーザー同士がDiscordやXのDMで招待URLを送り、このアプリの共有盤面を見ながら遊びます。AI同士をAPI接続してはいません。あなたのユーザーが、手番文をこの会話へ運び、あなたの返答をアプリへ戻す「伝書鳩」です。\n\n## 今回の設定\n- 盤面：${room.settings.boardSize}×${room.settings.boardSize}\n- 先攻：${first}\n- 開始文字：「${room.game.currentChar}」\n- 異議札：各側${room.settings.objectionLimit}枚（同じ相手手番では1回まで）\n${isTeamMode(room) ? "- 対戦形式：人間＋AIのチーム戦（ユーザーが最終決定、AIはセコンド）\n" : ""}\n## ルール\n- 現在文字から始まる読みで空き札を取り、縦・横・斜めの一列を先に完成した側の勝ち\n- 正式読みは理由なしで成立。自由読みは理由が必要\n- 自由読みが成立していても、勝負上止めたいなら異議札を使える\n- 同じ未取得マスへ○・▲双方が1回ずつ異議を使うと「争奪マス」になり、以後そのマスへの異議は使えない\n- 最後の空き1マスが争奪マスになった場合は「最終争奪」として引き分け\n- 札との意味的なつながりがかなり遠い自由読みは理由つきで不成立にできる\n- 「ん」で終わる読みを宣言した側は即敗北\n- 双方ともライン完成不能になったら引き分け\n- 語頭の濁音・半濁音は清音と接続できる\n- 頭文字合わせだけの「お・ご」付けは使えない\n${teamGuide}\n\n${JUDGEMENT_CORE}\n\n理解できたら、まだ一手は選ばず、ユーザーへ準備できたことを普通の会話で伝えてください。最後のコードブロックには【準備:OK】だけを書いてください。`;
+  return `# MIRROR WORD GRID：オンライン対戦の準備\n\n${sideContext(room, side)}\nユーザー同士がDiscordやXのDMで招待URLを送り、このアプリの共有盤面を見ながら遊びます。AI同士をAPI接続してはいません。あなたのユーザーが、手番文をこの会話へ運び、あなたの返答をアプリへ戻す「伝書鳩」です。\n\n## 今回の設定\n- 盤面：${room.settings.boardSize}×${room.settings.boardSize}\n${eventModeLine(room)}- 先攻：${first}\n- 開始文字：「${room.game.currentChar}」\n- 異議札：各側${room.settings.objectionLimit}枚（同じ相手手番では1回まで）\n${isTeamMode(room) ? "- 対戦形式：人間＋AIのチーム戦（ユーザーが最終決定、AIはセコンド）\n" : ""}\n## ルール\n- 現在文字から始まる読みで空き札を取り、縦・横・斜めの一列を先に完成した側の勝ち\n- 正式読みは理由なしで成立。自由読みは理由が必要\n- 自由読みが成立していても、勝負上止めたいなら異議札を使える\n- 同じ未取得マスへ○・▲双方が1回ずつ異議を使うと「争奪マス」になり、以後そのマスへの異議は使えない\n- 最後の空き1マスが争奪マスになった場合は「最終争奪」として引き分け\n- 札との意味的なつながりがかなり遠い自由読みは理由つきで不成立にできる\n- 「ん」で終わる読みを宣言した側は即敗北\n- 双方ともライン完成不能になったら引き分け\n- 語頭の濁音・半濁音は清音と接続できる\n- 頭文字合わせだけの「お・ご」付けは使えない\n${teamGuide}\n\n${JUDGEMENT_CORE}\n\n理解できたら、まだ一手は選ばず、ユーザーへ準備できたことを普通の会話で伝えてください。最後のコードブロックには【準備:OK】だけを書いてください。`;
 }
 
 export function buildAiTurnPrompt(room: PublicRoom, side: Player) {
