@@ -7,7 +7,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   availablePresetReadings,
   canUseObjection,
-  chooseRandomStart,
   findWinner,
   hasArtificialPolitePrefix,
   isContestedCell,
