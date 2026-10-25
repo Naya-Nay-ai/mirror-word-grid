@@ -11,7 +11,7 @@ import {
   profileLabel,
 } from "../app/online-engine.ts";
 import { parseAiJudgeReply, parseAiTurnReply } from "../app/online-prompts.ts";
-import { eventThemeForMonth } from "../app/board-generator.ts";
+import { currentTokyoMonth, eventThemeForMonth, makeBoard } from "../app/board-generator.ts";
 
 function roomWith(options = {}) {
   const game = createOnlineGame(407, 4, "O", 3, "MWG-FIRST");
@@ -122,14 +122,28 @@ test("online board generation is deterministic and coordinate parsing respects b
   assert.equal(indexForCoordinate("E5", 4), -1);
 });
 
-test("online EVENT boards keep the October ratio and remain deterministic", () => {
-  const first = createOnlineGame(202610, 4, "O", 3, "EVENT-A", "event", 10);
-  const second = createOnlineGame(202610, 4, "O", 3, "EVENT-B", "event", 10);
+test("online EVENT boards keep the October ratio, JST month, and deterministic seed", () => {
   const theme = eventThemeForMonth(10);
   const themedIds = new Set(theme.panelIds);
+  const first = createOnlineGame(202610, 4, "O", 3, "EVENT-A", "event", 10);
+  const second = createOnlineGame(202610, 4, "O", 3, "EVENT-B", "event", 10);
+  const event5 = makeBoard(202610, 5, "event", 10).board;
+
+  assert.equal(theme.label, "ハロウィン");
+  assert.equal(theme.icon, "🎃");
+  assert.equal(eventThemeForMonth(11), null);
+  assert.equal(currentTokyoMonth(new Date("2026-09-30T15:30:00.000Z")), 10);
+  assert.equal(theme.panelIds.includes("gift-ghost"), true);
+  assert.equal(theme.panelIds.includes("pumpkin"), true);
 
   assert.deepEqual(first.board.map((panel) => panel.id), second.board.map((panel) => panel.id));
+  assert.equal(first.board.length, 16);
+  assert.equal(new Set(first.board.map((panel) => panel.id)).size, 16);
   assert.equal(first.board.filter((panel) => themedIds.has(panel.id)).length, 13);
+  assert.equal(event5.length, 25);
+  assert.equal(new Set(event5.map((panel) => panel.id)).size, 25);
+  assert.equal(event5.filter((panel) => themedIds.has(panel.id)).length, 20);
+  assert.equal(makeBoard(202610, 4, "normal", 10).eventTheme, null);
 });
 
 test("a formal reading is accepted by the server without an opponent judgement", () => {
