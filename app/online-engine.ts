@@ -31,6 +31,22 @@ import type {
 } from "./online-types";
 import { makeBoard, type BoardMode } from "./board-generator";
 
+const MAX_NAME_LENGTH = 12;
+const MAX_DISPLAY_LENGTH = 48;
+const MAX_REASON_LENGTH = 240;
+
+export class OnlineGameError extends Error {
+  readonly code: string;
+  readonly status: number;
+
+  constructor(code: string, message: string, status = 400) {
+    super(message);
+    this.name = "OnlineGameError";
+    this.code = code;
+    this.status = status;
+  }
+}
+
 export function makeOnlineBoard(
   seed: number,
   boardSize: BoardSize,
