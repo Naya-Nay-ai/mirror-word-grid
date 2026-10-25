@@ -34,6 +34,7 @@ import {
   type RejectedAttempt,
 } from "./game-rules";
 import { currentTokyoMonth, eventThemeForMonth, makeBoard, type BoardMode } from "./board-generator";
+import { PANELS } from "./panel-dictionary";
 import { encodeShareState } from "./share-state";
 
 type Mode = "partner" | "local";
