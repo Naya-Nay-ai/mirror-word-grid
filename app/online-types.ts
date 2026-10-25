@@ -1,3 +1,4 @@
+import type { BoardMode } from "./board-generator";
 import type { BoardSize, CellObjectionHistory, Panel, Player, RejectedAttempt } from "./game-rules";
 
 export type ControllerKind = "human" | "ai";
@@ -76,6 +77,10 @@ export type OnlineRoomSettings = {
   boardSize: BoardSize;
   startingPlayer: Player;
   objectionLimit: number;
+  /** 通常盤面か月替わりEVENT盤面か。旧ルーム互換のため optional。 */
+  boardMode?: BoardMode;
+  /** EVENT開始時の東京時間の月。連戦中の日付またぎでもテーマを固定する。 */
+  eventMonth?: number;
   /** AI戦UIを使いながら、人間が最終決定しAIがセコンドを務めるモード。旧ルーム互換のため optional。 */
   teamMode?: boolean;
 };
@@ -108,6 +113,7 @@ export type CreateRoomInput = {
   startingPlayer?: Player | "random";
   objectionLimit?: number;
   teamMode?: boolean;
+  boardMode?: BoardMode;
 };
 
 export type DeclareAction = {
