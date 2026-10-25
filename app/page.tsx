@@ -1801,6 +1801,7 @@ export default function Home() {
       )}
       <div className="game-layout">
         <section className="play-column">
+          {game.boardMode === "event" && eventThemeForMonth(game.eventMonth ?? 0) && <div className="event-game-badge">{eventThemeForMonth(game.eventMonth ?? 0)!.icon} EVENT <span>{eventThemeForMonth(game.eventMonth ?? 0)!.label}</span></div>}
           <section className={`status-card player-${game.turn.toLowerCase()}`} aria-live="polite">
             <div className="turn-block">
               <span className={`side-chip side-${game.turn.toLowerCase()}`} aria-hidden="true" />
