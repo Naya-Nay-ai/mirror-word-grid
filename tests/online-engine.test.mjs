@@ -11,6 +11,7 @@ import {
   profileLabel,
 } from "../app/online-engine.ts";
 import { parseAiJudgeReply, parseAiTurnReply } from "../app/online-prompts.ts";
+import { eventThemeForMonth } from "../app/board-generator.ts";
 
 function roomWith(options = {}) {
   const game = createOnlineGame(407, 4, "O", 3, "MWG-FIRST");
@@ -119,6 +120,16 @@ test("online board generation is deterministic and coordinate parsing respects b
   assert.deepEqual(first.board.map((panel) => panel.id), second.board.map((panel) => panel.id));
   assert.equal(indexForCoordinate("E5", 5), 24);
   assert.equal(indexForCoordinate("E5", 4), -1);
+});
+
+test("online EVENT boards keep the October ratio and remain deterministic", () => {
+  const first = createOnlineGame(202610, 4, "O", 3, "EVENT-A", "event", 10);
+  const second = createOnlineGame(202610, 4, "O", 3, "EVENT-B", "event", 10);
+  const theme = eventThemeForMonth(10);
+  const themedIds = new Set(theme.panelIds);
+
+  assert.deepEqual(first.board.map((panel) => panel.id), second.board.map((panel) => panel.id));
+  assert.equal(first.board.filter((panel) => themedIds.has(panel.id)).length, 13);
 });
 
 test("a formal reading is accepted by the server without an opponent judgement", () => {
@@ -386,6 +397,25 @@ test("same-room rematch waits for both players, keeps the room, and starts a fre
   assert.equal(restarted.game.winner, null);
   assert.deepEqual(restarted.game.claims, {});
   assert.equal(restarted.game.actionCode, "MWG-REMATCH");
+});
+
+test("same-room EVENT rematch keeps its original event month", () => {
+  const base = roomWith();
+  const eventGame = createOnlineGame(202610, 4, "O", 3, "MWG-EVENT", "event", 10);
+  const finished = {
+    ...base,
+    status: "finished",
+    settings: { ...base.settings, boardMode: "event", eventMonth: 10 },
+    series: { matchNumber: 1, wins: { O: 1, X: 0 }, draws: 0, rematchVotes: {} },
+    game: { ...eventGame, phase: "finished", winner: "O", winReason: "line", winningLine: [0, 1, 2, 3] },
+  };
+  const requested = applyRoomAction(finished, "O", { type: "rematch" }, "2026-11-01T00:05:00.000Z", "WAIT", 7001);
+  const restarted = applyRoomAction(requested, "X", { type: "rematch" }, "2026-11-01T00:06:00.000Z", "NEXT", 7002);
+  const themeIds = new Set(eventThemeForMonth(10).panelIds);
+
+  assert.equal(restarted.settings.boardMode, "event");
+  assert.equal(restarted.settings.eventMonth, 10);
+  assert.equal(restarted.game.board.filter((panel) => themeIds.has(panel.id)).length, 13);
 });
 
 test("legacy finished rooms can enter rematch without losing the completed result", () => {
