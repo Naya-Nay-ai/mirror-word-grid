@@ -994,3 +994,62 @@ label > span,
   .tutorial-copy-step pre { font-size: 12px; }
   .tutorial-next-action::after { font-size: 11px; }
 }
+
+
+/* Monthly EVENT */
+.event-title-button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  width: 100%;
+  min-height: 54px;
+  padding: 8px 15px;
+  border: 3px solid var(--line);
+  border-radius: 15px;
+  background: linear-gradient(135deg, #3b285f, #7045a8 58%, #f08a45);
+  color: white;
+  box-shadow: 0 5px 0 var(--line);
+  cursor: pointer;
+  font-weight: 900;
+}
+.event-title-button > span { display: grid; gap: 1px; text-align: left; }
+.event-title-button strong { font-size: 13px; letter-spacing: .05em; }
+.event-title-button small { color: #fff1c8; font-size: 9px; }
+.event-title-button > b { font-size: 19px; }
+.event-title-button:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--line); }
+.event-setup-banner {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 2px solid var(--line);
+  border-radius: 15px;
+  background: linear-gradient(135deg, #fff4d5, #f3e6ff);
+  box-shadow: 0 3px 0 rgba(47,41,70,.14);
+}
+.event-setup-banner > span { font-size: 38px; text-align: center; }
+.event-setup-banner div { display: grid; gap: 2px; }
+.event-setup-banner small { color: var(--purple); font-size: 8px; font-weight: 1000; letter-spacing: .14em; }
+.event-setup-banner strong { font-size: 14px; }
+.event-setup-banner p { margin: 0; color: #6b6375; font-size: 9px; line-height: 1.45; }
+.event-game-badge {
+  width: fit-content;
+  margin: 0 0 7px 5px;
+  padding: 5px 10px;
+  border: 2px solid var(--line);
+  border-radius: 99px;
+  background: #402a62;
+  color: white;
+  box-shadow: 0 2px 0 rgba(47,41,70,.18);
+  font-size: 9px;
+  font-weight: 1000;
+  letter-spacing: .08em;
+}
+.event-game-badge span { color: #ffd99d; margin-left: 4px; }
+@media (max-width: 560px) {
+  .event-title-button { grid-column: 1 / -1; min-height: 58px; }
+  .event-setup-banner { grid-template-columns: 44px minmax(0, 1fr); }
+  .event-setup-banner > span { font-size: 32px; }
+}
