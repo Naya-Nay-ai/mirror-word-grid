@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import type { BoardSize, Player } from "../game-rules";
+import { currentTokyoMonth, eventThemeForMonth, type BoardMode } from "../board-generator";
 import type { ControllerKind, CreateRoomResponse, RoomView } from "../online-types";
 import {
   removeRoomCredential,
@@ -31,6 +32,7 @@ export default function OnlineLobby() {
   const [partnerName, setPartnerName] = useState("");
   const [matchMode, setMatchMode] = useState<MatchMode>("ai");
   const [boardSize, setBoardSize] = useState<BoardSize>(4);
+  const [boardMode, setBoardMode] = useState<BoardMode>("normal");
   const [startingPlayer, setStartingPlayer] = useState<Player | "random">("random");
   const [setupStep, setSetupStep] = useState<SetupStep>(1);
   const [guideOpen, setGuideOpen] = useState(false);
@@ -40,6 +42,7 @@ export default function OnlineLobby() {
   const aiAssisted = matchMode !== "human";
   const controller: ControllerKind = aiAssisted ? "ai" : "human";
   const teamMode = matchMode === "team";
+  const currentEventTheme = eventThemeForMonth(currentTokyoMonth());
 
   useEffect(() => {
     let cancelled = false;
@@ -117,6 +120,7 @@ export default function OnlineLobby() {
         body: JSON.stringify({
           profile: { playerName, partnerName: aiAssisted ? partnerName : "", controller },
           boardSize,
+          boardMode,
           startingPlayer,
           teamMode,
         }),
@@ -220,6 +224,14 @@ export default function OnlineLobby() {
                 <button type="button" className={boardSize === 5 ? styles.activeSegment : ""} onClick={() => setBoardSize(5)}>5×5</button>
               </div>
             </div>
+            <div className={styles.settingRow}>
+              <span>盤面タイプ</span>
+              <div className={styles.segmented}>
+                <button type="button" className={boardMode === "normal" ? styles.activeSegment : ""} onClick={() => setBoardMode("normal")}>通常</button>
+                {currentEventTheme && <button type="button" className={boardMode === "event" ? styles.activeSegment : ""} onClick={() => setBoardMode("event")}>{currentEventTheme.icon} EVENT</button>}
+              </div>
+            </div>
+            {boardMode === "event" && currentEventTheme && <p className={styles.eventModeNote}>{currentEventTheme.icon} {currentEventTheme.month}月EVENT「{currentEventTheme.label}」：盤面の約8割が今月テーマの札になります。</p>}
             <div className={styles.settingRow}>
               <span>先攻</span>
               <div className={styles.segmented}>
