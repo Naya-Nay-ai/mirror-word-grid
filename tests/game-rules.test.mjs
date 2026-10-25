@@ -27,6 +27,7 @@ import {
 } from "../app/game-rules.ts";
 import { decodeShareState, encodeShareState } from "../app/share-state.ts";
 import { PANELS } from "../app/panel-dictionary.ts";
+import { currentTokyoMonth, eventThemeForMonth, makeBoard } from "../app/board-generator.ts";
 
 const cat = {
   id: "cat",
@@ -148,6 +149,32 @@ test("shared seasonal additions keep their reviewed emoji and preset readings", 
     assert.equal(panel?.icon, icon);
     assert.deepEqual(panel?.readings, readings);
   }
+});
+
+test("October event uses a deterministic 80-percent Halloween board without replacing normal mode", () => {
+  const theme = eventThemeForMonth(10);
+  assert.equal(theme?.label, "ハロウィン");
+  assert.equal(theme?.icon, "🎃");
+  assert.equal(eventThemeForMonth(11), null);
+  assert.equal(currentTokyoMonth(new Date("2026-09-30T15:30:00.000Z")), 10);
+
+  const event4a = makeBoard(202610, 4, "event", 10).board;
+  const event4b = makeBoard(202610, 4, "event", 10).board;
+  const event5 = makeBoard(202610, 5, "event", 10).board;
+  const themedIds = new Set(theme.panelIds);
+
+  assert.deepEqual(event4a.map((panel) => panel.id), event4b.map((panel) => panel.id));
+  assert.equal(event4a.length, 16);
+  assert.equal(event5.length, 25);
+  assert.equal(new Set(event4a.map((panel) => panel.id)).size, 16);
+  assert.equal(new Set(event5.map((panel) => panel.id)).size, 25);
+  assert.equal(event4a.filter((panel) => themedIds.has(panel.id)).length, 13);
+  assert.equal(event5.filter((panel) => themedIds.has(panel.id)).length, 20);
+
+  const normal = makeBoard(202610, 4, "normal", 10);
+  assert.equal(normal.eventTheme, null);
+  assert.equal(eventThemeForMonth(10)?.panelIds.includes("gift-ghost"), true);
+  assert.equal(eventThemeForMonth(10)?.panelIds.includes("pumpkin"), true);
 });
 
 test("display labels and game readings stay separate for kanji presets", () => {
