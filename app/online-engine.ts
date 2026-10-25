@@ -1,6 +1,5 @@
 import {
   canUseObjection,
-  chooseRandomStart,
   findWinner,
   hasArtificialPolitePrefix,
   isContestedCell,
@@ -30,53 +29,15 @@ import type {
   RoomAction,
   StoredRoom,
 } from "./online-types";
-import { PANELS } from "./panel-dictionary";
+import { makeBoard, type BoardMode } from "./board-generator";
 
-const SPINES = [
-  { ids: ["umbrella", "flying-fish", "eggplant", "watermelon", "frog-prince", "ruby", "dog", "plush", "mirror", "storm"] },
-  { ids: ["box-cat", "moon-coffee", "cake", "mushroom", "top", "pillow", "radio", "crown", "mirror", "moon"] },
-  { ids: ["moon", "mushroom", "top", "pillow", "radio", "crown", "mirror", "frog-prince", "ruby", "dog"] },
-] as const;
-
-const MAX_NAME_LENGTH = 12;
-const MAX_DISPLAY_LENGTH = 48;
-const MAX_REASON_LENGTH = 240;
-
-export class OnlineGameError extends Error {
-  readonly code: string;
-  readonly status: number;
-
-  constructor(code: string, message: string, status = 400) {
-    super(message);
-    this.name = "OnlineGameError";
-    this.code = code;
-    this.status = status;
-  }
-}
-
-function seededRandom(seed: number) {
-  let value = seed % 2147483647;
-  if (value <= 0) value += 2147483646;
-  return () => ((value = (value * 16807) % 2147483647) - 1) / 2147483646;
-}
-
-function shuffled<T>(items: T[], random: () => number) {
-  const result = [...items];
-  for (let index = result.length - 1; index > 0; index -= 1) {
-    const nextIndex = Math.floor(random() * (index + 1));
-    [result[index], result[nextIndex]] = [result[nextIndex], result[index]];
-  }
-  return result;
-}
-
-export function makeOnlineBoard(seed: number, boardSize: BoardSize) {
-  const random = seededRandom(seed);
-  const spine = SPINES[Math.floor(random() * SPINES.length)];
-  const core = spine.ids.map((id) => PANELS.find((panel) => panel.id === id)).filter((panel): panel is Panel => Boolean(panel));
-  const rest = shuffled(PANELS.filter((panel) => !spine.ids.includes(panel.id as never)), random)
-    .slice(0, boardSize * boardSize - core.length);
-  const board = shuffled([...core, ...rest], random);
-  return { board, start: chooseRandomStart(board, random) };
+export function makeOnlineBoard(
+  seed: number,
+  boardSize: BoardSize,
+  boardMode: BoardMode = "normal",
+  eventMonth?: number,
+) {
+  return makeBoard(seed, boardSize, boardMode, eventMonth);
 }
 
 export function coordinateForIndex(index: number, boardSize: BoardSize = 4) {
@@ -161,8 +122,10 @@ export function createOnlineGame(
   startingPlayer: Player,
   objectionLimit: number,
   actionCode: string,
+  boardMode: BoardMode = "normal",
+  eventMonth?: number,
 ): OnlineGameState {
-  const { board, start } = makeOnlineBoard(seed, boardSize);
+  const { board, start } = makeOnlineBoard(seed, boardSize, boardMode, eventMonth);
   return {
     board,
     claims: {},
@@ -411,7 +374,7 @@ export function applyRoomAction(
       ...room,
       status: "active",
       settings: { ...room.settings, startingPlayer },
-      game: createOnlineGame(nextSeed, room.settings.boardSize, startingPlayer, room.settings.objectionLimit, nextCode),
+      game: createOnlineGame(nextSeed, room.settings.boardSize, startingPlayer, room.settings.objectionLimit, nextCode, room.settings.boardMode ?? "normal", room.settings.eventMonth),
       series: { ...series, matchNumber: series.matchNumber + 1, rematchVotes: {} },
     };
   }
