@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import type { Player } from "./game-rules";
+import { currentTokyoMonth, eventThemeForMonth, type BoardMode } from "./board-generator";
 import {
   applyRoomAction,
   createOnlineGame,
@@ -71,6 +72,11 @@ export async function createRoom(input: unknown, now = new Date()): Promise<Crea
   const profile = normalizeProfile(source.profile);
   const boardSize = normalizeBoardSize(source.boardSize);
   const objectionLimit = normalizeObjectionLimit(source.objectionLimit, boardSize);
+  const boardMode: BoardMode = source.boardMode === "event" ? "event" : "normal";
+  const eventMonth = boardMode === "event" ? currentTokyoMonth(now) : undefined;
+  if (boardMode === "event" && !eventThemeForMonth(eventMonth!)) {
+    throw new OnlineGameError("event_unavailable", "今月のEVENTはまだ準備中です。通常戦で遊んでね。", 409);
+  }
   const startingPlayer: Player = source.startingPlayer === "O" || source.startingPlayer === "X"
     ? source.startingPlayer
     : randomSeed() % 2 === 0 ? "O" : "X";
@@ -90,6 +96,8 @@ export async function createRoom(input: unknown, now = new Date()): Promise<Crea
         boardSize,
         startingPlayer,
         objectionLimit,
+        boardMode,
+        eventMonth,
         teamMode: source.teamMode === true && profile.controller === "ai",
       },
       players: {
@@ -97,7 +105,7 @@ export async function createRoom(input: unknown, now = new Date()): Promise<Crea
         X: null,
       },
       auth: { O: hashAccessToken(hostToken), X: hashAccessToken(inviteToken) },
-      game: createOnlineGame(seed, boardSize, startingPlayer, objectionLimit, generateActionCode()),
+      game: createOnlineGame(seed, boardSize, startingPlayer, objectionLimit, generateActionCode(), boardMode, eventMonth),
       series: { matchNumber: 1, wins: { O: 0, X: 0 }, draws: 0, rematchVotes: {} },
       createdAt: timestamp,
       updatedAt: timestamp,
