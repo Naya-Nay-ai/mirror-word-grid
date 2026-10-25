@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { isContestedCell, readingEnd, type Player } from "../../game-rules";
+import { eventThemeForMonth } from "../../board-generator";
 import {
   coordinateForIndex,
   oppositeSide,
@@ -534,6 +535,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
               />
             ) : (
               <>
+                {room.settings.boardMode === "event" && eventThemeForMonth(room.settings.eventMonth ?? 0) && <div className={styles.eventRoomBadge}>{eventThemeForMonth(room.settings.eventMonth ?? 0)!.icon} EVENT <span>{eventThemeForMonth(room.settings.eventMonth ?? 0)!.label}</span></div>}
                 <section className={styles.turnStatus}>
                   <div><small>{game.phase === "judge" ? "判定する側" : "いまの手番"}</small><strong>{game.phase === "judge" && game.proposal ? profileLabel(room.players[oppositeSide(game.proposal.player)]?.profile) : profileLabel(room.players[game.turn]?.profile)}</strong></div>
                   <div><small>この文字から</small><strong>{game.currentChar}</strong></div>
@@ -643,7 +645,7 @@ export default function RoomClient({ roomId }: { roomId: string }) {
             )}
             <section className={styles.roomInfoCard}>
               <small>ROOM INFO</small><h2>対戦ルーム</h2>
-              <dl><div><dt>部屋ID</dt><dd>{room.id}</dd></div><div><dt>盤面</dt><dd>{game.boardSize}×{game.boardSize}</dd></div><div><dt>先攻</dt><dd>{profileLabel(room.players[game.startingPlayer]?.profile)}</dd></div><div><dt>自動消去</dt><dd>{formatExpiry(room.expiresAt)}</dd></div></dl>
+              <dl><div><dt>部屋ID</dt><dd>{room.id}</dd></div><div><dt>盤面タイプ</dt><dd>{room.settings.boardMode === "event" && eventThemeForMonth(room.settings.eventMonth ?? 0) ? `${eventThemeForMonth(room.settings.eventMonth ?? 0)!.icon} ${eventThemeForMonth(room.settings.eventMonth ?? 0)!.label}` : "通常"}</dd></div><div><dt>盤面</dt><dd>{game.boardSize}×{game.boardSize}</dd></div><div><dt>先攻</dt><dd>{profileLabel(room.players[game.startingPlayer]?.profile)}</dd></div><div><dt>自動消去</dt><dd>{formatExpiry(room.expiresAt)}</dd></div></dl>
               <p>有効な操作のたびに期限が24時間延長されます。見るだけでは延長されません。</p>
             </section>
             <section className={styles.historyCard}>
