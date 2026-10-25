@@ -905,6 +905,7 @@ export default function Home() {
   const proposalJudge: Player | null = game.proposal ? (game.proposal.player === "O" ? "X" : "O") : null;
   const proposalContested = Boolean(game.proposal && isContestedCell(game.cellObjections, game.proposal.panelIndex));
   const proposalCanUseObjection = proposalJudge ? !proposalContested && canUseObjection(game.objections[proposalJudge], game.objectionUsedThisTurn[proposalJudge]) : false;
+  const currentEventTheme = eventThemeForMonth(currentTokyoMonth());
 
   function nameFor(player: Player, mode = game.mode) {
     return game.playerNames?.[player] ?? defaultPlayerNames(mode)[player];
@@ -1381,7 +1382,8 @@ export default function Home() {
                 <h2>絵の読み方は、<br /><span>ひとつじゃない。</span></h2>
                 <p>絵からことばを見つけて、しりとりで陣地をつなごう。先に一列そろえた側の勝ち！</p>
                 <div className="title-actions">
-                  <button className="start-button title-start-button" type="button" onClick={() => setView("mode")}><span>通常戦をはじめる</span><b>→</b></button>
+                  <button className="start-button title-start-button" type="button" onClick={() => { setPendingBoardMode("normal"); setPendingEventMonth(undefined); setView("mode"); }}><span>通常戦をはじめる</span><b>→</b></button>
+                  {currentEventTheme && <button className="event-title-button" type="button" onClick={() => { setPendingBoardMode("event"); setPendingEventMonth(currentEventTheme.month); setView("mode"); }}><span><strong>{currentEventTheme.icon} {currentEventTheme.month}月 EVENT</strong><small>{currentEventTheme.label}盤であそぶ</small></span><b>→</b></button>}
                   <button className="tutorial-button" type="button" onClick={openTutorial}><span>🧸</span> しゅ＆みうと練習する</button>
                   <Link className="online-title-button" href="/online"><span><strong><i className="new-badge">NEW!!</i>ふたりでオンライン対戦</strong><small>招待URLを送るだけ。AI同士／人間同士で同じ盤面へ</small></span><b>↗</b></Link>
                   <button className="text-button" type="button" onClick={() => setView("guide")}>詳しいルールを読む</button>
@@ -1693,9 +1695,10 @@ export default function Home() {
               <div className="setup-copy">
                 <p className="step-label">STEP 1 / 2</p>
                 <h2 className="mode-title"><span>だれと</span><span>遊ぶ？</span></h2>
-                <p>AIパートナーとのコピー対戦か、同じ端末を使うふたり対戦を選んでね。</p>
+                <p>{pendingBoardMode === "event" && eventThemeForMonth(pendingEventMonth ?? 0) ? "今月のEVENT盤で遊ぶ相手を選んでね。" : "AIパートナーとのコピー対戦か、同じ端末を使うふたり対戦を選んでね。"}</p>
               </div>
               <div className="setup-panel">
+                {pendingBoardMode === "event" && eventThemeForMonth(pendingEventMonth ?? 0) && <div className="event-setup-banner"><span>{eventThemeForMonth(pendingEventMonth ?? 0)!.icon}</span><div><small>MONTHLY EVENT</small><strong>{pendingEventMonth}月｜{eventThemeForMonth(pendingEventMonth ?? 0)!.label}</strong><p>盤面の約8割が今月テーマの札。残りは通常札から混ざるよ。</p></div></div>}
                 <div className="mode-cards">
                   <button type="button" className={pendingMode === "partner" ? "selected" : ""} onClick={() => choosePendingMode("partner")}>
                     <span className="mode-icon mirror-mode" aria-hidden="true">✦</span>
@@ -1753,6 +1756,7 @@ export default function Home() {
               <div className="setup-panel">
                 <dl className="settings-list">
                   <div><dt>モード</dt><dd>{pendingMode === "partner" ? "AIパートナー受け渡し" : "人間ふたり対戦"}</dd></div>
+                  <div><dt>盤面タイプ</dt><dd>{pendingBoardMode === "event" && eventThemeForMonth(pendingEventMonth ?? 0) ? `${eventThemeForMonth(pendingEventMonth ?? 0)!.icon} EVENT｜${eventThemeForMonth(pendingEventMonth ?? 0)!.label}` : "通常"}</dd></div>
                   <div><dt>盤面</dt><dd>{pendingBoardSize} × {pendingBoardSize} ／ {pendingBoardSize * pendingBoardSize}枚{pendingBoardSize === 5 ? "（PC／タブレット推奨）" : ""}</dd></div>
                   <div><dt>対戦名</dt><dd>{pendingPlayerNames.O || "○側"} vs {pendingPlayerNames.X || "×側"}</dd></div>
                   <div><dt>先攻</dt><dd>{pendingStartingPlayer === "O" ? `${pendingPlayerNames.O || "○側"}（○側）` : `${pendingPlayerNames.X || "×側"}（×側）`}</dd></div>
@@ -1939,7 +1943,7 @@ export default function Home() {
             <ol><li><b>1</b><span>今の文字から読める絵文字を選ぶ</span></li><li><b>2</b><span>正式プリセット、または理由つきの自由読みを宣言</span></li><li><b>3</b><span>成立した読みの最後の文字を次へつなぐ。「ん」で終わればその場で負け</span></li><li><b>4</b><span>先に自分の色を一列そろえたら勝ち</span></li><li><b>5</b><span>双方とも列を完成できなくなった時点で引き分け</span></li></ol>
             <p>成立している自由読みは受理か異議。同じ空きマスへ双方が異議を使うと⚡争奪中になり、そのマスへの異議は使えなくなるよ。最後の1マスなら引き分け。札とのつながりがかなり遠い読みは理由つきで不成立にでき、現在文字違い・「ん」終わり・選択不可などの機械ルールも通常どおり有効だよ。</p>
           </details>
-          <section className="prototype-note"><span>PROTOTYPE 02</span><p>共通性の高い絵文字65枚入り。正式プリセットは札ごとに必要な数だけ登録できるよ。</p></section>
+          <section className="prototype-note"><span>PROTOTYPE 02</span><p>共通性の高い絵文字112枚入り。正式プリセットは札ごとに必要な数だけ登録できるよ。</p></section>
         </aside>
       </div>
       <footer><b>MIRROR WORD GRID</b><span>ことばは、絵の中にひとつじゃない。</span></footer>
