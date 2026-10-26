@@ -65,14 +65,48 @@ const HALLOWEEN_PANEL_IDS = [
   "fairy",
 ] as const;
 
+const NOVEMBER_PANEL_IDS = [
+  "maple-leaf",
+  "fallen-leaf",
+  "mushroom",
+  "deer",
+  "camera",
+  "apple",
+  "pie",
+  "moon-coffee",
+  "fire",
+  "dog",
+  "ring",
+  "bath",
+  "chestnut",
+  "sweet-potato",
+  "grapes",
+  "pear",
+  "peanut",
+  "rice-ear",
+  "squirrel",
+  "scarf",
+  "boots",
+  "gloves",
+  "couple",
+] as const;
+
 const EVENT_THEMES: Partial<Record<number, EventTheme>> = {
   10: {
     month: 10,
-    label: "ハロウィン",
+    label: "ハロウィン盤",
     icon: "🎃",
     panelIds: HALLOWEEN_PANEL_IDS,
     seasonalRatio: 0.8,
     availableFrom: "2026-10-01",
+  },
+  11: {
+    month: 11,
+    label: "紅葉盤",
+    icon: "🍁",
+    panelIds: NOVEMBER_PANEL_IDS,
+    seasonalRatio: 0.8,
+    availableFrom: "2026-11-01",
   },
 };
 
