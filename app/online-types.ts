@@ -114,6 +114,7 @@ export type CreateRoomInput = {
   objectionLimit?: number;
   teamMode?: boolean;
   boardMode?: BoardMode;
+  eventMonth?: number;
 };
 
 export type DeclareAction = {
