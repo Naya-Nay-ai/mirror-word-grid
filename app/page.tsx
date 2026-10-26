@@ -32,7 +32,7 @@ import {
   type Player,
   type RejectedAttempt,
 } from "./game-rules";
-import { currentTokyoMonth, eventThemeForMonth, makeBoard, type BoardMode } from "./board-generator";
+import { archivedEventThemes, currentEventTheme, currentTokyoMonth, eventThemeForMonth, makeBoard, upcomingEventThemes, type BoardMode } from "./board-generator";
 import { PANELS } from "./panel-dictionary";
 import { encodeShareState } from "./share-state";
 
@@ -905,7 +905,9 @@ export default function Home() {
   const proposalJudge: Player | null = game.proposal ? (game.proposal.player === "O" ? "X" : "O") : null;
   const proposalContested = Boolean(game.proposal && isContestedCell(game.cellObjections, game.proposal.panelIndex));
   const proposalCanUseObjection = proposalJudge ? !proposalContested && canUseObjection(game.objections[proposalJudge], game.objectionUsedThisTurn[proposalJudge]) : false;
-  const currentEventTheme = eventThemeForMonth(currentTokyoMonth());
+  const activeEventTheme = currentEventTheme();
+  const archivedEvents = archivedEventThemes();
+  const upcomingEvents = upcomingEventThemes();
 
   function nameFor(player: Player, mode = game.mode) {
     return game.playerNames?.[player] ?? defaultPlayerNames(mode)[player];
@@ -1383,8 +1385,15 @@ export default function Home() {
                 <p>絵からことばを見つけて、しりとりで陣地をつなごう。先に一列そろえた側の勝ち！</p>
                 <div className="title-actions">
                   <button className="start-button title-start-button" type="button" onClick={() => { setPendingBoardMode("normal"); setPendingEventMonth(undefined); setView("mode"); }}><span>通常戦をはじめる</span><b>→</b></button>
-                  {currentEventTheme && <button className="event-title-button" type="button" onClick={() => { setPendingBoardMode("event"); setPendingEventMonth(currentEventTheme.month); setView("mode"); }}><span><strong>{currentEventTheme.icon} {currentEventTheme.month}月 EVENT</strong><small>{currentEventTheme.label}盤であそぶ</small></span><b>→</b></button>}
+                  {activeEventTheme && <button className="event-title-button" type="button" onClick={() => { setPendingBoardMode("event"); setPendingEventMonth(activeEventTheme.month); setView("mode"); }}><span><strong>{activeEventTheme.icon} {activeEventTheme.month}月 EVENT</strong><small>{activeEventTheme.label}盤であそぶ</small></span><b>→</b></button>}
                   <button className="tutorial-button" type="button" onClick={openTutorial}><span>🧸</span> しゅ＆みうと練習する</button>
+                  {(archivedEvents.length > 0 || upcomingEvents.length > 0) && <details className="event-archive">
+                    <summary><span>EVENT ARCHIVE</span><strong>過去イベント・開催予定</strong><b>＋</b></summary>
+                    <div className="event-archive-list">
+                      {archivedEvents.map((theme) => <button key={theme.month} type="button" onClick={() => { setPendingBoardMode("event"); setPendingEventMonth(theme.month); setView("mode"); }}><span>{theme.icon}</span><div><strong>{theme.month}月｜{theme.label}</strong><small>アーカイブから遊ぶ</small></div><b>→</b></button>)}
+                      {upcomingEvents.map((theme) => <div className="event-archive-locked" key={theme.month}><span>{theme.icon}</span><div><strong>{theme.month}月｜{theme.label}</strong><small>🔒 {theme.availableFrom.replaceAll("-", "/")} 解放</small></div></div>)}
+                    </div>
+                  </details>}
                   <Link className="online-title-button" href="/online"><span><strong><i className="new-badge">NEW!!</i>ふたりでオンライン対戦</strong><small>招待URLを送るだけ。AI同士／人間同士で同じ盤面へ</small></span><b>↗</b></Link>
                   <button className="text-button" type="button" onClick={() => setView("guide")}>詳しいルールを読む</button>
                 </div>
@@ -1695,7 +1704,7 @@ export default function Home() {
               <div className="setup-copy">
                 <p className="step-label">STEP 1 / 2</p>
                 <h2 className="mode-title"><span>だれと</span><span>遊ぶ？</span></h2>
-                <p>{pendingBoardMode === "event" && eventThemeForMonth(pendingEventMonth ?? 0) ? "今月のEVENT盤で遊ぶ相手を選んでね。" : "AIパートナーとのコピー対戦か、同じ端末を使うふたり対戦を選んでね。"}</p>
+                <p>{pendingBoardMode === "event" && eventThemeForMonth(pendingEventMonth ?? 0) ? `${pendingEventMonth}月のEVENT盤で遊ぶ相手を選んでね。` : "AIパートナーとのコピー対戦か、同じ端末を使うふたり対戦を選んでね。"}</p>
               </div>
               <div className="setup-panel">
                 {pendingBoardMode === "event" && eventThemeForMonth(pendingEventMonth ?? 0) && <div className="event-setup-banner"><span>{eventThemeForMonth(pendingEventMonth ?? 0)!.icon}</span><div><small>MONTHLY EVENT</small><strong>{pendingEventMonth}月｜{eventThemeForMonth(pendingEventMonth ?? 0)!.label}</strong><p>盤面の約8割が今月テーマの札。残りは通常札から混ざるよ。</p></div></div>}
