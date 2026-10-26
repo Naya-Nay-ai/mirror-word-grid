@@ -184,7 +184,8 @@ export function isEventThemeAvailable(themeOrMonth: EventTheme | number, date = 
 
 export function availableEventThemes(date = new Date()) {
   return Object.values(EVENT_THEMES)
-    .filter((theme): theme is EventTheme => Boolean(theme) && isEventThemeAvailable(theme, date))
+    .filter((theme): theme is EventTheme => theme !== undefined)
+    .filter((theme) => isEventThemeAvailable(theme, date))
     .sort((a, b) => a.availableFrom.localeCompare(b.availableFrom));
 }
 
@@ -200,7 +201,8 @@ export function archivedEventThemes(date = new Date()) {
 
 export function upcomingEventThemes(date = new Date()) {
   return Object.values(EVENT_THEMES)
-    .filter((theme): theme is EventTheme => Boolean(theme) && !isEventThemeAvailable(theme, date))
+    .filter((theme): theme is EventTheme => theme !== undefined)
+    .filter((theme) => !isEventThemeAvailable(theme, date))
     .sort((a, b) => a.availableFrom.localeCompare(b.availableFrom));
 }
 
