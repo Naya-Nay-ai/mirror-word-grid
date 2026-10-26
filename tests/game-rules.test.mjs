@@ -122,11 +122,11 @@ test("partner replies accept either one copied machine line or exactly one stand
   assert.equal(parseMachineReply("判定:受理｜コード:MWG-ABCDE").ok, false);
 });
 
-test("panel dictionary keeps 112 unique, simple emoji cards with editable reading arrays", () => {
+test("panel dictionary keeps 123 unique, simple emoji cards with editable reading arrays", () => {
   const segmenter = new Intl.Segmenter("ja", { granularity: "grapheme" });
-  assert.equal(PANELS.length, 112);
-  assert.equal(new Set(PANELS.map((panel) => panel.id)).size, 112);
-  assert.equal(new Set(PANELS.map((panel) => panel.icon)).size, 112);
+  assert.equal(PANELS.length, 123);
+  assert.equal(new Set(PANELS.map((panel) => panel.id)).size, 123);
+  assert.equal(new Set(PANELS.map((panel) => panel.icon)).size, 123);
   assert.equal(PANELS.some((panel) => panel.icon.includes("\u200d")), false);
   assert.equal(PANELS.every((panel) => [...segmenter.segment(panel.icon)].length === 1), true);
   assert.equal(PANELS.every((panel) => panel.readings.length > 0), true);
@@ -148,6 +148,29 @@ test("shared seasonal additions keep their reviewed emoji and preset readings", 
     assert.equal(panel?.icon, icon);
     assert.deepEqual(panel?.readings, readings);
   }
+});
+
+test("November additions keep their reviewed emoji and safe preset readings", () => {
+  const expected = {
+    chestnut: ["🌰", ["くり", "あまぐり", "わぐり", "チェスナット"]],
+    "sweet-potato": ["🍠", ["やきいも", "さつまいも", "スイートポテト"]],
+    grapes: ["🍇", ["ぶどう", "グレープ"]],
+    pear: ["🍐", ["ようなし", "ペア"]],
+    peanut: ["🥜", ["らっかせい", "ピーナッツ"]],
+    "rice-ear": ["🌾", ["いなほ", "いね"]],
+    squirrel: ["🐿️", ["りす", "シマリス"]],
+    scarf: ["🧣", ["マフラー", "えりまき"]],
+    boots: ["🥾", ["ブーツ", "ハイキングブーツ"]],
+    gloves: ["🧤", ["てぶくろ"]],
+    couple: ["💑", ["カップル", "こいびと", "ふうふ", "ふたり"]],
+  };
+  for (const [id, [icon, readings]] of Object.entries(expected)) {
+    const panel = PANELS.find((item) => item.id === id);
+    assert.equal(panel?.icon, icon);
+    assert.deepEqual(panel?.readings, readings);
+  }
+  assert.deepEqual(PANELS.find((panel) => panel.id === "maple-leaf")?.readings, ["もみじ", "こうよう", "メープル", "かえで"]);
+  assert.equal(PANELS.flatMap((panel) => panel.readings.map(presetReadingValue)).some((reading) => /[んン]$/u.test(reading)), false);
 });
 
 test("display labels and game readings stay separate for kanji presets", () => {
