@@ -100,7 +100,7 @@ export const PANELS: Panel[] = [
   { id: "skull", icon: "💀", name: "どくろ", category: "物", readings: ["どくろ", "がいこつ", "スカル", "ずがいこつ", "しゃれこうべ"], visualDescription: "頭蓋骨を表す絵文字" },
   { id: "skull-crossbones", icon: "☠️", name: "どくろマーク", category: "記号", readings: ["どくろマーク", "スカル", "きけんマーク"], visualDescription: "頭蓋骨と交差した骨の記号" },
   { id: "coffin", icon: "⚰️", name: "ひつぎ", category: "物", readings: ["ひつぎ", "かんおけ"], visualDescription: "ふたの閉じた棺の絵文字" },
-  { id: "headstone", icon: "🪦", name: "はか", category: "物", readings: ["はか", "はかいし", "ぼせき", "グレイブ"], visualDescription: "地面に立つ墓石の絵文字" },
+  { id: "headstone", icon: "⚱️", name: "骨壺", category: "物", readings: ["こつつぼ", "つぼ"], visualDescription: "ふた付きの骨壺を表す絵文字" },
   { id: "crystal-ball", icon: "🔮", name: "水晶玉", category: "空想", readings: ["すいしょうだま", "クリスタルボール", "うらない"], visualDescription: "台座に置かれた水晶玉の絵文字" },
   { id: "broom", icon: "🧹", name: "ほうき", category: "日用品", readings: ["ほうき", "ブルーム", "そうじどうぐ"], visualDescription: "柄の長いほうきの絵文字" },
   { id: "magic-wand", icon: "🪄", name: "魔法の杖", category: "空想", readings: ["まほうのつえ", "つえ", "ワンド"], visualDescription: "光を放つ魔法の杖の絵文字" },
