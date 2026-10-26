@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import type { Player } from "./game-rules";
-import { currentTokyoMonth, eventThemeForMonth, type BoardMode } from "./board-generator";
+import { currentTokyoMonth, eventThemeForMonth, isEventThemeAvailable, type BoardMode } from "./board-generator";
 import {
   applyRoomAction,
   createOnlineGame,
@@ -73,9 +73,11 @@ export async function createRoom(input: unknown, now = new Date()): Promise<Crea
   const boardSize = normalizeBoardSize(source.boardSize);
   const objectionLimit = normalizeObjectionLimit(source.objectionLimit, boardSize);
   const boardMode: BoardMode = source.boardMode === "event" ? "event" : "normal";
-  const eventMonth = boardMode === "event" ? currentTokyoMonth(now) : undefined;
-  if (boardMode === "event" && !eventThemeForMonth(eventMonth!)) {
-    throw new OnlineGameError("event_unavailable", "今月のEVENTはまだ準備中です。通常戦で遊んでね。", 409);
+  const requestedEventMonth = Number.isInteger(source.eventMonth) ? Number(source.eventMonth) : currentTokyoMonth(now);
+  const eventMonth = boardMode === "event" ? requestedEventMonth : undefined;
+  const eventTheme = eventMonth ? eventThemeForMonth(eventMonth) : null;
+  if (boardMode === "event" && (!eventTheme || !isEventThemeAvailable(eventTheme, now))) {
+    throw new OnlineGameError("event_unavailable", "そのEVENTはまだ解放されていません。現在開催中かアーカイブ済みのEVENTを選んでね。", 409);
   }
   const startingPlayer: Player = source.startingPlayer === "O" || source.startingPlayer === "X"
     ? source.startingPlayer
