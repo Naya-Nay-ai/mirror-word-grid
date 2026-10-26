@@ -9,6 +9,7 @@ export type EventTheme = {
   icon: string;
   panelIds: readonly string[];
   seasonalRatio: number;
+  availableFrom: string;
 };
 
 const NORMAL_SPINES = [
@@ -64,6 +65,42 @@ const HALLOWEEN_PANEL_IDS = [
   "fairy",
 ] as const;
 
+const NOVEMBER_PANEL_IDS = [
+  "fallen-leaf",
+  "maple-leaf",
+  "mushroom",
+  "deer",
+  "fox-mask",
+  "rabbit",
+  "owl",
+  "wolf",
+  "bird",
+  "apple",
+  "corn",
+  "pie",
+  "cookie",
+  "cupcake",
+  "pancake",
+  "bread",
+  "moon-coffee",
+  "teapot",
+  "candle",
+  "moon",
+  "full-moon",
+  "star-bottle",
+  "book",
+  "chair",
+  "camera",
+  "hat",
+  "shoe",
+  "dog",
+  "box-cat",
+  "plush",
+  "compass",
+  "lantern",
+  "fire",
+] as const;
+
 const EVENT_THEMES: Partial<Record<number, EventTheme>> = {
   10: {
     month: 10,
@@ -71,6 +108,15 @@ const EVENT_THEMES: Partial<Record<number, EventTheme>> = {
     icon: "🎃",
     panelIds: HALLOWEEN_PANEL_IDS,
     seasonalRatio: 0.8,
+    availableFrom: "2026-10-01",
+  },
+  11: {
+    month: 11,
+    label: "紅葉",
+    icon: "🍁",
+    panelIds: NOVEMBER_PANEL_IDS,
+    seasonalRatio: 0.8,
+    availableFrom: "2026-11-01",
   },
 };
 
@@ -118,6 +164,44 @@ export function currentTokyoMonth(date = new Date()) {
     month: "numeric",
     timeZone: "Asia/Tokyo",
   }).format(date));
+}
+
+function tokyoDateKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "Asia/Tokyo",
+  }).formatToParts(date);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
+export function isEventThemeAvailable(themeOrMonth: EventTheme | number, date = new Date()) {
+  const theme = typeof themeOrMonth === "number" ? eventThemeForMonth(themeOrMonth) : themeOrMonth;
+  return Boolean(theme && theme.availableFrom <= tokyoDateKey(date));
+}
+
+export function availableEventThemes(date = new Date()) {
+  return Object.values(EVENT_THEMES)
+    .filter((theme): theme is EventTheme => Boolean(theme) && isEventThemeAvailable(theme, date))
+    .sort((a, b) => a.availableFrom.localeCompare(b.availableFrom));
+}
+
+export function currentEventTheme(date = new Date()) {
+  const theme = eventThemeForMonth(currentTokyoMonth(date));
+  return theme && isEventThemeAvailable(theme, date) ? theme : null;
+}
+
+export function archivedEventThemes(date = new Date()) {
+  const current = currentEventTheme(date);
+  return availableEventThemes(date).filter((theme) => theme.month !== current?.month);
+}
+
+export function upcomingEventThemes(date = new Date()) {
+  return Object.values(EVENT_THEMES)
+    .filter((theme): theme is EventTheme => Boolean(theme) && !isEventThemeAvailable(theme, date))
+    .sort((a, b) => a.availableFrom.localeCompare(b.availableFrom));
 }
 
 export function eventThemeForMonth(month: number) {
