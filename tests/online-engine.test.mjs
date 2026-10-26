@@ -122,30 +122,41 @@ test("online board generation is deterministic and coordinate parsing respects b
   assert.equal(indexForCoordinate("E5", 4), -1);
 });
 
-test("October EVENT remains available in the archive after its month ends", () => {
+test("October archives when the November 紅葉盤 unlocks", () => {
   const october = eventThemeForMonth(10);
+  const november = eventThemeForMonth(11);
   const octoberIds = new Set(october.panelIds);
+  const novemberIds = new Set(november.panelIds);
   const octoberEnd = new Date("2026-10-31T14:59:59.000Z");
   const novemberStart = new Date("2026-10-31T15:00:00.000Z");
 
-  assert.equal(october.label, "ハロウィン");
+  assert.equal(october.label, "ハロウィン盤");
   assert.equal(october.icon, "🎃");
+  assert.equal(november.label, "紅葉盤");
+  assert.equal(november.icon, "🍁");
+  assert.equal(november.panelIds.length, 23);
   assert.equal(currentTokyoMonth(octoberEnd), 10);
   assert.equal(currentTokyoMonth(novemberStart), 11);
   assert.equal(currentEventTheme(octoberEnd)?.month, 10);
-  assert.equal(currentEventTheme(novemberStart), null);
-  assert.deepEqual(availableEventThemes(novemberStart).map((theme) => theme.month), [10]);
+  assert.equal(currentEventTheme(novemberStart)?.month, 11);
+  assert.deepEqual(availableEventThemes(octoberEnd).map((theme) => theme.month), [10]);
+  assert.deepEqual(upcomingEventThemes(octoberEnd).map((theme) => theme.month), [11]);
+  assert.deepEqual(availableEventThemes(novemberStart).map((theme) => theme.month), [10, 11]);
   assert.deepEqual(archivedEventThemes(novemberStart).map((theme) => theme.month), [10]);
   assert.deepEqual(upcomingEventThemes(novemberStart).map((theme) => theme.month), []);
 
   const october4a = createOnlineGame(202610, 4, "O", 3, "EVENT-A", "event", 10);
   const october4b = createOnlineGame(202610, 4, "O", 3, "EVENT-B", "event", 10);
   const october5 = makeBoard(202610, 5, "event", 10).board;
+  const november4 = createOnlineGame(202611, 4, "O", 3, "EVENT-NOV", "event", 11);
+  const november5 = makeBoard(202611, 5, "event", 11).board;
 
   assert.deepEqual(october4a.board.map((panel) => panel.id), october4b.board.map((panel) => panel.id));
   assert.equal(october4a.board.filter((panel) => octoberIds.has(panel.id)).length, 13);
   assert.equal(october5.filter((panel) => octoberIds.has(panel.id)).length, 20);
-  assert.equal(makeBoard(202610, 4, "normal", 10).eventTheme, null);
+  assert.equal(november4.board.filter((panel) => novemberIds.has(panel.id)).length, 13);
+  assert.equal(november5.filter((panel) => novemberIds.has(panel.id)).length, 20);
+  assert.equal(makeBoard(202611, 4, "normal", 11).eventTheme, null);
 });
 
 test("a formal reading is accepted by the server without an opponent judgement", () => {
