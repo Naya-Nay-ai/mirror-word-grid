@@ -11,7 +11,7 @@ import {
   profileLabel,
 } from "../app/online-engine.ts";
 import { parseAiJudgeReply, parseAiTurnReply } from "../app/online-prompts.ts";
-import { currentTokyoMonth, eventThemeForMonth, makeBoard } from "../app/board-generator.ts";
+import { archivedEventThemes, availableEventThemes, currentEventTheme, currentTokyoMonth, eventThemeForMonth, isEventThemeAvailable, makeBoard, upcomingEventThemes } from "../app/board-generator.ts";
 
 function roomWith(options = {}) {
   const game = createOnlineGame(407, 4, "O", 3, "MWG-FIRST");
@@ -122,28 +122,46 @@ test("online board generation is deterministic and coordinate parsing respects b
   assert.equal(indexForCoordinate("E5", 4), -1);
 });
 
-test("online EVENT boards keep the October ratio, JST month, and deterministic seed", () => {
-  const theme = eventThemeForMonth(10);
-  const themedIds = new Set(theme.panelIds);
-  const first = createOnlineGame(202610, 4, "O", 3, "EVENT-A", "event", 10);
-  const second = createOnlineGame(202610, 4, "O", 3, "EVENT-B", "event", 10);
-  const event5 = makeBoard(202610, 5, "event", 10).board;
+test("EVENT themes unlock on JST dates, archive old months, and keep deterministic ratios", () => {
+  const october = eventThemeForMonth(10);
+  const november = eventThemeForMonth(11);
+  const octoberIds = new Set(october.panelIds);
+  const novemberIds = new Set(november.panelIds);
+  const beforeNovember = new Date("2026-10-31T14:59:59.000Z");
+  const novemberStart = new Date("2026-10-31T15:00:00.000Z");
 
-  assert.equal(theme.label, "ハロウィン");
-  assert.equal(theme.icon, "🎃");
-  assert.equal(eventThemeForMonth(11), null);
-  assert.equal(currentTokyoMonth(new Date("2026-09-30T15:30:00.000Z")), 10);
-  assert.equal(theme.panelIds.includes("gift-ghost"), true);
-  assert.equal(theme.panelIds.includes("pumpkin"), true);
+  assert.equal(october.label, "ハロウィン");
+  assert.equal(october.icon, "🎃");
+  assert.equal(november.label, "紅葉");
+  assert.equal(november.icon, "🍁");
+  assert.equal(currentTokyoMonth(beforeNovember), 10);
+  assert.equal(currentTokyoMonth(novemberStart), 11);
+  assert.equal(isEventThemeAvailable(11, beforeNovember), false);
+  assert.equal(isEventThemeAvailable(11, novemberStart), true);
+  assert.equal(currentEventTheme(beforeNovember)?.month, 10);
+  assert.equal(currentEventTheme(novemberStart)?.month, 11);
+  assert.deepEqual(availableEventThemes(beforeNovember).map((theme) => theme.month), [10]);
+  assert.deepEqual(upcomingEventThemes(beforeNovember).map((theme) => theme.month), [11]);
+  assert.deepEqual(archivedEventThemes(beforeNovember).map((theme) => theme.month), []);
+  assert.deepEqual(availableEventThemes(novemberStart).map((theme) => theme.month), [10, 11]);
+  assert.deepEqual(archivedEventThemes(novemberStart).map((theme) => theme.month), [10]);
 
-  assert.deepEqual(first.board.map((panel) => panel.id), second.board.map((panel) => panel.id));
-  assert.equal(first.board.length, 16);
-  assert.equal(new Set(first.board.map((panel) => panel.id)).size, 16);
-  assert.equal(first.board.filter((panel) => themedIds.has(panel.id)).length, 13);
-  assert.equal(event5.length, 25);
-  assert.equal(new Set(event5.map((panel) => panel.id)).size, 25);
-  assert.equal(event5.filter((panel) => themedIds.has(panel.id)).length, 20);
-  assert.equal(makeBoard(202610, 4, "normal", 10).eventTheme, null);
+  const october4a = createOnlineGame(202610, 4, "O", 3, "EVENT-A", "event", 10);
+  const october4b = createOnlineGame(202610, 4, "O", 3, "EVENT-B", "event", 10);
+  const november4 = createOnlineGame(202611, 4, "O", 3, "EVENT-NOV", "event", 11);
+  const november5 = makeBoard(202611, 5, "event", 11).board;
+
+  assert.deepEqual(october4a.board.map((panel) => panel.id), october4b.board.map((panel) => panel.id));
+  assert.equal(october4a.board.filter((panel) => octoberIds.has(panel.id)).length, 13);
+  assert.equal(november4.board.length, 16);
+  assert.equal(new Set(november4.board.map((panel) => panel.id)).size, 16);
+  assert.equal(november4.board.filter((panel) => novemberIds.has(panel.id)).length, 13);
+  assert.equal(november5.length, 25);
+  assert.equal(new Set(november5.map((panel) => panel.id)).size, 25);
+  assert.equal(november5.filter((panel) => novemberIds.has(panel.id)).length, 20);
+  assert.equal(november.panelIds.includes("fallen-leaf"), true);
+  assert.equal(november.panelIds.includes("maple-leaf"), true);
+  assert.equal(makeBoard(202611, 4, "normal", 11).eventTheme, null);
 });
 
 test("a formal reading is accepted by the server without an opponent judgement", () => {
