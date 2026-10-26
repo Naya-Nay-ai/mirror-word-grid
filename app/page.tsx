@@ -1953,7 +1953,7 @@ export default function Home() {
             <ol><li><b>1</b><span>今の文字から読める絵文字を選ぶ</span></li><li><b>2</b><span>正式プリセット、または理由つきの自由読みを宣言</span></li><li><b>3</b><span>成立した読みの最後の文字を次へつなぐ。「ん」で終わればその場で負け</span></li><li><b>4</b><span>先に自分の色を一列そろえたら勝ち</span></li><li><b>5</b><span>双方とも列を完成できなくなった時点で引き分け</span></li></ol>
             <p>成立している自由読みは受理か異議。同じ空きマスへ双方が異議を使うと⚡争奪中になり、そのマスへの異議は使えなくなるよ。最後の1マスなら引き分け。札とのつながりがかなり遠い読みは理由つきで不成立にでき、現在文字違い・「ん」終わり・選択不可などの機械ルールも通常どおり有効だよ。</p>
           </details>
-          <section className="prototype-note"><span>PROTOTYPE 02</span><p>共通性の高い絵文字112枚入り。正式プリセットは札ごとに必要な数だけ登録できるよ。</p></section>
+          <section className="prototype-note"><span>PROTOTYPE 02</span><p>共通性の高い絵文字123枚入り。正式プリセットは札ごとに必要な数だけ登録できるよ。</p></section>
         </aside>
       </div>
       <footer><b>MIRROR WORD GRID</b><span>ことばは、絵の中にひとつじゃない。</span></footer>
