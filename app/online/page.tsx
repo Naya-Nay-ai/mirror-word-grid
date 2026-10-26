@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import type { BoardSize, Player } from "../game-rules";
-import { currentTokyoMonth, eventThemeForMonth, type BoardMode } from "../board-generator";
+import { availableEventThemes, currentEventTheme, eventThemeForMonth, upcomingEventThemes, type BoardMode } from "../board-generator";
 import type { ControllerKind, CreateRoomResponse, RoomView } from "../online-types";
 import {
   removeRoomCredential,
@@ -33,6 +33,7 @@ export default function OnlineLobby() {
   const [matchMode, setMatchMode] = useState<MatchMode>("ai");
   const [boardSize, setBoardSize] = useState<BoardSize>(4);
   const [boardMode, setBoardMode] = useState<BoardMode>("normal");
+  const [eventMonth, setEventMonth] = useState<number | undefined>(() => currentEventTheme()?.month);
   const [startingPlayer, setStartingPlayer] = useState<Player | "random">("random");
   const [setupStep, setSetupStep] = useState<SetupStep>(1);
   const [guideOpen, setGuideOpen] = useState(false);
@@ -42,7 +43,10 @@ export default function OnlineLobby() {
   const aiAssisted = matchMode !== "human";
   const controller: ControllerKind = aiAssisted ? "ai" : "human";
   const teamMode = matchMode === "team";
-  const currentEventTheme = eventThemeForMonth(currentTokyoMonth());
+  const activeEventTheme = currentEventTheme();
+  const availableEvents = availableEventThemes();
+  const upcomingEvents = upcomingEventThemes();
+  const selectedEventTheme = eventThemeForMonth(eventMonth ?? 0);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,6 +125,7 @@ export default function OnlineLobby() {
           profile: { playerName, partnerName: aiAssisted ? partnerName : "", controller },
           boardSize,
           boardMode,
+          eventMonth: boardMode === "event" ? eventMonth : undefined,
           startingPlayer,
           teamMode,
         }),
@@ -228,10 +233,21 @@ export default function OnlineLobby() {
               <span>盤面タイプ</span>
               <div className={styles.segmented}>
                 <button type="button" className={boardMode === "normal" ? styles.activeSegment : ""} onClick={() => setBoardMode("normal")}>通常</button>
-                {currentEventTheme && <button type="button" className={boardMode === "event" ? styles.activeSegment : ""} onClick={() => setBoardMode("event")}>{currentEventTheme.icon} EVENT</button>}
+                {availableEvents.length > 0 && <button type="button" className={boardMode === "event" ? styles.activeSegment : ""} onClick={() => { setBoardMode("event"); setEventMonth((month) => month ?? activeEventTheme?.month ?? availableEvents.at(-1)?.month); }}>{activeEventTheme?.icon ?? "✦"} EVENT</button>}
               </div>
             </div>
-            {boardMode === "event" && currentEventTheme && <p className={styles.eventModeNote}>{currentEventTheme.icon} {currentEventTheme.month}月EVENT「{currentEventTheme.label}」：盤面の約8割が今月テーマの札になります。</p>}
+            {boardMode === "event" && availableEvents.length > 0 && (
+              <>
+                <div className={styles.settingRow}>
+                  <span>EVENT</span>
+                  <div className={styles.eventChoiceList}>
+                    {[...availableEvents].reverse().map((theme) => <button key={theme.month} type="button" className={eventMonth === theme.month ? styles.activeEventChoice : ""} onClick={() => setEventMonth(theme.month)}><span>{theme.icon}</span><b>{theme.month}月</b><small>{theme.label}{activeEventTheme?.month === theme.month ? "・開催中" : "・ARCHIVE"}</small></button>)}
+                  </div>
+                </div>
+                {selectedEventTheme && <p className={styles.eventModeNote}>{selectedEventTheme.icon} {selectedEventTheme.month}月EVENT「{selectedEventTheme.label}」：盤面の約8割がテーマ札、残りは通常札から混ざります。</p>}
+              </>
+            )}
+            {upcomingEvents.length > 0 && <p className={styles.upcomingEventNote}>🔒 NEXT：{upcomingEvents[0].icon} {upcomingEvents[0].month}月「{upcomingEvents[0].label}」は {upcomingEvents[0].availableFrom.replaceAll("-", "/")} 解放</p>}
             <div className={styles.settingRow}>
               <span>先攻</span>
               <div className={styles.segmented}>
