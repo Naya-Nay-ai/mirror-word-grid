@@ -663,7 +663,7 @@ footer b { color: var(--purple); }
 .share-ai-data { margin-top: 18px; }.share-ai-data pre { max-height: 360px; padding: 12px; overflow: auto; border-radius: 12px; background: #27223c; color: white; font-size: 12px; white-space: pre-wrap; }
 
 @media (min-width: 801px) {
-  .start-card.view-mode { overflow-y: auto; scrollbar-gutter: stable; }
+  .start-card.view-mode, .start-card.view-title { overflow-y: auto; scrollbar-gutter: stable; overscroll-behavior: contain; }
   .view-mode .setup-content { padding-block: 12px; }
   .view-mode .setup-panel .mode-cards { margin-bottom: 10px; }
   .view-mode .setup-panel .mode-cards button { min-height: 84px; }
