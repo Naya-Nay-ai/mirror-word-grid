@@ -103,7 +103,7 @@ export const PANELS: Panel[] = [
   { id: "headstone", icon: "⚱️", name: "骨壺", category: "物", readings: ["こつつぼ", "つぼ"], visualDescription: "ふた付きの骨壺を表す絵文字" },
   { id: "crystal-ball", icon: "🔮", name: "水晶玉", category: "空想", readings: ["すいしょうだま", "クリスタルボール", "うらない"], visualDescription: "台座に置かれた水晶玉の絵文字" },
   { id: "broom", icon: "🧹", name: "ほうき", category: "日用品", readings: ["ほうき", "ブルーム", "そうじどうぐ"], visualDescription: "柄の長いほうきの絵文字" },
-  { id: "magic-wand", icon: "🪄", name: "魔法の杖", category: "空想", readings: ["まほうのつえ", "つえ", "ワンド"], visualDescription: "光を放つ魔法の杖の絵文字" },
+  { id: "magic-wand", icon: "✨", name: "魔法", category: "空想", readings: ["まほう", "きらめき", "スパークル"], visualDescription: "きらきら光る魔法を表す絵文字" },
   { id: "alembic", icon: "⚗️", name: "蒸留器", category: "道具", readings: ["じょうりゅうき", "フラスコ"], visualDescription: "実験に使う蒸留器の絵文字" },
   { id: "owl", icon: "🦉", name: "ふくろう", category: "動物", readings: ["ふくろう", "みみずく", "オウル"], visualDescription: "正面を向いたふくろうの絵文字" },
   { id: "wolf", icon: "🐺", name: "おおかみ", category: "動物", readings: ["おおかみ", "ウルフ"], visualDescription: "おおかみの顔の絵文字" },
