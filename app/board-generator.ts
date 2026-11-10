@@ -91,6 +91,56 @@ const NOVEMBER_PANEL_IDS = [
   "couple",
 ] as const;
 
+const DECEMBER_PANEL_IDS = [
+  "christmas-tree",
+  "snowman",
+  "snow",
+  "deer",
+  "bell",
+  "candle",
+  "star-bottle",
+  "cake",
+  "cookie",
+  "cupcake",
+  "moon-coffee",
+  "fire",
+  "scarf",
+  "gloves",
+  "boots",
+  "candy",
+  "lollipop",
+  "pie",
+  "couple",
+  "ring",
+  "present",
+  "santa",
+] as const;
+
+const JANUARY_PANEL_IDS = [
+  "kadomatsu",
+  "first-sunrise",
+  "shrine",
+  "mount-fuji",
+  "sake",
+  "osechi",
+  "ozoni",
+  "shrimp-tempura",
+  "sheep",
+  "otoshidama",
+  "watermelon",
+  "flying-fish",
+  "turtle",
+  "rice-ear",
+  "bell",
+  "fire",
+  "snow",
+  "snowman",
+  "scarf",
+  "gloves",
+  "moon-coffee",
+  "camera",
+] as const;
+
 const EVENT_THEMES: Partial<Record<number, EventTheme>> = {
   10: {
     month: 10,
@@ -107,6 +157,22 @@ const EVENT_THEMES: Partial<Record<number, EventTheme>> = {
     panelIds: NOVEMBER_PANEL_IDS,
     seasonalRatio: 0.8,
     availableFrom: "2026-11-01",
+  },
+  12: {
+    month: 12,
+    label: "クリスマス盤",
+    icon: "🎄",
+    panelIds: DECEMBER_PANEL_IDS,
+    seasonalRatio: 0.8,
+    availableFrom: "2026-12-01",
+  },
+  1: {
+    month: 1,
+    label: "お正月盤",
+    icon: "🎍",
+    panelIds: JANUARY_PANEL_IDS,
+    seasonalRatio: 0.8,
+    availableFrom: "2027-01-01",
   },
 };
 

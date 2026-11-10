@@ -134,5 +134,17 @@ export const PANELS: Panel[] = [
   { id: "boots", icon: "🥾", name: "ブーツ", category: "衣類", readings: ["ブーツ", "ハイキングブーツ"], visualDescription: "ひも付きの丈があるブーツの絵文字" },
   { id: "gloves", icon: "🧤", name: "てぶくろ", category: "衣類", readings: ["てぶくろ"], visualDescription: "一組の手袋の絵文字" },
   { id: "couple", icon: "💑", name: "カップル", category: "人物", readings: ["カップル", "こいびと", "ふうふ", "ふたり"], visualDescription: "二人の間にハートがあるカップルの絵文字" },
+  { id: "present", icon: "🎁", name: "プレゼント", category: "物", readings: ["プレゼント", "ギフト", "おくりもの"], visualDescription: "リボンをかけた贈り物の箱の絵文字" },
+  { id: "santa", icon: "🎅", name: "サンタ", category: "人物", readings: ["サンタ", "サンタクロース"], visualDescription: "赤い帽子と白いひげのサンタクロースの絵文字" },
+  { id: "kadomatsu", icon: "🎍", name: "かどまつ", category: "季節", readings: ["かどまつ", "しょうがつかざり", "まつかざり"], visualDescription: "竹と松を使った正月飾りの絵文字" },
+  { id: "first-sunrise", icon: "🌅", name: "初日の出", category: "自然", readings: [{ display: "初日の出", reading: "はつひので" }, "ひので", "あさひ"], visualDescription: "地平線から昇る朝日の絵文字" },
+  { id: "shrine", icon: "⛩️", name: "神社", category: "場所", readings: [{ display: "神社", reading: "じんじゃ" }, "とりい", "はつもうで"], visualDescription: "神社の鳥居を表す絵文字" },
+  { id: "mount-fuji", icon: "🗻", name: "富士山", category: "場所", readings: [{ display: "富士山", reading: "ふじやま" }, "ふじ", "やま"], visualDescription: "雪を頂いた富士山の絵文字" },
+  { id: "sake", icon: "🍶", name: "日本酒", category: "飲み物", readings: ["さけ", "おさけ", "にほんしゅ"], visualDescription: "徳利とおちょこの日本酒の絵文字" },
+  { id: "osechi", icon: "🍱", name: "おせち", category: "食べ物", readings: ["おせち", "じゅうばこ", "べんとう"], visualDescription: "仕切りのある重箱風の弁当の絵文字" },
+  { id: "ozoni", icon: "🍲", name: "お雑煮", category: "食べ物", readings: [{ display: "お雑煮", reading: "おぞうに" }, "ぞうに", "なべ", "にもの"], visualDescription: "具の入った温かい鍋料理の絵文字" },
+  { id: "shrimp-tempura", icon: "🍤", name: "えび", category: "食べ物", readings: ["えび", "てんぷら", "フライ"], visualDescription: "衣をつけて揚げたえびの絵文字" },
+  { id: "sheep", icon: "🐑", name: "ひつじ", category: "動物", readings: ["ひつじ", "シープ", "めえめえ"], visualDescription: "白い毛のひつじの絵文字" },
+  { id: "otoshidama", icon: "💴", name: "おとしだま", category: "物", readings: ["おとしだま", "おかね", "おさつ", "マネー"], visualDescription: "日本円の紙幣を表す絵文字" },
 
 ];
