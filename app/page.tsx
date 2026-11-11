@@ -1385,7 +1385,7 @@ export default function Home() {
                 <p>絵からことばを見つけて、しりとりで陣地をつなごう。先に一列そろえた側の勝ち！</p>
                 <div className="title-actions">
                   <button className="start-button title-start-button" type="button" onClick={() => { setPendingBoardMode("normal"); setPendingEventMonth(undefined); setView("mode"); }}><span>通常戦をはじめる</span><b>→</b></button>
-                  {activeEventTheme && <button className="event-title-button" type="button" onClick={() => { setPendingBoardMode("event"); setPendingEventMonth(activeEventTheme.month); setView("mode"); }}><span><strong>{activeEventTheme.icon} {activeEventTheme.month}月 EVENT</strong><small>{activeEventTheme.label}盤であそぶ</small></span><b>→</b></button>}
+                  {activeEventTheme && <button className={`event-title-button event-month-${activeEventTheme.month}`} type="button" onClick={() => { setPendingBoardMode("event"); setPendingEventMonth(activeEventTheme.month); setView("mode"); }}><span><strong>{activeEventTheme.icon} {activeEventTheme.month}月 EVENT</strong><small>{activeEventTheme.label}であそぶ</small></span><b>→</b></button>}
                   <button className="tutorial-button" type="button" onClick={openTutorial}><span>🧸</span> しゅ＆みうと練習する</button>
                   {(archivedEvents.length > 0 || upcomingEvents.length > 0) && <details className="event-archive">
                     <summary><span>EVENT ARCHIVE</span><strong>過去イベント・開催予定</strong><b>＋</b></summary>
