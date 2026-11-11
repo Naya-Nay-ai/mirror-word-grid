@@ -193,6 +193,8 @@ test("December and January additions keep reviewed emoji and safe preset reading
     assert.equal(panel?.icon, icon);
     assert.deepEqual(panel?.readings, readings);
   }
+  assert.equal(PANELS.find((panel) => panel.id === "deer")?.readings.map(presetReadingValue).includes("トナカイ"), true);
+  assert.equal(PANELS.find((panel) => panel.id === "snow")?.readings.map(presetReadingValue).includes("ホワイトクリスマス"), true);
   assert.equal(PANELS.flatMap((panel) => panel.readings.map(presetReadingValue)).some((reading) => /[んン]$/u.test(reading)), false);
 });
 
