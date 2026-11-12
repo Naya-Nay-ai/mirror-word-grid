@@ -122,11 +122,11 @@ test("partner replies accept either one copied machine line or exactly one stand
   assert.equal(parseMachineReply("判定:受理｜コード:MWG-ABCDE").ok, false);
 });
 
-test("panel dictionary keeps 135 unique, simple emoji cards with editable reading arrays", () => {
+test("panel dictionary keeps 137 unique, simple emoji cards with editable reading arrays", () => {
   const segmenter = new Intl.Segmenter("ja", { granularity: "grapheme" });
-  assert.equal(PANELS.length, 135);
-  assert.equal(new Set(PANELS.map((panel) => panel.id)).size, 135);
-  assert.equal(new Set(PANELS.map((panel) => panel.icon)).size, 135);
+  assert.equal(PANELS.length, 137);
+  assert.equal(new Set(PANELS.map((panel) => panel.id)).size, 137);
+  assert.equal(new Set(PANELS.map((panel) => panel.icon)).size, 137);
   assert.equal(PANELS.some((panel) => panel.icon.includes("\u200d")), false);
   assert.equal(PANELS.every((panel) => [...segmenter.segment(panel.icon)].length === 1), true);
   assert.equal(PANELS.every((panel) => panel.readings.length > 0), true);
@@ -187,14 +187,16 @@ test("December and January additions keep reviewed emoji and safe preset reading
     "shrimp-tempura": ["🍤", ["えび", "てんぷら", "フライ"]],
     sheep: ["🐑", ["ひつじ", "シープ", "めえめえ"]],
     otoshidama: ["🧧", ["おとしだま", "ぽちぶくろ", "おかね", "おいわい"]],
+    kimono: ["👘", ["きもの", "わふく", "はれぎ"]],
+    eagle: ["🦅", ["わし", "イーグル", { display: "猛禽類", reading: "もうきんるい" }]],
   };
   for (const [id, [icon, readings]] of Object.entries(expected)) {
     const panel = PANELS.find((item) => item.id === id);
     assert.equal(panel?.icon, icon);
     assert.deepEqual(panel?.readings, readings);
   }
-  assert.equal(PANELS.find((panel) => panel.id === "deer")?.readings.map(presetReadingValue).includes("トナカイ"), true);
-  assert.equal(PANELS.find((panel) => panel.id === "snow")?.readings.map(presetReadingValue).includes("ホワイトクリスマス"), true);
+  assert.equal(PANELS.find((panel) => panel.id === "deer")?.readings.map(presetReadingValue).includes("トナカイ"), false);
+  assert.equal(PANELS.find((panel) => panel.id === "snow")?.readings.map(presetReadingValue).includes("ホワイトクリスマス"), false);
   assert.equal(PANELS.flatMap((panel) => panel.readings.map(presetReadingValue)).some((reading) => /[んン]$/u.test(reading)), false);
 });
 

@@ -1,4 +1,4 @@
-import { chooseRandomStart, type BoardSize, type Panel } from "./game-rules";
+import { chooseRandomStart, type BoardSize, type Panel, type PresetReading } from "./game-rules";
 import { PANELS } from "./panel-dictionary";
 
 export type BoardMode = "normal" | "event";
@@ -10,6 +10,7 @@ export type EventTheme = {
   panelIds: readonly string[];
   seasonalRatio: number;
   availableFrom: string;
+  readingOverrides?: Readonly<Record<string, readonly PresetReading[]>>;
 };
 
 const NORMAL_SPINES = [
@@ -127,8 +128,6 @@ const JANUARY_PANEL_IDS = [
   "shrimp-tempura",
   "sheep",
   "otoshidama",
-  "watermelon",
-  "flying-fish",
   "turtle",
   "rice-ear",
   "bell",
@@ -137,8 +136,10 @@ const JANUARY_PANEL_IDS = [
   "snowman",
   "scarf",
   "gloves",
-  "moon-coffee",
-  "camera",
+  "kimono",
+  "eggplant",
+  "pillow",
+  "eagle",
 ] as const;
 
 const EVENT_THEMES: Partial<Record<number, EventTheme>> = {
@@ -165,6 +166,10 @@ const EVENT_THEMES: Partial<Record<number, EventTheme>> = {
     panelIds: DECEMBER_PANEL_IDS,
     seasonalRatio: 0.8,
     availableFrom: "2026-12-01",
+    readingOverrides: {
+      deer: ["トナカイ"],
+      snow: ["ホワイトクリスマス"],
+    },
   },
   1: {
     month: 1,
@@ -173,6 +178,13 @@ const EVENT_THEMES: Partial<Record<number, EventTheme>> = {
     panelIds: JANUARY_PANEL_IDS,
     seasonalRatio: 0.8,
     availableFrom: "2027-01-01",
+    readingOverrides: {
+      sheep: [{ display: "未年", reading: "ひつじどし" }],
+      pillow: [{ display: "初夢", reading: "はつゆめ" }],
+      eagle: [{ display: "鷹", reading: "たか" }],
+      bell: [{ display: "除夜の鐘", reading: "じょやのかね" }],
+      fire: [{ display: "どんど焼き", reading: "どんどやき" }],
+    },
   },
 };
 
@@ -212,7 +224,11 @@ function eventBoard(random: () => number, boardSize: BoardSize, theme: EventThem
   const generalCount = total - eventCount;
   const seasonal = shuffled(eventPool, random).slice(0, eventCount);
   const general = shuffled(generalPool, random).slice(0, generalCount);
-  return shuffled([...seasonal, ...general], random);
+  return shuffled([...seasonal, ...general], random).map((panel) => {
+    const additions = theme.readingOverrides?.[panel.id];
+    if (!additions?.length) return panel;
+    return { ...panel, readings: [...panel.readings, ...additions] };
+  });
 }
 
 export function currentTokyoMonth(date = new Date()) {
