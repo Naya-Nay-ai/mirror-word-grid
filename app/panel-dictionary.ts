@@ -148,5 +148,10 @@ export const PANELS: Panel[] = [
   { id: "otoshidama", icon: "🧧", name: "おとしだま", category: "物", readings: ["おとしだま", "ぽちぶくろ", "おかね", "おいわい"], visualDescription: "お金や祝いを入れて贈る赤い封筒の絵文字" },
   { id: "kimono", icon: "👘", name: "きもの", category: "衣類", readings: ["きもの", "わふく", "はれぎ"], visualDescription: "帯を締めた和服の絵文字" },
   { id: "eagle", icon: "🦅", name: "わし", category: "動物", readings: ["わし", "イーグル", { display: "猛禽類", reading: "もうきんるい" }], visualDescription: "翼を広げた大型の猛禽類の絵文字" },
+  { id: "oni", icon: "👹", name: "おに", category: "空想", readings: ["おに", "あかおに", "オーガ"], visualDescription: "角と牙のある赤い鬼の顔の絵文字" },
+  { id: "chocolate", icon: "🍫", name: "チョコ", category: "食べ物", readings: ["チョコ", "チョコレート", "いたチョコ"], visualDescription: "板状のチョコレートの絵文字" },
+  { id: "heart-gift", icon: "💝", name: "ハートギフト", category: "記号", readings: ["ハート", "ラブ", "ハートギフト", "おくりもの"], visualDescription: "リボンをかけたハートの絵文字" },
+  { id: "love-letter", icon: "💌", name: "ラブレター", category: "物", readings: ["ラブレター", "てがみ", { display: "恋文", reading: "こいぶみ" }], visualDescription: "ハートの印が付いた封筒の絵文字" },
+  { id: "rose", icon: "🌹", name: "ばら", category: "植物", readings: ["ばら", "ローズ", "あかいばら"], visualDescription: "赤い一輪のばらの絵文字" },
 
 ];

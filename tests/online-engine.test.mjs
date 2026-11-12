@@ -122,19 +122,22 @@ test("online board generation is deterministic and coordinate parsing respects b
   assert.equal(indexForCoordinate("E5", 4), -1);
 });
 
-test("monthly events unlock from Halloween through New Year and keep 80 percent themed boards", () => {
+test("monthly events unlock from Halloween through February and keep 80 percent themed boards", () => {
   const october = eventThemeForMonth(10);
   const november = eventThemeForMonth(11);
   const december = eventThemeForMonth(12);
   const january = eventThemeForMonth(1);
+  const february = eventThemeForMonth(2);
   const octoberIds = new Set(october.panelIds);
   const novemberIds = new Set(november.panelIds);
   const decemberIds = new Set(december.panelIds);
   const januaryIds = new Set(january.panelIds);
+  const februaryIds = new Set(february.panelIds);
   const octoberEnd = new Date("2026-10-31T14:59:59.000Z");
   const novemberStart = new Date("2026-10-31T15:00:00.000Z");
   const decemberStart = new Date("2026-11-30T15:00:00.000Z");
   const januaryStart = new Date("2026-12-31T15:00:00.000Z");
+  const februaryStart = new Date("2027-01-31T15:00:00.000Z");
 
   assert.equal(october.label, "ハロウィン盤");
   assert.equal(october.icon, "🎃");
@@ -144,9 +147,12 @@ test("monthly events unlock from Halloween through New Year and keep 80 percent 
   assert.equal(december.icon, "🎄");
   assert.equal(january.label, "お正月盤");
   assert.equal(january.icon, "🎍");
+  assert.equal(february.label, "節分・バレンタイン盤");
+  assert.equal(february.icon, "💝");
   assert.equal(november.panelIds.length, 23);
   assert.equal(december.panelIds.length, 22);
   assert.equal(january.panelIds.length, 22);
+  assert.equal(february.panelIds.length, 22);
   assert.deepEqual(december.readingOverrides, {
     deer: ["トナカイ"],
     snow: ["ホワイトクリスマス"],
@@ -157,6 +163,16 @@ test("monthly events unlock from Halloween through New Year and keep 80 percent 
     eagle: [{ display: "鷹", reading: "たか" }],
     bell: [{ display: "除夜の鐘", reading: "じょやのかね" }],
     fire: [{ display: "どんど焼き", reading: "どんどやき" }],
+  });
+  assert.deepEqual(february.readingOverrides, {
+    oni: [{ display: "鬼は外", reading: "おにはそと" }],
+    peanut: [{ display: "豆まき", reading: "まめまき" }],
+    chocolate: [
+      { display: "本命チョコ", reading: "ほんめいチョコ" },
+      { display: "友チョコ", reading: "ともちょこ" },
+      { display: "義理チョコ", reading: "ぎりチョコ" },
+    ],
+    "heart-gift": ["バレンタインデー"],
   });
   assert.equal(january.panelIds.includes("kimono"), true);
   assert.equal(january.panelIds.includes("eggplant"), true);
@@ -171,22 +187,27 @@ test("monthly events unlock from Halloween through New Year and keep 80 percent 
   assert.equal(currentTokyoMonth(novemberStart), 11);
   assert.equal(currentTokyoMonth(decemberStart), 12);
   assert.equal(currentTokyoMonth(januaryStart), 1);
+  assert.equal(currentTokyoMonth(februaryStart), 2);
   assert.equal(currentEventTheme(octoberEnd)?.month, 10);
   assert.equal(currentEventTheme(novemberStart)?.month, 11);
   assert.equal(currentEventTheme(decemberStart)?.month, 12);
   assert.equal(currentEventTheme(januaryStart)?.month, 1);
+  assert.equal(currentEventTheme(februaryStart)?.month, 2);
 
   assert.deepEqual(availableEventThemes(octoberEnd).map((theme) => theme.month), [10]);
-  assert.deepEqual(upcomingEventThemes(octoberEnd).map((theme) => theme.month), [11, 12, 1]);
+  assert.deepEqual(upcomingEventThemes(octoberEnd).map((theme) => theme.month), [11, 12, 1, 2]);
   assert.deepEqual(availableEventThemes(novemberStart).map((theme) => theme.month), [10, 11]);
   assert.deepEqual(archivedEventThemes(novemberStart).map((theme) => theme.month), [10]);
-  assert.deepEqual(upcomingEventThemes(novemberStart).map((theme) => theme.month), [12, 1]);
+  assert.deepEqual(upcomingEventThemes(novemberStart).map((theme) => theme.month), [12, 1, 2]);
   assert.deepEqual(availableEventThemes(decemberStart).map((theme) => theme.month), [10, 11, 12]);
   assert.deepEqual(archivedEventThemes(decemberStart).map((theme) => theme.month), [10, 11]);
-  assert.deepEqual(upcomingEventThemes(decemberStart).map((theme) => theme.month), [1]);
+  assert.deepEqual(upcomingEventThemes(decemberStart).map((theme) => theme.month), [1, 2]);
   assert.deepEqual(availableEventThemes(januaryStart).map((theme) => theme.month), [10, 11, 12, 1]);
   assert.deepEqual(archivedEventThemes(januaryStart).map((theme) => theme.month), [10, 11, 12]);
-  assert.deepEqual(upcomingEventThemes(januaryStart).map((theme) => theme.month), []);
+  assert.deepEqual(upcomingEventThemes(januaryStart).map((theme) => theme.month), [2]);
+  assert.deepEqual(availableEventThemes(februaryStart).map((theme) => theme.month), [10, 11, 12, 1, 2]);
+  assert.deepEqual(archivedEventThemes(februaryStart).map((theme) => theme.month), [10, 11, 12, 1]);
+  assert.deepEqual(upcomingEventThemes(februaryStart).map((theme) => theme.month), []);
 
   const october4a = createOnlineGame(202610, 4, "O", 3, "EVENT-A", "event", 10);
   const october4b = createOnlineGame(202610, 4, "O", 3, "EVENT-B", "event", 10);
@@ -197,6 +218,8 @@ test("monthly events unlock from Halloween through New Year and keep 80 percent 
   const december5 = makeBoard(202612, 5, "event", 12).board;
   const january4 = createOnlineGame(202701, 4, "O", 3, "EVENT-JAN", "event", 1);
   const january5 = makeBoard(202701, 5, "event", 1).board;
+  const february4 = createOnlineGame(202702, 4, "O", 3, "EVENT-FEB", "event", 2);
+  const february5 = makeBoard(202702, 5, "event", 2).board;
   const normalDecember = makeBoard(202612, 5, "normal").board;
   const findEventPanel = (month, id) => {
     for (let seed = 1; seed <= 200; seed += 1) {
@@ -216,11 +239,17 @@ test("monthly events unlock from Halloween through New Year and keep 80 percent 
   assert.equal(december5.filter((panel) => decemberIds.has(panel.id)).length, 20);
   assert.equal(january4.board.filter((panel) => januaryIds.has(panel.id)).length, 13);
   assert.equal(january5.filter((panel) => januaryIds.has(panel.id)).length, 20);
+  assert.equal(february4.board.filter((panel) => februaryIds.has(panel.id)).length, 13);
+  assert.equal(february5.filter((panel) => februaryIds.has(panel.id)).length, 20);
   assert.equal(readingValues(findEventPanel(12, "deer")).includes("トナカイ"), true);
   assert.equal(readingValues(findEventPanel(12, "snow")).includes("ホワイトクリスマス"), true);
   assert.equal(readingValues(findEventPanel(1, "pillow")).includes("はつゆめ"), true);
   assert.equal(readingValues(findEventPanel(1, "sheep")).includes("ひつじどし"), true);
   assert.equal(readingValues(findEventPanel(1, "eagle")).includes("たか"), true);
+  assert.equal(readingValues(findEventPanel(2, "oni")).includes("おにはそと"), true);
+  assert.equal(readingValues(findEventPanel(2, "peanut")).includes("まめまき"), true);
+  assert.equal(readingValues(findEventPanel(2, "chocolate")).includes("ほんめいチョコ"), true);
+  assert.equal(readingValues(findEventPanel(2, "heart-gift")).includes("バレンタインデー"), true);
   assert.equal(normalDecember.find((panel) => panel.id === "deer")?.readings.some((item) => (typeof item === "string" ? item : item.reading) === "トナカイ") ?? false, false);
   assert.equal(normalDecember.find((panel) => panel.id === "snow")?.readings.some((item) => (typeof item === "string" ? item : item.reading) === "ホワイトクリスマス") ?? false, false);
   assert.equal(makeBoard(202701, 4, "normal", 1).eventTheme, null);

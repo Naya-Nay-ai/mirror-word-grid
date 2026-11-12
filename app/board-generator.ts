@@ -142,6 +142,31 @@ const JANUARY_PANEL_IDS = [
   "eagle",
 ] as const;
 
+const FEBRUARY_PANEL_IDS = [
+  "oni",
+  "peanut",
+  "chocolate",
+  "heart-gift",
+  "love-letter",
+  "rose",
+  "present",
+  "couple",
+  "ring",
+  "strawberry",
+  "cake",
+  "cookie",
+  "cupcake",
+  "candy",
+  "lollipop",
+  "pie",
+  "moon-coffee",
+  "candle",
+  "scarf",
+  "gloves",
+  "snow",
+  "snowman",
+] as const;
+
 const EVENT_THEMES: Partial<Record<number, EventTheme>> = {
   10: {
     month: 10,
@@ -184,6 +209,24 @@ const EVENT_THEMES: Partial<Record<number, EventTheme>> = {
       eagle: [{ display: "鷹", reading: "たか" }],
       bell: [{ display: "除夜の鐘", reading: "じょやのかね" }],
       fire: [{ display: "どんど焼き", reading: "どんどやき" }],
+    },
+  },
+  2: {
+    month: 2,
+    label: "節分・バレンタイン盤",
+    icon: "💝",
+    panelIds: FEBRUARY_PANEL_IDS,
+    seasonalRatio: 0.8,
+    availableFrom: "2027-02-01",
+    readingOverrides: {
+      oni: [{ display: "鬼は外", reading: "おにはそと" }],
+      peanut: [{ display: "豆まき", reading: "まめまき" }],
+      chocolate: [
+        { display: "本命チョコ", reading: "ほんめいチョコ" },
+        { display: "友チョコ", reading: "ともちょこ" },
+        { display: "義理チョコ", reading: "ぎりチョコ" },
+      ],
+      "heart-gift": ["バレンタインデー"],
     },
   },
 };

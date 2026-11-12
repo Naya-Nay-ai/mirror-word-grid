@@ -1029,6 +1029,10 @@ label > span,
   --event-button-bg: linear-gradient(135deg, #9f2f2f, #d34a36 56%, #d5a53b);
   --event-button-subtext: #fff4d6;
 }
+.event-title-button.event-month-2 {
+  --event-button-bg: linear-gradient(135deg, #5d2537, #a63f62 56%, #d58a75);
+  --event-button-subtext: #fff0f3;
+}
 .event-setup-banner {
   display: grid;
   grid-template-columns: 54px minmax(0, 1fr);
