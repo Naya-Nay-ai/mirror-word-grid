@@ -186,7 +186,7 @@ test("December and January additions keep reviewed emoji and safe preset reading
     ozoni: ["🍲", [{ display: "お雑煮", reading: "おぞうに" }, "ぞうに", "なべ", "にもの"]],
     "shrimp-tempura": ["🍤", ["えび", "てんぷら", "フライ"]],
     sheep: ["🐑", ["ひつじ", "シープ", "めえめえ"]],
-    otoshidama: ["💴", ["おとしだま", "おかね", "おさつ", "マネー"]],
+    otoshidama: ["🧧", ["おとしだま", "ぽちぶくろ", "おかね", "おいわい"]],
   };
   for (const [id, [icon, readings]] of Object.entries(expected)) {
     const panel = PANELS.find((item) => item.id === id);

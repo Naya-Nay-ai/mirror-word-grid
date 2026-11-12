@@ -145,6 +145,6 @@ export const PANELS: Panel[] = [
   { id: "ozoni", icon: "🍲", name: "お雑煮", category: "食べ物", readings: [{ display: "お雑煮", reading: "おぞうに" }, "ぞうに", "なべ", "にもの"], visualDescription: "具の入った温かい鍋料理の絵文字" },
   { id: "shrimp-tempura", icon: "🍤", name: "えび", category: "食べ物", readings: ["えび", "てんぷら", "フライ"], visualDescription: "衣をつけて揚げたえびの絵文字" },
   { id: "sheep", icon: "🐑", name: "ひつじ", category: "動物", readings: ["ひつじ", "シープ", "めえめえ"], visualDescription: "白い毛のひつじの絵文字" },
-  { id: "otoshidama", icon: "💴", name: "おとしだま", category: "物", readings: ["おとしだま", "おかね", "おさつ", "マネー"], visualDescription: "日本円の紙幣を表す絵文字" },
+  { id: "otoshidama", icon: "🧧", name: "おとしだま", category: "物", readings: ["おとしだま", "ぽちぶくろ", "おかね", "おいわい"], visualDescription: "お金や祝いを入れて贈る赤い封筒の絵文字" },
 
 ];
