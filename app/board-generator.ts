@@ -1,4 +1,4 @@
-import { chooseRandomStart, type BoardSize, type Panel } from "./game-rules";
+import { chooseRandomStart, type BoardSize, type Panel, type PresetReading } from "./game-rules";
 import { PANELS } from "./panel-dictionary";
 
 export type BoardMode = "normal" | "event";
@@ -10,6 +10,7 @@ export type EventTheme = {
   panelIds: readonly string[];
   seasonalRatio: number;
   availableFrom: string;
+  readingOverrides?: Readonly<Record<string, readonly PresetReading[]>>;
 };
 
 const NORMAL_SPINES = [
@@ -91,6 +92,81 @@ const NOVEMBER_PANEL_IDS = [
   "couple",
 ] as const;
 
+const DECEMBER_PANEL_IDS = [
+  "christmas-tree",
+  "snowman",
+  "snow",
+  "deer",
+  "bell",
+  "candle",
+  "star-bottle",
+  "cake",
+  "cookie",
+  "cupcake",
+  "moon-coffee",
+  "fire",
+  "scarf",
+  "gloves",
+  "boots",
+  "candy",
+  "lollipop",
+  "pie",
+  "couple",
+  "ring",
+  "present",
+  "santa",
+] as const;
+
+const JANUARY_PANEL_IDS = [
+  "kadomatsu",
+  "first-sunrise",
+  "shrine",
+  "mount-fuji",
+  "sake",
+  "osechi",
+  "ozoni",
+  "shrimp-tempura",
+  "sheep",
+  "otoshidama",
+  "turtle",
+  "rice-ear",
+  "bell",
+  "fire",
+  "snow",
+  "snowman",
+  "scarf",
+  "gloves",
+  "kimono",
+  "eggplant",
+  "pillow",
+  "eagle",
+] as const;
+
+const FEBRUARY_PANEL_IDS = [
+  "oni",
+  "peanut",
+  "chocolate",
+  "heart-gift",
+  "love-letter",
+  "rose",
+  "present",
+  "couple",
+  "ring",
+  "strawberry",
+  "cake",
+  "cookie",
+  "cupcake",
+  "candy",
+  "lollipop",
+  "pie",
+  "moon-coffee",
+  "candle",
+  "scarf",
+  "gloves",
+  "snow",
+  "snowman",
+] as const;
+
 const EVENT_THEMES: Partial<Record<number, EventTheme>> = {
   10: {
     month: 10,
@@ -107,6 +183,51 @@ const EVENT_THEMES: Partial<Record<number, EventTheme>> = {
     panelIds: NOVEMBER_PANEL_IDS,
     seasonalRatio: 0.8,
     availableFrom: "2026-11-01",
+  },
+  12: {
+    month: 12,
+    label: "クリスマス盤",
+    icon: "🎄",
+    panelIds: DECEMBER_PANEL_IDS,
+    seasonalRatio: 0.8,
+    availableFrom: "2026-12-01",
+    readingOverrides: {
+      deer: ["トナカイ"],
+      snow: ["ホワイトクリスマス"],
+    },
+  },
+  1: {
+    month: 1,
+    label: "お正月盤",
+    icon: "🎍",
+    panelIds: JANUARY_PANEL_IDS,
+    seasonalRatio: 0.8,
+    availableFrom: "2027-01-01",
+    readingOverrides: {
+      sheep: [{ display: "未年", reading: "ひつじどし" }],
+      pillow: [{ display: "初夢", reading: "はつゆめ" }],
+      eagle: [{ display: "鷹", reading: "たか" }],
+      bell: [{ display: "除夜の鐘", reading: "じょやのかね" }],
+      fire: [{ display: "どんど焼き", reading: "どんどやき" }],
+    },
+  },
+  2: {
+    month: 2,
+    label: "節分・バレンタイン盤",
+    icon: "💝",
+    panelIds: FEBRUARY_PANEL_IDS,
+    seasonalRatio: 0.8,
+    availableFrom: "2027-02-01",
+    readingOverrides: {
+      oni: [{ display: "鬼は外", reading: "おにはそと" }],
+      peanut: [{ display: "豆まき", reading: "まめまき" }],
+      chocolate: [
+        { display: "本命チョコ", reading: "ほんめいチョコ" },
+        { display: "友チョコ", reading: "ともちょこ" },
+        { display: "義理チョコ", reading: "ぎりチョコ" },
+      ],
+      "heart-gift": ["バレンタインデー"],
+    },
   },
 };
 
@@ -146,7 +267,11 @@ function eventBoard(random: () => number, boardSize: BoardSize, theme: EventThem
   const generalCount = total - eventCount;
   const seasonal = shuffled(eventPool, random).slice(0, eventCount);
   const general = shuffled(generalPool, random).slice(0, generalCount);
-  return shuffled([...seasonal, ...general], random);
+  return shuffled([...seasonal, ...general], random).map((panel) => {
+    const additions = theme.readingOverrides?.[panel.id];
+    if (!additions?.length) return panel;
+    return { ...panel, readings: [...panel.readings, ...additions] };
+  });
 }
 
 export function currentTokyoMonth(date = new Date()) {

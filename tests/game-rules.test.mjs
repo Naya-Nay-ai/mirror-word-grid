@@ -122,11 +122,11 @@ test("partner replies accept either one copied machine line or exactly one stand
   assert.equal(parseMachineReply("判定:受理｜コード:MWG-ABCDE").ok, false);
 });
 
-test("panel dictionary keeps 123 unique, simple emoji cards with editable reading arrays", () => {
+test("panel dictionary keeps 142 unique, simple emoji cards with editable reading arrays", () => {
   const segmenter = new Intl.Segmenter("ja", { granularity: "grapheme" });
-  assert.equal(PANELS.length, 123);
-  assert.equal(new Set(PANELS.map((panel) => panel.id)).size, 123);
-  assert.equal(new Set(PANELS.map((panel) => panel.icon)).size, 123);
+  assert.equal(PANELS.length, 142);
+  assert.equal(new Set(PANELS.map((panel) => panel.id)).size, 142);
+  assert.equal(new Set(PANELS.map((panel) => panel.icon)).size, 142);
   assert.equal(PANELS.some((panel) => panel.icon.includes("\u200d")), false);
   assert.equal(PANELS.every((panel) => [...segmenter.segment(panel.icon)].length === 1), true);
   assert.equal(PANELS.every((panel) => panel.readings.length > 0), true);
@@ -170,6 +170,49 @@ test("November additions keep their reviewed emoji and safe preset readings", ()
     assert.deepEqual(panel?.readings, readings);
   }
   assert.deepEqual(PANELS.find((panel) => panel.id === "maple-leaf")?.readings, ["もみじ", "こうよう", "メープル", "かえで"]);
+  assert.equal(PANELS.flatMap((panel) => panel.readings.map(presetReadingValue)).some((reading) => /[んン]$/u.test(reading)), false);
+});
+
+test("December and January additions keep reviewed emoji and safe preset readings", () => {
+  const expected = {
+    present: ["🎁", ["プレゼント", "ギフト", "おくりもの"]],
+    santa: ["🎅", ["サンタ", "サンタクロース"]],
+    kadomatsu: ["🎍", ["かどまつ", "しょうがつかざり", "まつかざり"]],
+    "first-sunrise": ["🌅", [{ display: "初日の出", reading: "はつひので" }, "ひので", "あさひ"]],
+    shrine: ["⛩️", [{ display: "神社", reading: "じんじゃ" }, "とりい", "はつもうで"]],
+    "mount-fuji": ["🗻", [{ display: "富士山", reading: "ふじやま" }, "ふじ", "やま"]],
+    sake: ["🍶", ["さけ", "おさけ", "にほんしゅ"]],
+    osechi: ["🍱", ["おせち", "じゅうばこ", "べんとう"]],
+    ozoni: ["🍲", [{ display: "お雑煮", reading: "おぞうに" }, "ぞうに", "なべ", "にもの"]],
+    "shrimp-tempura": ["🍤", ["えび", "てんぷら", "フライ"]],
+    sheep: ["🐑", ["ひつじ", "シープ", "めえめえ"]],
+    otoshidama: ["🧧", ["おとしだま", "ぽちぶくろ", "おかね", "おいわい"]],
+    kimono: ["👘", ["きもの", "わふく", "はれぎ"]],
+    eagle: ["🦅", ["わし", "イーグル", { display: "猛禽類", reading: "もうきんるい" }]],
+  };
+  for (const [id, [icon, readings]] of Object.entries(expected)) {
+    const panel = PANELS.find((item) => item.id === id);
+    assert.equal(panel?.icon, icon);
+    assert.deepEqual(panel?.readings, readings);
+  }
+  assert.equal(PANELS.find((panel) => panel.id === "deer")?.readings.map(presetReadingValue).includes("トナカイ"), false);
+  assert.equal(PANELS.find((panel) => panel.id === "snow")?.readings.map(presetReadingValue).includes("ホワイトクリスマス"), false);
+  assert.equal(PANELS.flatMap((panel) => panel.readings.map(presetReadingValue)).some((reading) => /[んン]$/u.test(reading)), false);
+});
+
+test("February additions keep reviewed emoji and safe shared preset readings", () => {
+  const expected = {
+    oni: ["👹", ["おに", "あかおに", "オーガ"]],
+    chocolate: ["🍫", ["チョコ", "チョコレート", "いたチョコ"]],
+    "heart-gift": ["💝", ["ハート", "ラブ", "ハートギフト", "おくりもの"]],
+    "love-letter": ["💌", ["ラブレター", "てがみ", { display: "恋文", reading: "こいぶみ" }]],
+    rose: ["🌹", ["ばら", "ローズ", "あかいばら"]],
+  };
+  for (const [id, [icon, readings]] of Object.entries(expected)) {
+    const panel = PANELS.find((item) => item.id === id);
+    assert.equal(panel?.icon, icon);
+    assert.deepEqual(panel?.readings, readings);
+  }
   assert.equal(PANELS.flatMap((panel) => panel.readings.map(presetReadingValue)).some((reading) => /[んン]$/u.test(reading)), false);
 });
 
